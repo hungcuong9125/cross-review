@@ -1,6 +1,6 @@
 [package]
 name = "review-weaver"
-version = "0.5.3"
+version = "0.5.4"
 edition = "2021"
 description = "Cross-review markdown report generator for QA teams"
 license = "MIT"

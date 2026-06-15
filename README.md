@@ -142,6 +142,20 @@ The compiled Markdown outputs follow this structural convention:
 
 ## Changelog
 
+### v0.5.4 (2026-06-16)
+- **Fix**: Replaced hardcoded text in settings panel title with `t()` translation function.
+- **Fix**: Fixed empty-check fallback on copy: if duplicating an unnamed QA, ensure it appends the copy suffix properly (`qa.name ? ... : copySuffix`).
+- **Fix**: Simplified state toggles (`active`, `exclude_self`) in project store.
+- **Fix**: Added missing `refreshValidation` calls after moving components up or down.
+- **Fix**: Refactored component filtering logic in Rust backend.
+- **Fix**: Added drag listener cleanup on window unmount to prevent memory leaks.
+- **Fix**: Migrated projects now correctly inherit the active store language context.
+- **Fix**: Legacy project fields (`opening_text`, `closing_text`) are cleared on migration to prevent redundant serialization.
+- **Fix**: Fixed fallback component naming on copy (`comp.name ? ... : copySuffix`).
+- **Fix**: Enhanced validation logging by replacing raw IDs with human-readable index labels (e.g. `Source #N`) in the local validation fallback, and log IPC errors.
+- **Improvement**: Replaced redundant comments and dead code in state management.
+- **Improvement**: Added translation configuration and confirmation alert before removing all QA reports (`removeAllQa`).
+
 ### v0.5.3 (2026-06-16)
 - **Fix**: `mergeLines` paragraph separator ` | ` never being inserted — the empty-line filter was destroying paragraph break information before the regex could match.
 - **Fix**: `removeQa` and `removeEmptyQa` destroying component selection when deleting a non-selected QA report.
