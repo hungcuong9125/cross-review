@@ -9,7 +9,6 @@ use crate::export::{generate_exports, ExportError};
 use crate::models::Project;
 
 /// Exports all markdown files into a single zip archive.
-///
 /// Returns the path to the created zip file.
 pub fn export_to_zip(project: &Project, output_path: &str) -> Result<String, ExportError> {
     let exports = generate_exports(project)?;

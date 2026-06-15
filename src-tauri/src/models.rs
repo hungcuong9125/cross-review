@@ -8,6 +8,10 @@ pub enum ComponentPosition {
     Closing,
 }
 
+fn default_true() -> bool {
+    true
+}
+
 /// A reusable component (section) that can be inserted at the opening or closing.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Component {
@@ -19,6 +23,8 @@ pub struct Component {
     pub content: String,
     #[serde(default)]
     pub order: i32,
+    #[serde(default = "default_true")]
+    pub active: bool,
 }
 
 /// Represents a complete Review Weaver project.
@@ -30,7 +36,8 @@ pub struct Project {
     pub components: Vec<Component>,
     #[serde(default)]
     pub qa_reports: Vec<QaReport>,
-    // Legacy fields for backward compatibility with old project files
+    #[serde(default = "default_true")]
+    pub exclude_self: bool,
     #[allow(dead_code)]
     #[serde(default, skip_serializing)]
     pub opening_text: Option<String>,
@@ -47,6 +54,8 @@ pub struct QaReport {
     pub name: String,
     #[serde(default)]
     pub content: String,
+    #[serde(default = "default_true")]
+    pub active: bool,
 }
 
 /// A generated export file ready to be written to disk.
@@ -66,34 +75,20 @@ pub struct ValidationReport {
 }
 
 fn default_opening() -> String {
-    "Hãy xem một số báo cáo từ QA sau và REVIEW thêm, đề xuất phương án cuối:\n".to_string()
+    "Hãy xem một số nguồn nội dung sau và review thêm, đề xuất phương án cuối:\n".to_string()
 }
 
 fn default_closing() -> String {
-    "Hãy tổng hợp và đề xuất phương án cuối cùng dựa trên các báo cáo trên.\n".to_string()
+    "Hãy tổng hợp và đề xuất phương án cuối cùng dựa trên các nguồn trên.\n".to_string()
 }
 
 impl Default for Project {
     fn default() -> Self {
         Self {
             title: String::new(),
-            components: vec![
-                Component {
-                    id: uuid::Uuid::new_v4().to_string(),
-                    name: "Mở đầu".to_string(),
-                    position: ComponentPosition::Opening,
-                    content: default_opening(),
-                    order: 0,
-                },
-                Component {
-                    id: uuid::Uuid::new_v4().to_string(),
-                    name: "Kết thúc".to_string(),
-                    position: ComponentPosition::Closing,
-                    content: default_closing(),
-                    order: 0,
-                },
-            ],
+            components: Vec::new(),
             qa_reports: Vec::new(),
+            exclude_self: true,
             opening_text: None,
             closing_text: None,
         }

@@ -16,7 +16,6 @@ pub fn to_slug(name: &str) -> String {
         .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '.')
         .collect::<String>();
 
-    // Collapse multiple hyphens
     let mut result = String::new();
     let mut last_was_hyphen = false;
     for c in slug.chars() {
@@ -35,7 +34,6 @@ pub fn to_slug(name: &str) -> String {
 }
 
 /// Generates a unique filename for a QA target.
-///
 /// Format: `review-for-{slug}.md`
 /// If the slug already exists in the used list, appends `-2`, `-3`, etc.
 pub fn generate_filename(target_name: &str, used_filenames: &[String]) -> String {

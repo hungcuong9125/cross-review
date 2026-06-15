@@ -31,11 +31,14 @@ pub fn generate_exports(project: &Project) -> Result<Vec<ExportFile>, ExportErro
     let mut used_filenames: Vec<String> = Vec::new();
 
     for target in &project.qa_reports {
-        // Collect other reports (exclude the target QA)
+        if !target.active {
+            continue;
+        }
+        // Collect other reports (exclude the target QA if exclude_self is active, and only active ones)
         let other_reports: Vec<&crate::models::QaReport> = project
             .qa_reports
             .iter()
-            .filter(|qa| qa.id != target.id)
+            .filter(|qa| (!project.exclude_self || qa.id != target.id) && qa.active)
             .collect();
 
         // Generate filename
@@ -69,7 +72,7 @@ pub fn generate_preview(
     let other_reports: Vec<&crate::models::QaReport> = project
         .qa_reports
         .iter()
-        .filter(|qa| qa.id != target.id)
+        .filter(|qa| (!project.exclude_self || qa.id != target.id) && qa.active)
         .collect();
 
     let filename = generate_filename(&target.name, &[]);
@@ -87,7 +90,7 @@ fn get_opening_components(project: &Project) -> Vec<&crate::models::Component> {
     let mut comps: Vec<&crate::models::Component> = project
         .components
         .iter()
-        .filter(|c| c.position == ComponentPosition::Opening && !c.content.trim().is_empty())
+        .filter(|c| c.position == ComponentPosition::Opening && !c.content.trim().is_empty() && c.active)
         .collect();
     comps.sort_by_key(|c| c.order);
     comps
@@ -98,7 +101,7 @@ fn get_closing_components(project: &Project) -> Vec<&crate::models::Component> {
     let mut comps: Vec<&crate::models::Component> = project
         .components
         .iter()
-        .filter(|c| c.position == ComponentPosition::Closing && !c.content.trim().is_empty())
+        .filter(|c| c.position == ComponentPosition::Closing && !c.content.trim().is_empty() && c.active)
         .collect();
     comps.sort_by_key(|c| c.order);
     comps
@@ -126,7 +129,7 @@ fn build_markdown(
             section.push_str("\n---\n\n");
         }
 
-        section.push_str(&format!("## {}. Báo cáo từ {}\n\n", i + 1, qa.name));
+        section.push_str(&format!("## {}. {}\n\n", i + 1, qa.name));
         section.push_str(qa.content.trim());
 
         parts.push(section);
@@ -157,6 +160,7 @@ mod tests {
             id: id.to_string(),
             name: name.to_string(),
             content: content.to_string(),
+            active: true,
         }
     }
 
@@ -167,6 +171,7 @@ mod tests {
             position: ComponentPosition::Opening,
             content: content.to_string(),
             order: 0,
+            active: true,
         }
     }
 
@@ -177,6 +182,7 @@ mod tests {
             position: ComponentPosition::Closing,
             content: content.to_string(),
             order: 0,
+            active: true,
         }
     }
 
@@ -188,6 +194,7 @@ mod tests {
                 make_closing("Closing text"),
             ],
             qa_reports: qas,
+            exclude_self: true,
             opening_text: None,
             closing_text: None,
         }
@@ -443,13 +450,13 @@ Final paragraph with [link](https://example.com)."#;
 
         // Export for QA 1 should have reports from QA 2 and QA 3, numbered 1 and 2
         let export1 = &exports[0];
-        assert!(export1.markdown.contains("## 1. Báo cáo từ QA 2"));
-        assert!(export1.markdown.contains("## 2. Báo cáo từ QA 3"));
+        assert!(export1.markdown.contains("## 1. QA 2"));
+        assert!(export1.markdown.contains("## 2. QA 3"));
 
         // Export for QA 2 should have reports from QA 1 and QA 3, numbered 1 and 2
         let export2 = &exports[1];
-        assert!(export2.markdown.contains("## 1. Báo cáo từ QA 1"));
-        assert!(export2.markdown.contains("## 2. Báo cáo từ QA 3"));
+        assert!(export2.markdown.contains("## 1. QA 1"));
+        assert!(export2.markdown.contains("## 2. QA 3"));
     }
 
     // Test: Multiple opening/closing components with ordering
@@ -467,6 +474,7 @@ Final paragraph with [link](https://example.com)."#;
                 position: ComponentPosition::Opening,
                 content: "Context section".to_string(),
                 order: 1,
+                active: true,
             },
             Component {
                 id: "o2".to_string(),
@@ -474,6 +482,7 @@ Final paragraph with [link](https://example.com)."#;
                 position: ComponentPosition::Opening,
                 content: "Intro section".to_string(),
                 order: 0,
+                active: true,
             },
             Component {
                 id: "c1".to_string(),
@@ -481,6 +490,7 @@ Final paragraph with [link](https://example.com)."#;
                 position: ComponentPosition::Closing,
                 content: "Summary section".to_string(),
                 order: 0,
+                active: true,
             },
             Component {
                 id: "c2".to_string(),
@@ -488,6 +498,7 @@ Final paragraph with [link](https://example.com)."#;
                 position: ComponentPosition::Closing,
                 content: "Footer section".to_string(),
                 order: 1,
+                active: true,
             },
         ];
 
