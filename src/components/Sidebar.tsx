@@ -14,6 +14,10 @@ export function Sidebar() {
     removeAllQa,
     addComponent,
     language,
+    toggleQaActive,
+    toggleComponentActive,
+    duplicateComponent,
+    removeComponent,
   } = useProjectStore();
 
   const qaReports = project.qa_reports;
@@ -62,90 +66,222 @@ export function Sidebar() {
       </div>
 
       {/* Unified scrollable list */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-        {/* QA Reports - first */}
-        {qaReports.map((qa, index) => (
-          <div key={qa.id} className="group relative">
-            <button
-              onClick={() => selectQa(qa.id)}
-              className={`w-full text-left px-3 py-1.5 rounded text-xs transition-colors flex items-center gap-2 ${
-                isActive(qa.id, "report")
-                  ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                  : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-              }`}
-            >
-              <span className="px-1.5 py-0.5 text-[9px] font-semibold rounded bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 uppercase">
-                {t("sidebar.reports", language)}
-              </span>
-              <span className="truncate">
-                {qa.name || `${index + 1}. ${t("sidebar.unnamed", language)}`}
-              </span>
-            </button>
-            {/* Hover actions */}
-            <div className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover:flex gap-1">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  duplicateQa(qa.id);
-                }}
-                className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
-                title="Duplicate"
-              >
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  removeQa(qa.id);
-                }}
-                className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                title="Delete"
-              >
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+      <div className="flex-1 overflow-y-auto p-3 space-y-5">
+        {/* QA Reports Group */}
+        {qaReports.length > 0 && (
+          <div className="space-y-1.5">
+            <div className="text-[11px] font-bold text-gray-400 dark:text-gray-500 tracking-wider uppercase">
+              {t("preview.reports", language)}
+            </div>
+            <div className="space-y-0">
+              {qaReports.map((qa) => (
+                <div key={qa.id} className="group relative flex items-center gap-1.5">
+                  {/* Toggle Switch */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleQaActive(qa.id);
+                    }}
+                    className={`w-6 h-3.5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none flex-shrink-0 flex items-center ${qa.active !== false
+                      ? "bg-blue-500"
+                      : "bg-gray-300 dark:bg-gray-600"
+                      }`}
+                    title={qa.active !== false ? "Disable" : "Enable"}
+                  >
+                    <div
+                      className={`bg-white w-2.5 h-2.5 rounded-full shadow-sm transform duration-200 ${qa.active !== false ? "translate-x-2.5" : "translate-x-0"
+                        }`}
+                    />
+                  </button>
+
+                  <button
+                    onClick={() => selectQa(qa.id)}
+                    className={`flex-1 text-left px-2.5 py-2 rounded-md text-sm transition-colors flex items-center gap-2 min-w-0 ${isActive(qa.id, "report")
+                      ? "text-blue-600 dark:text-blue-400 font-semibold bg-blue-50/60 dark:bg-blue-950/20"
+                      : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/30"
+                      } ${qa.active === false ? "opacity-40 line-through text-gray-400" : ""}`}
+                  >
+                    <span className="truncate">
+                      {qa.name || t("sidebar.unnamed", language)}
+                    </span>
+                  </button>
+
+                  {/* Hover actions */}
+                  <div className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover:flex gap-0.5">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        duplicateQa(qa.id);
+                      }}
+                      className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
+                      title="Duplicate"
+                    >
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeQa(qa.id);
+                      }}
+                      className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                      title="Delete"
+                    >
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        ))}
+        )}
 
-        {/* Opening components - second */}
-        {openingComps.map((comp) => (
-          <button
-            key={comp.id}
-            onClick={() => selectComponent(comp.id)}
-            className={`w-full text-left px-3 py-1.5 rounded text-xs transition-colors flex items-center gap-2 ${
-              isActive(comp.id, "component")
-                ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-            }`}
-          >
-            <span className="px-1.5 py-0.5 text-[9px] font-semibold rounded bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 uppercase">
+        {/* Opening Components Group */}
+        {openingComps.length > 0 && (
+          <div className="space-y-1.5">
+            <div className="text-[11px] font-bold text-gray-400 dark:text-gray-500 tracking-wider uppercase">
               {t("editor.opening", language)}
-            </span>
-            <span className="truncate">{comp.name || t("editor.opening", language)}</span>
-          </button>
-        ))}
+            </div>
+            <div className="space-y-0">
+              {openingComps.map((comp) => (
+                <div key={comp.id} className="group relative flex items-center gap-1.5">
+                  {/* Toggle Switch */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleComponentActive(comp.id);
+                    }}
+                    className={`w-6 h-3.5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none flex-shrink-0 flex items-center ${comp.active !== false
+                      ? "bg-purple-500"
+                      : "bg-gray-300 dark:bg-gray-600"
+                      }`}
+                    title={comp.active !== false ? "Disable" : "Enable"}
+                  >
+                    <div
+                      className={`bg-white w-2.5 h-2.5 rounded-full shadow-sm transform duration-200 ${comp.active !== false ? "translate-x-2.5" : "translate-x-0"
+                        }`}
+                    />
+                  </button>
 
-        {/* Closing components - third */}
-        {closingComps.map((comp) => (
-          <button
-            key={comp.id}
-            onClick={() => selectComponent(comp.id)}
-            className={`w-full text-left px-3 py-1.5 rounded text-xs transition-colors flex items-center gap-2 ${
-              isActive(comp.id, "component")
-                ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-            }`}
-          >
-            <span className="px-1.5 py-0.5 text-[9px] font-semibold rounded bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400 uppercase">
+                  <button
+                    onClick={() => selectComponent(comp.id)}
+                    className={`flex-1 text-left px-2.5 py-2 rounded-md text-sm transition-colors flex items-center gap-2 min-w-0 ${isActive(comp.id, "component")
+                      ? "text-purple-600 dark:text-purple-400 font-semibold bg-purple-50/60 dark:bg-purple-950/20"
+                      : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/30"
+                      } ${comp.active === false ? "opacity-40 line-through text-gray-400" : ""}`}
+                  >
+                    <span className="truncate">
+                      {comp.name || t("editor.opening", language)}
+                    </span>
+                  </button>
+
+                  {/* Hover actions */}
+                  <div className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover:flex gap-0.5">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        duplicateComponent(comp.id);
+                      }}
+                      className="p-1 text-gray-400 hover:text-purple-500 transition-colors"
+                      title="Duplicate"
+                    >
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeComponent(comp.id);
+                      }}
+                      className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                      title="Delete"
+                    >
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Closing Components Group */}
+        {closingComps.length > 0 && (
+          <div className="space-y-1.5">
+            <div className="text-[11px] font-bold text-gray-400 dark:text-gray-500 tracking-wider uppercase">
               {t("editor.closing", language)}
-            </span>
-            <span className="truncate">{comp.name || t("editor.closing", language)}</span>
-          </button>
-        ))}
+            </div>
+            <div className="space-y-0">
+              {closingComps.map((comp) => (
+                <div key={comp.id} className="group relative flex items-center gap-1.5">
+                  {/* Toggle Switch */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleComponentActive(comp.id);
+                    }}
+                    className={`w-6 h-3.5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none flex-shrink-0 flex items-center ${comp.active !== false
+                      ? "bg-orange-500"
+                      : "bg-gray-300 dark:bg-gray-600"
+                      }`}
+                    title={comp.active !== false ? "Disable" : "Enable"}
+                  >
+                    <div
+                      className={`bg-white w-2.5 h-2.5 rounded-full shadow-sm transform duration-200 ${comp.active !== false ? "translate-x-2.5" : "translate-x-0"
+                        }`}
+                    />
+                  </button>
+
+                  <button
+                    onClick={() => selectComponent(comp.id)}
+                    className={`flex-1 text-left px-2.5 py-2 rounded-md text-sm transition-colors flex items-center gap-2 min-w-0 ${isActive(comp.id, "component")
+                      ? "text-orange-600 dark:text-orange-400 font-semibold bg-orange-50/60 dark:bg-orange-950/20"
+                      : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/30"
+                      } ${comp.active === false ? "opacity-40 line-through text-gray-400" : ""}`}
+                  >
+                    <span className="truncate">
+                      {comp.name || t("editor.closing", language)}
+                    </span>
+                  </button>
+
+                  {/* Hover actions */}
+                  <div className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover:flex gap-0.5">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        duplicateComponent(comp.id);
+                      }}
+                      className="p-1 text-gray-400 hover:text-orange-500 transition-colors"
+                      title="Duplicate"
+                    >
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeComponent(comp.id);
+                      }}
+                      className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                      title="Delete"
+                    >
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Empty state */}
         {qaReports.length === 0 && openingComps.length === 0 && closingComps.length === 0 && (

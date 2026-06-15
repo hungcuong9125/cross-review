@@ -4,6 +4,7 @@ export interface QaReport {
   id: string;
   name: string;
   content: string;
+  active?: boolean;
 }
 
 export interface Component {
@@ -12,12 +13,14 @@ export interface Component {
   position: "opening" | "closing";
   content: string;
   order: number;
+  active?: boolean;
 }
 
 export interface Project {
   title: string;
   components: Component[];
   qa_reports: QaReport[];
+  exclude_self?: boolean;
 }
 
 export interface ExportFile {

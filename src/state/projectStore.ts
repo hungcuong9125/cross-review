@@ -25,6 +25,7 @@ interface ProjectState {
   language: Language;
   compactMode: boolean;
   removeWhitespace: boolean;
+  mergeLines: boolean;
 
   // Project actions
   setProject: (project: Project) => void;
@@ -47,6 +48,10 @@ interface ProjectState {
   updateComponentContent: (id: string, content: string) => void;
   moveComponentUp: (id: string) => void;
   moveComponentDown: (id: string) => void;
+  toggleQaActive: (id: string) => void;
+  toggleComponentActive: (id: string) => void;
+  toggleExcludeSelf: () => void;
+  duplicateComponent: (id: string) => void;
 
   // Selection
   selectQa: (id: string | null) => void;
@@ -60,6 +65,7 @@ interface ProjectState {
   setLanguage: (lang: Language) => void;
   toggleCompactMode: () => void;
   toggleRemoveWhitespace: () => void;
+  toggleMergeLines: () => void;
 
   // Theme
   toggleDarkMode: () => void;
@@ -70,23 +76,9 @@ interface ProjectState {
 
 const DEFAULT_PROJECT: Project = {
   title: "",
-  components: [
-    {
-      id: "default-opening",
-      name: "Mở đầu",
-      position: "opening",
-      content: "Hãy xem một số báo cáo từ QA sau và REVIEW thêm, đề xuất phương án cuối:\n",
-      order: 0,
-    },
-    {
-      id: "default-closing",
-      name: "Kết thúc",
-      position: "closing",
-      content: "Hãy tổng hợp và đề xuất phương án cuối cùng dựa trên các báo cáo trên.\n",
-      order: 0,
-    },
-  ],
+  components: [],
   qa_reports: [],
+  exclude_self: true,
 };
 
 // Migrate old project format to new format
@@ -130,9 +122,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   activeItem: null,
   validation: null,
   darkMode: window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false,
-  language: "vi",
+  language: "en",
   compactMode: false,
   removeWhitespace: false,
+  mergeLines: false,
 
   setProject: (project) => {
     const migrated = migrateProject(project);
@@ -148,7 +141,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   newProject: () => {
     set({
-      project: { ...DEFAULT_PROJECT, components: [...DEFAULT_PROJECT.components], qa_reports: [] },
+      project: { ...DEFAULT_PROJECT, components: [...DEFAULT_PROJECT.components], qa_reports: [], exclude_self: true },
       selectedQaId: null,
       activeMainTab: "reports",
       activeItem: null,
@@ -162,8 +155,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   addQa: () => {
     const id = generateId();
-    const num = get().project.qa_reports.length + 1;
-    const newQa: QaReport = { id, name: `QA ${num}`, content: "" };
+    const newQa: QaReport = { id, name: "", content: "", active: true };
     set((state) => ({
       project: {
         ...state.project,
@@ -277,10 +269,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const maxOrder = existing.reduce((max, c) => Math.max(max, c.order), -1);
     const newComponent: Component = {
       id,
-      name: position === "opening" ? "Mở đầu" : "Kết thúc",
+      name: "",
       position,
       content: "",
       order: maxOrder + 1,
+      active: true,
     };
     set((state) => ({
       project: {
@@ -387,6 +380,63 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   setActiveMainTab: (tab) => set({ activeMainTab: tab }),
 
+  toggleQaActive: (id) => {
+    set((state) => ({
+      project: {
+        ...state.project,
+        qa_reports: state.project.qa_reports.map((q) =>
+          q.id === id ? { ...q, active: q.active === false ? true : false } : q
+        ),
+      },
+    }));
+    get().refreshValidation();
+  },
+
+  toggleComponentActive: (id) => {
+    set((state) => ({
+      project: {
+        ...state.project,
+        components: state.project.components.map((c) =>
+          c.id === id ? { ...c, active: c.active === false ? true : false } : c
+        ),
+      },
+    }));
+    get().refreshValidation();
+  },
+
+  toggleExcludeSelf: () => {
+    set((state) => ({
+      project: {
+        ...state.project,
+        exclude_self: state.project.exclude_self === false ? true : false,
+      },
+    }));
+    get().refreshValidation();
+  },
+
+  duplicateComponent: (id) => {
+    const comp = get().project.components.find((c) => c.id === id);
+    if (!comp) return;
+    const newId = generateId();
+    const existing = get().project.components.filter(c => c.position === comp.position);
+    const maxOrder = existing.reduce((max, c) => Math.max(max, c.order), -1);
+    const newComponent: Component = {
+      id: newId,
+      name: comp.name ? `${comp.name} (bản sao)` : "",
+      position: comp.position,
+      content: comp.content,
+      order: maxOrder + 1,
+      active: comp.active,
+    };
+    set((state) => ({
+      project: {
+        ...state.project,
+        components: [...state.project.components, newComponent],
+      },
+      activeItem: { type: "component" as const, componentId: newId },
+    }));
+  },
+
   refreshValidation: async () => {
     try {
       const report = await validateProject(get().project);
@@ -397,7 +447,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const errors: string[] = [];
       const warnings: string[] = [];
       if (p.qa_reports.length < 2) {
-        errors.push("Need at least 2 QA for cross-review. / Cần ít nhất 2 QA để review chéo.");
+        errors.push("Need at least 2 sources for cross-review. / Cần ít nhất 2 nguồn để review chéo.");
       }
       p.qa_reports.forEach((q) => {
         if (q.name.trim() === "") errors.push(`${q.id}: missing name. / thiếu tên.`);
@@ -412,6 +462,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   setLanguage: (lang) => set({ language: lang }),
   toggleCompactMode: () => set((state) => ({ compactMode: !state.compactMode })),
   toggleRemoveWhitespace: () => set((state) => ({ removeWhitespace: !state.removeWhitespace })),
+  toggleMergeLines: () => set((state) => ({ mergeLines: !state.mergeLines })),
 
   toggleDarkMode: () => {
     set((state) => {
@@ -429,6 +480,31 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }
     if (state.compactMode) {
       processed = processed.replace(/\n{2,}/g, "\n");
+    }
+    if (state.mergeLines) {
+      // Clean markdown tags that cause global formatting issues when merged into one line
+      let lines = processed.split("\n");
+      lines = lines.map((line) => {
+        const trimmed = line.trim();
+        // Remove markdown horizontal rules
+        if (trimmed === "---" || trimmed === "___" || trimmed === "***") {
+          return "";
+        }
+        // Remove heading markdown hashes (e.g. ## Title -> Title)
+        if (trimmed.startsWith("#")) {
+          return trimmed.replace(/^#+\s*/, "");
+        }
+        return line;
+      });
+      processed = lines.filter((l) => l !== "").join("\n");
+
+      // Merge all lines into one continuous line
+      // Replace paragraph breaks with " | " separator for LLM readability
+      processed = processed
+        .replace(/\n{2,}/g, " | ")  // paragraph break → separator
+        .replace(/\n/g, " ")         // line break → space
+        .replace(/\s{2,}/g, " ")     // multiple spaces → single space
+        .trim();
     }
     return processed;
   },

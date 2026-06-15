@@ -133,38 +133,37 @@ export function Toolbar() {
   };
 
   const mainTabs: { key: MainTab; label: string; icon: React.ReactNode }[] = [
-    { key: "reports", label: t("editor.qaReport", language), icon: TabIcons.reports },
+    { key: "reports", label: t("sidebar.reports", language), icon: TabIcons.reports },
     { key: "opening", label: t("editor.opening", language), icon: TabIcons.opening },
     { key: "closing", label: t("editor.closing", language), icon: TabIcons.closing },
   ];
 
   return (
-    <div className="h-11 flex items-center px-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+    <div className="h-14 flex items-center px-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
       {/* Left: project title - matches sidebar width */}
       <div className="min-w-0 w-72">
         <input
           type="text"
           value={project.title}
           onChange={(e) => setProjectTitle(e.target.value)}
-          className="w-full px-2 py-1 bg-transparent border-b border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus:border-blue-500 focus:outline-none text-xs text-gray-700 dark:text-gray-200 transition-colors"
+          className="w-full py-1 bg-transparent border-b border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus:border-blue-500 focus:outline-none text-xs text-gray-700 dark:text-gray-200 transition-colors"
           placeholder={t("toolbar.projectTitle", language)}
         />
       </div>
 
-      {/* Center: main tabs - pill style */}
+      {/* Center: main tabs - separated buttons style */}
       <div className="flex-1 flex justify-center">
-        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700/40 rounded-full p-1">
+        <div className="flex items-center gap-2">
           {mainTabs.map((tab) => {
             const isActive = activeMainTab === tab.key;
             return (
               <button
                 key={tab.key}
                 onClick={() => setActiveMainTab(tab.key)}
-                className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium rounded-full transition-all duration-200 ${
-                  isActive
-                    ? "bg-white dark:bg-gray-600 text-gray-800 dark:text-gray-100 shadow-sm shadow-gray-200/80 dark:shadow-black/20"
-                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-                }`}
+                className={`flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg border transition-all duration-200 ${isActive
+                    ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 shadow-sm"
+                    : "bg-gray-50/60 dark:bg-gray-800/30 border-transparent text-gray-500 dark:text-gray-400 hover:bg-gray-100/80 dark:hover:bg-gray-700/50"
+                  }`}
               >
                 <span className={isActive ? "text-blue-500 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}>
                   {tab.icon}

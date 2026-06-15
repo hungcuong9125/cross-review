@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { EditorPanel } from "./components/EditorPanel";
 import { PreviewPanel } from "./components/PreviewPanel";
@@ -14,6 +14,30 @@ import {
 function App() {
   const { project, setProject, newProject, darkMode, validation } =
     useProjectStore();
+
+  const [rightSidebarWidth, setRightSidebarWidth] = useState(400);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = rightSidebarWidth;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const newWidth = startWidth - deltaX;
+      const minWidth = 400;
+      const maxWidth = Math.max(minWidth, (window.innerWidth - 288) / 2);
+      setRightSidebarWidth(Math.min(maxWidth, Math.max(minWidth, newWidth)));
+    };
+
+    const handleMouseUp = () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  };
 
   // Apply dark mode class on mount and when it changes
   useEffect(() => {
@@ -146,8 +170,17 @@ function App() {
           <EditorPanel />
         </div>
 
+        {/* Resizer */}
+        <div
+          onMouseDown={handleMouseDown}
+          className="w-1 cursor-col-resize hover:bg-blue-500 dark:hover:bg-blue-600 bg-gray-200 dark:bg-gray-700 transition-colors flex-shrink-0"
+        />
+
         {/* Right preview panel */}
-        <div className="w-[400px] flex-shrink-0 flex flex-col overflow-hidden border-l border-gray-200 dark:border-gray-700">
+        <div
+          style={{ width: `${rightSidebarWidth}px` }}
+          className="flex-shrink-0 flex flex-col overflow-hidden border-l border-gray-200 dark:border-gray-700"
+        >
           <div className="flex-1 overflow-hidden">
             <PreviewPanel />
           </div>
