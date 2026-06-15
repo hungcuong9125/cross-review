@@ -74,14 +74,6 @@ pub struct ValidationReport {
     pub warnings: Vec<String>,
 }
 
-fn default_opening() -> String {
-    "Hãy xem một số nguồn nội dung sau và review thêm, đề xuất phương án cuối:\n".to_string()
-}
-
-fn default_closing() -> String {
-    "Hãy tổng hợp và đề xuất phương án cuối cùng dựa trên các nguồn trên.\n".to_string()
-}
-
 impl Default for Project {
     fn default() -> Self {
         Self {

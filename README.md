@@ -1,129 +1,166 @@
 # Review Weave
 
-Review Weave là công cụ Desktop chuyên dụng để tổng hợp, ghép nối và phân phối báo cáo review chéo (cross-review) giữa các mô hình QA hoặc đội ngũ QA.
+Review Weave is a professional desktop application designed to compile, merge, and distribute cross-review reports between QA teams or models.
 
-## Chức năng chính
+## Core Purpose
 
-Từ $N$ nguồn báo cáo QA, Review Weave tự động phân tách và ghép nối để tạo ra $N$ tệp Markdown xuất ra. Mỗi tệp được tùy biến cho một đội nhận cụ thể và chứa nội dung báo cáo của tất cả các đội *khác* (loại trừ chính đội nhận). Điều này giúp tối ưu hóa quy trình đánh giá và review chéo giữa các bên một cách khách quan.
+For $N$ QA reports, Review Weave automatically processes and generates $N$ custom Markdown outputs. Each output file is tailored for a specific recipient QA team and contains reports from all *other* teams, excluding the recipient's own report. This facilitates objective, clean cross-review workflows.
 
-**Ví dụ với 5 đội QA:**
-- `review-for-qa-1.md` → Chứa báo cáo của các đội 2, 3, 4, 5.
-- `review-for-qa-2.md` → Chứa báo cáo của các đội 1, 3, 4, 5.
-- `review-for-qa-3.md` → Chứa báo cáo của các đội 1, 2, 4, 5.
-- ...và tương tự.
+**Example with 5 QA Teams:**
+- `review-for-qa-1.md` $\rightarrow$ Contains reports from teams 2, 3, 4, 5.
+- `review-for-qa-2.md` $\rightarrow$ Contains reports from teams 1, 3, 4, 5.
+- `review-for-qa-3.md` $\rightarrow$ Contains reports from teams 1, 2, 4, 5.
+- ...and so on.
 
-## Tính năng nổi bật trong phiên bản mới
+## Key Features
 
-1. **Phân nhóm Sidebar trái trực quan**: Danh sách được phân chia rõ ràng thành 3 nhóm: *Nguồn thông tin*, *Mở đầu* và *Kết thúc* kèm theo phím chức năng Nhân bản (Duplicate) và Xóa (Delete) nhanh chóng khi hover chuột.
-2. **Nút Toggle Switch mini**: Hỗ trợ bật/tắt (Active/Inactive) hoạt động của từng nguồn hoặc thành phần riêng biệt. Các nguồn bị tắt sẽ tự động được loại bỏ khỏi tệp Markdown xuất ra và bỏ qua các bước kiểm tra lỗi chặn xuất (Validation).
-3. **Kéo giãn kích thước (Resizable) Sidebar phải**: Cho phép người dùng linh hoạt kéo giãn mép trái của Sidebar phải để thay đổi độ rộng hiển thị Preview tùy ý (khống chế min 400px và max 50% màn hình làm việc còn lại).
-4. **Đồng bộ hóa lựa chọn 2 chiều**: Click chọn nguồn trên Sidebar trái sẽ tự động cập nhật Preview target tương ứng trên Sidebar phải, và ngược lại khi thay đổi dropdown xem trước.
-5. **Cải tiến định dạng Markdown & Xử lý văn bản**:
-   - **Review chéo**: Tùy chọn ẩn nguồn nhận khỏi nội dung preview (mặc định là bật).
-   - **Chuẩn hóa khoảng trắng**: Rút gọn các dòng trống liên tiếp.
-   - **Xuất thành một dòng**: Gộp toàn bộ văn bản thành một dòng duy nhất (tự động loại bỏ các định dạng markdown tiêu đề `#` và dòng kẻ `---` ở đầu dòng để tránh lỗi in đậm toàn bộ) giúp LLM dễ dàng phân tích.
-6. **Khởi động dự án trống**: Ứng dụng khởi động với trạng thái trống sạch sẽ, không chứa dữ liệu demo để người dùng bắt đầu ngay dự án mới.
+1. **Left Sidebar Organization**: Clearly grouped into *Information Sources*, *Opening Components*, and *Closing Components*. Hovering over items reveals quick **Duplicate** and **Delete** actions.
+2. **Active State Toggles**: Enable/disable individual reports or components. Disabled items are automatically excluded from the final exports and skipped during validation.
+3. **Resizable Right Sidebar**: Drag the left border of the right sidebar to adjust the Markdown/HTML preview panel width (min 400px, max 50% of screen width).
+4. **Bidirectional Selection Sync**: Clicking a source on the left sidebar automatically updates the preview target dropdown on the right, and vice versa.
+5. **Text Preprocessing**:
+   - **Cross-Review**: Toggle `Exclude Self` to hide the target report from its own preview (defaults to active).
+   - **Normalize Whitespace**: Automatically collapses consecutive blank lines and trims text.
+   - **Export as Single Line**: Flattens text into a single continuous line (removing heading hashes `#` and rules `---` to prevent global bolding issues) optimized for LLMs.
+6. **Blank Startup State**: Launches clean with no demo data so you can start working on new projects immediately.
 
-## Công nghệ sử dụng
+## Technology Stack
 
-- **Backend**: Rust (Tauri 2 command handlers, validation, export logic, file I/O)
-- **Frontend**: React + TypeScript + Vite
-- **State Management**: Zustand
-- **Desktop Wrapper**: Tauri 2
+- **Backend**: Rust (Tauri 2 commands, validation engine, markdown exporter, file packaging)
+- **Frontend**: React 19 + TypeScript + Vite 6
+- **State Store**: Zustand 5
 - **Styling**: Tailwind CSS / Vanilla CSS
 
-## Yêu cầu hệ thống
+## Prerequisites
 
 - [Rust](https://rustup.rs/) (1.70+)
 - [Node.js](https://nodejs.org/) (18+)
-- [npm](https://www.npmjs.com/) (hoặc pnpm/yarn)
+- [npm](https://www.npmjs.com/) (or pnpm/yarn)
 
-## Hướng dẫn phát triển
+## Development Guide
 
 ```bash
-# Cài đặt thư viện dependencies
+# Install dependencies
 npm install
 
-# Khởi động ứng dụng trong chế độ Development
+# Start the application in development mode
 npm run tauri dev
 ```
 
-## Build đóng gói sản phẩm
+## Production Building & Packaging
 
 ```bash
-# Build đóng gói cho nền tảng hiện tại
+# Build and package for the current platform
 npm run tauri build
 
-# Build cho các nền tảng cụ thể (Cross-compilation)
-npm run tauri build --target x86_64-unknown-linux-gnu   # Linux
-npm run tauri build --target x86_64-apple-darwin          # macOS Intel
-npm run tauri build --target aarch64-apple-darwin          # macOS Apple Silicon (M1/M2/M3)
-npm run tauri build --target x86_64-pc-windows-msvc        # Windows
+# Cross-compilation for specific platforms
+npm run tauri build --target x86_64-unknown-linux-gnu    # Linux
+npm run tauri build --target x86_64-apple-darwin           # macOS Intel
+npm run tauri build --target aarch64-apple-darwin           # macOS Apple Silicon
+npm run tauri build --target x86_64-pc-windows-msvc         # Windows
 ```
 
-Sản phẩm đóng gói hoàn chỉnh nằm trong thư mục `src-tauri/target/release/bundle/`.
+Packaged installers (e.g. `.dmg` or `.app` on macOS, `.exe` or `.msi` on Windows) are written to `src-tauri/target/release/bundle/`.
 
-## Cấu trúc thư mục dự án
+## Cleaning Build Cache & Application Data
+
+Build files can consume significant disk space over time. Run these commands to reset the project and free up space:
+
+```bash
+# 1. Clean Rust cargo target build cache (can free up several gigabytes)
+cargo clean --manifest-path src-tauri/Cargo.toml
+
+# 2. Clean frontend build output and dev cache
+rm -rf dist node_modules/.vite
+
+# 3. Clean application webview data and saved drafts (macOS)
+rm -rf ~/Library/WebKit/com.review-weaver.app ~/Library/Caches/com.review-weaver.app
+rm -rf ~/Library/WebKit/review-weaver ~/Library/WebKit/qa-review-weaver ~/Library/Caches/review-weaver ~/Library/Caches/qa-review-weaver
+```
+
+## Directory Structure
 
 ```
 src-tauri/
   src/
-    main.rs          # Điểm chạy Tauri app
-    lib.rs           # Khai báo các module
-    models.rs        # Định nghĩa các structs dữ liệu (Project, QaReport, Component...)
-    validation.rs    # Logic kiểm tra lỗi dữ liệu (Validation)
-    export.rs        # Logic ghép nối và xuất tệp Markdown
-    slug.rs          # Tự động sinh tên tệp không trùng lặp
-    zip_export.rs    # Nén tệp xuất thành định dạng ZIP
-    commands.rs      # Đăng ký hàm giao tiếp Tauri Command (IPC)
+    main.rs          # Tauri app entrypoint
+    lib.rs           # Module declarations
+    models.rs        # Data model definitions (Project, QaReport, Component...)
+    validation.rs    # Data validation checks
+    export.rs        # Markdown compile & merge logic
+    slug.rs          # Unique file slug generator
+    zip_export.rs    # ZIP packaging helper
+    commands.rs      # IPC command registrations
+  tauri.conf.json    # Tauri packaging and bundle configurations
 
 src/
-  App.tsx                # Giao diện chính, quản lý kéo giãn Sidebar phải
-  main.tsx               # Khởi chạy React
-  index.css              # Stylesheet toàn cục và markdown preview
+  App.tsx                # Main view & resizable sidebar logic
+  main.tsx               # React entrypoint
+  index.css              # Custom styling and markdown preview classes
   state/
-    projectStore.ts      # Zustand quản lý dữ liệu và cấu hình cài đặt
+    projectStore.ts      # Zustand state management
   lib/
-    api.ts               # Các hàm invoke gọi xuống Rust backend
-    i18n.ts              # Hỗ trợ đa ngôn ngữ Anh - Việt
+    api.ts               # Rust command invocations
+    i18n.ts              # English/Vietnamese language dictionaries
   components/
-    Sidebar.tsx          # Danh sách nguồn thông tin và phím chức năng
-    EditorPanel.tsx      # Trình chỉnh sửa nội dung nguồn, mở đầu, kết thúc
-    PreviewPanel.tsx     # Khung xem trước Markdown/HTML, thông số thống kê, cấu hình
-    Toolbar.tsx          # Thanh công cụ chứa các nút lưu, mở, xuất dự án
+    Sidebar.tsx          # Resource lists, active states & quick actions
+    EditorPanel.tsx      # Source, opening, and closing content editors
+    PreviewPanel.tsx     # Live HTML/Markdown preview & stats footer
+    Toolbar.tsx          # File I/O operations and exports
 ```
 
-## Phím tắt bàn phím
+## Keyboard Shortcuts
 
-| Phím tắt | Chức năng |
-|----------|-----------|
-| `Ctrl/Cmd + N` | Tạo dự án mới |
-| `Ctrl/Cmd + S` | Lưu file dự án |
-| `Ctrl/Cmd + O` | Mở file dự án |
-| `Ctrl/Cmd + E` | Xuất tất cả tệp Markdown |
+| Shortcut | Description |
+|----------|-------------|
+| `Ctrl/Cmd + N` | Create New Project |
+| `Ctrl/Cmd + S` | Save Project File |
+| `Ctrl/Cmd + O` | Open Project File |
+| `Ctrl/Cmd + E` | Export All Markdown Files |
 
-## Định dạng tệp Markdown xuất ra
+## Export Format Specification
 
-Mỗi tệp Markdown được xuất ra có định dạng chuẩn:
+The compiled Markdown outputs follow this structural convention:
 
 ```markdown
-{Nội dung các thành phần Mở đầu đang bật}
+{Active Opening Components Content}
 
-## 1. {Tên nguồn 1}
+## 1. {Source Name 1}
 
-{Nội dung nguồn 1}
-
----
-
-## 2. {Tên nguồn 2}
-
-{Nội dung nguồn 2}
+{Source Content 1}
 
 ---
 
-{Nội dung các thành phần Kết thúc đang bật}
+## 2. {Source Name 2}
+
+{Source Content 2}
+
+---
+
+{Active Closing Components Content}
 ```
 
-## Bản quyền
+## Changelog
 
-Dự án được phân phối dưới giấy phép MIT License.
+### v1.1.0 (2026-06-15)
+- **Feature**: Added `exclude_self` cross-review option to filter out the target QA report from its own compiled preview/export.
+- **Feature**: Implemented resizable right sidebar for flexible Markdown/HTML preview panels.
+- **Feature**: Added toggle switch and quick Duplicate/Delete actions for all sources and components.
+- **Feature**: Enabled bidirectional selection sync between the left sidebar item list and the preview target dropdown.
+- **Feature**: Blank initial state upon starting new projects.
+- **Optimization**: Set English as the default application language.
+- **Optimization**: Synchronized and perfected heights of target selection bar elements in `PreviewPanel` to `34px`.
+
+### v1.0.0 (2026-05-31)
+- **Release**: First major stable release of Review Weave.
+- **Feature**: Implemented multi-format exports including Markdown folder and ZIP archiving.
+- **Feature**: Added text pre-processors (Normalize whitespace, Export as single line).
+
+## Roadmap
+
+- [ ] **AI-Powered Summarization**: Integrate LLM capabilities to automatically rewrite, refine, or summarize source content.
+- [ ] **Source Comparison Tool**: Add a comparison layout to highlight differences and analyze modifications between selected sources.
+
+## License
+
+This project is distributed under the MIT License.

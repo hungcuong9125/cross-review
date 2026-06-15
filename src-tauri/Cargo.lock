@@ -2449,22 +2449,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "qa-review-weaver"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-fs",
- "thiserror 2.0.18",
- "unicode-normalization",
- "uuid",
- "zip",
-]
-
-[[package]]
 name = "quick-xml"
 version = "0.39.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2601,6 +2585,22 @@ dependencies = [
  "wasm-bindgen-futures",
  "wasm-streams",
  "web-sys",
+]
+
+[[package]]
+name = "review-weaver"
+version = "1.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-fs",
+ "thiserror 2.0.18",
+ "unicode-normalization",
+ "uuid",
+ "zip",
 ]
 
 [[package]]
