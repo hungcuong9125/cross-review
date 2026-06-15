@@ -29,3 +29,11 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Sample exports and Claude configs
+sample-export/
+.claude/
+
+# Project documentation (Harness local files)
+docs/
+
