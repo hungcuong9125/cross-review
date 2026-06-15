@@ -7,6 +7,25 @@ import {
 } from "../lib/api";
 import { t } from "../lib/i18n";
 
+// SVG icons for tabs
+const TabIcons = {
+  reports: (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+  ),
+  opening: (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+    </svg>
+  ),
+  closing: (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+    </svg>
+  ),
+};
+
 export function Toolbar() {
   const {
     project, setProject, newProject, setProjectTitle,
@@ -113,16 +132,16 @@ export function Toolbar() {
     }
   };
 
-  const mainTabs: { key: MainTab; label: string }[] = [
-    { key: "reports", label: t("editor.qaReport", language) },
-    { key: "opening", label: t("editor.opening", language) },
-    { key: "closing", label: t("editor.closing", language) },
+  const mainTabs: { key: MainTab; label: string; icon: React.ReactNode }[] = [
+    { key: "reports", label: t("editor.qaReport", language), icon: TabIcons.reports },
+    { key: "opening", label: t("editor.opening", language), icon: TabIcons.opening },
+    { key: "closing", label: t("editor.closing", language), icon: TabIcons.closing },
   ];
 
   return (
     <div className="h-11 flex items-center px-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-      {/* Left: title + project name */}
-      <div className="flex items-center gap-2 min-w-0 w-48">
+      {/* Left: title + project name - extends to sidebar width */}
+      <div className="flex items-center gap-2 min-w-0 w-72">
         <h1 className="text-xs font-bold text-gray-800 dark:text-gray-200 whitespace-nowrap">
           Review Weaver
         </h1>
@@ -130,27 +149,33 @@ export function Toolbar() {
           type="text"
           value={project.title}
           onChange={(e) => setProjectTitle(e.target.value)}
-          className="flex-1 min-w-0 px-1.5 py-0.5 bg-transparent border-b border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus:border-blue-500 focus:outline-none text-xs text-gray-600 dark:text-gray-300 transition-colors"
+          className="flex-1 min-w-0 px-2 py-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded text-xs text-gray-700 dark:text-gray-200 focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors"
           placeholder={t("toolbar.projectTitle", language)}
         />
       </div>
 
-      {/* Center: main tabs */}
+      {/* Center: main tabs - pill style */}
       <div className="flex-1 flex justify-center">
-        <div className="flex items-center bg-gray-100 dark:bg-gray-700/50 rounded-lg p-0.5">
-          {mainTabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveMainTab(tab.key)}
-              className={`px-4 py-1.5 text-xs font-medium rounded-md transition-all duration-150 ${
-                activeMainTab === tab.key
-                  ? "bg-gray-600 dark:bg-gray-500 text-white shadow-sm"
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700/40 rounded-full p-1">
+          {mainTabs.map((tab) => {
+            const isActive = activeMainTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveMainTab(tab.key)}
+                className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium rounded-full transition-all duration-200 ${
+                  isActive
+                    ? "bg-white dark:bg-gray-600 text-gray-800 dark:text-gray-100 shadow-sm shadow-gray-200/80 dark:shadow-black/20"
+                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                }`}
+              >
+                <span className={isActive ? "text-blue-500 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}>
+                  {tab.icon}
+                </span>
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -183,7 +208,7 @@ export function Toolbar() {
         <div className="w-px h-4 bg-gray-200 dark:bg-gray-600 mx-0.5" />
         <button
           onClick={toggleDarkMode}
-          className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors"
+          className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors"
           title={darkMode ? t("toolbar.lightMode", language) : t("toolbar.darkMode", language)}
         >
           {darkMode ? "☀️" : "🌙"}
@@ -209,7 +234,7 @@ function ToolbarButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className="px-2 py-1 text-[11px] font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+      className="px-2.5 py-1 text-[11px] font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
     >
       {children}
     </button>

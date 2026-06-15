@@ -26,14 +26,6 @@ export function Sidebar() {
     .filter((c) => c.position === "closing")
     .sort((a, b) => a.order - b.order);
 
-  const getStatusColor = (qa: (typeof qaReports)[0]) => {
-    const hasName = qa.name.trim().length > 0;
-    const hasContent = qa.content.trim().length > 0;
-    if (hasName && hasContent) return "bg-green-500";
-    if (hasName) return "bg-yellow-500";
-    return "bg-gray-300 dark:bg-gray-600";
-  };
-
   const isActive = (id: string, type: "report" | "component") => {
     if (!activeItem || activeItem.type !== type) return false;
     if (type === "report" && activeItem.type === "report") return activeItem.qaId === id;
@@ -71,25 +63,7 @@ export function Sidebar() {
 
       {/* Unified scrollable list */}
       <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-        {/* Opening components */}
-        {openingComps.map((comp) => (
-          <button
-            key={comp.id}
-            onClick={() => selectComponent(comp.id)}
-            className={`w-full text-left px-3 py-1.5 rounded text-xs transition-colors flex items-center gap-2 ${
-              isActive(comp.id, "component")
-                ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-            }`}
-          >
-            <span className="px-1.5 py-0.5 text-[9px] font-semibold rounded bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 uppercase">
-              {t("editor.opening", language)}
-            </span>
-            <span className="truncate">{comp.name || t("editor.opening", language)}</span>
-          </button>
-        ))}
-
-        {/* QA Reports */}
+        {/* QA Reports - first */}
         {qaReports.map((qa, index) => (
           <div key={qa.id} className="group relative">
             <button
@@ -100,9 +74,9 @@ export function Sidebar() {
                   : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
               }`}
             >
-              <span
-                className={`w-2 h-2 rounded-full flex-shrink-0 ${getStatusColor(qa)}`}
-              />
+              <span className="px-1.5 py-0.5 text-[9px] font-semibold rounded bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 uppercase">
+                {t("sidebar.reports", language)}
+              </span>
               <span className="truncate">
                 {qa.name || `${index + 1}. ${t("sidebar.unnamed", language)}`}
               </span>
@@ -137,7 +111,25 @@ export function Sidebar() {
           </div>
         ))}
 
-        {/* Closing components */}
+        {/* Opening components - second */}
+        {openingComps.map((comp) => (
+          <button
+            key={comp.id}
+            onClick={() => selectComponent(comp.id)}
+            className={`w-full text-left px-3 py-1.5 rounded text-xs transition-colors flex items-center gap-2 ${
+              isActive(comp.id, "component")
+                ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+            }`}
+          >
+            <span className="px-1.5 py-0.5 text-[9px] font-semibold rounded bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 uppercase">
+              {t("editor.opening", language)}
+            </span>
+            <span className="truncate">{comp.name || t("editor.opening", language)}</span>
+          </button>
+        ))}
+
+        {/* Closing components - third */}
         {closingComps.map((comp) => (
           <button
             key={comp.id}
