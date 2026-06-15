@@ -142,19 +142,65 @@ The compiled Markdown outputs follow this structural convention:
 
 ## Changelog
 
-### v1.1.0 (2026-06-15)
-- **Feature**: Added `exclude_self` cross-review option to filter out the target QA report from its own compiled preview/export.
-- **Feature**: Implemented resizable right sidebar for flexible Markdown/HTML preview panels.
-- **Feature**: Added toggle switch and quick Duplicate/Delete actions for all sources and components.
-- **Feature**: Enabled bidirectional selection sync between the left sidebar item list and the preview target dropdown.
-- **Feature**: Blank initial state upon starting new projects.
-- **Optimization**: Set English as the default application language.
-- **Optimization**: Synchronized and perfected heights of target selection bar elements in `PreviewPanel` to `34px`.
+### v0.5.3 (2026-06-16)
+- **Fix**: `mergeLines` paragraph separator ` | ` never being inserted — the empty-line filter was destroying paragraph break information before the regex could match.
+- **Fix**: `removeQa` and `removeEmptyQa` destroying component selection when deleting a non-selected QA report.
+- **Fix**: Validation error label showing raw whitespace for whitespace-only QA names instead of `Source #N`.
+- **Fix**: Missing `refreshValidation` calls in `updateComponentName` and `addComponent`.
+- **Fix**: Removed unreachable dead code in `migrateProject` guard.
+- **Fix**: Capped `to_slug` length to 200 characters to prevent exceeding filesystem filename limits.
+- **Fix**: Translation fallback operator `||` changed to `??` — empty strings no longer fall through to Vietnamese.
+- **Fix**: Added `Array.isArray` validation for localStorage draft to prevent crash on corrupted data.
+- **Improvement**: Replaced all hardcoded English/Vietnamese strings with `t()` translation calls.
+- **Improvement**: Duplicate suffix now uses `t("suffix.copy", language)` instead of hardcoded Vietnamese `(bản sao)`.
 
-### v1.0.0 (2026-05-31)
-- **Release**: First major stable release of Review Weave.
-- **Feature**: Implemented multi-format exports including Markdown folder and ZIP archiving.
-- **Feature**: Added text pre-processors (Normalize whitespace, Export as single line).
+### v0.5.2 (2026-06-16)
+- **Security**: Fixed XSS vulnerability — added DOMPurify sanitization for `dangerouslySetInnerHTML` in preview panel.
+- **Fix**: JS fallback validation now counts only active reports, matching Rust backend behavior.
+- **Fix**: `duplicateQa` now preserves the `active` field from the source QA report.
+- **Fix**: `removeComponent` and `duplicateComponent` now trigger validation refresh.
+- **Fix**: `migrateProject` now deep-copies the components array to prevent mutation side effects.
+- **Fix**: Added error alerts for keyboard shortcuts (Ctrl+S/O/E) matching toolbar button behavior.
+- **Fix**: Added `try-catch` around `localStorage.setItem` to handle quota exceeded errors.
+- **Fix**: Added `IoError` variant to `ExportError` enum for proper filesystem error categorization.
+- **Fix**: ZIP export now uses `IoError` instead of `ValidationFailed` for I/O errors.
+
+### v0.5.1 (2026-06-16)
+- **Chore**: Renamed application from "QA Review Weaver" to "Review Weave".
+- **Style**: Refined preview panel header element layout and synchronization.
+- **Improvement**: Updated translations and set English as the default application language.
+- **Chore**: Cleaned up `.gitignore`, untracked cached files.
+
+### v0.5.0 (2026-06-16)
+- **Feature**: Implemented resizable right sidebar — drag the left border to adjust preview panel width.
+- **Feature**: Added left sidebar toggle for showing/hiding the sidebar.
+- **Feature**: Added component actions — duplicate, delete, and reorder (move up/down) for opening/closing sections.
+- **Feature**: Default empty state display when no sources or components exist.
+
+### v0.4.0 (2026-06-16)
+- **Feature**: Added `exclude_self` cross-review option to filter out the target QA report from its own compiled preview/export.
+- **Feature**: Configured blank initial state in Tauri backend — new projects start clean with no demo data.
+
+### v0.3.0 (2026-06-16)
+- **Improvement**: Extended project title input area.
+- **Feature**: Added HTML/Markdown preview toggle in the preview panel.
+- **Fix**: Moved HTML/MD toggle to its own row below the stats grid for better layout.
+
+### v0.2.0 (2026-06-16)
+- **Feature**: Major UI/feature refactor — introduced reusable components system (opening/closing sections).
+- **Feature**: Added internationalization (Vietnamese/English) with full translation support.
+- **Feature**: Added settings panel with compact mode, whitespace normalization, and merge lines options.
+- **Improvement**: Tab-based navigation moved to toolbar (Reports, Opening, Closing).
+- **Improvement**: Unified sidebar with QA reports and components grouped together.
+- **Improvement**: Pill-style tabs design and sidebar badges.
+
+### v0.1.0 (2026-06-15)
+- **Release**: Initial release of Review Weave desktop application.
+- **Feature**: QA report management with cross-review generation.
+- **Feature**: Multi-format exports — Markdown folder and ZIP archiving.
+- **Feature**: Text pre-processors — normalize whitespace, export as single line.
+- **Feature**: Live Markdown/HTML preview with character and word count.
+- **Tech Stack**: Rust (Tauri 2) + React 19 + TypeScript + Zustand 5.
 
 ## Roadmap
 
