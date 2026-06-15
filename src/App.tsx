@@ -35,7 +35,7 @@ function App() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-save draft to localStorage (only QA reports and components)
+  // Auto-save draft to localStorage
   useEffect(() => {
     const timer = setTimeout(() => {
       localStorage.setItem("review-weaver-draft", JSON.stringify(project));
@@ -131,7 +131,7 @@ function App() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-100 dark:bg-gray-900">
-      {/* Top toolbar */}
+      {/* Top toolbar with centered tabs */}
       <Toolbar />
 
       {/* Main content area */}

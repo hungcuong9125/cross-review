@@ -7,7 +7,8 @@ export const translations = {
   'sidebar.noQa': { vi: 'Chưa có QA', en: 'No QA yet' },
   'sidebar.noQaDesc': { vi: 'Thêm báo cáo QA đầu tiên để bắt đầu', en: 'Add the first QA report to get started' },
   'sidebar.addReport': { vi: 'Thêm báo cáo', en: 'Add Report' },
-  'sidebar.addComponent': { vi: 'Thêm thành phần', en: 'Add Component' },
+  'sidebar.addOpening': { vi: 'Thêm mở đầu', en: 'Add Opening' },
+  'sidebar.addClosing': { vi: 'Thêm kết thúc', en: 'Add Closing' },
   'sidebar.removeEmpty': { vi: 'Xóa rỗng', en: 'Remove Empty' },
   'sidebar.removeAll': { vi: 'Xóa tất cả báo cáo', en: 'Remove All Reports' },
   'sidebar.reports': { vi: 'Báo cáo', en: 'Reports' },
@@ -18,6 +19,7 @@ export const translations = {
   'editor.qaReport': { vi: 'Báo cáo QA', en: 'QA Report' },
   'editor.opening': { vi: 'Mở đầu', en: 'Opening' },
   'editor.closing': { vi: 'Kết thúc', en: 'Closing' },
+  'editor.components': { vi: 'Thành phần', en: 'Components' },
   'editor.selectQa': { vi: 'Chọn một QA ở sidebar hoặc thêm mới', en: 'Select a QA from the sidebar or add a new one' },
   'editor.namePlaceholder': { vi: 'Tên QA (ví dụ: Team Growth)', en: 'QA name (e.g. Team Growth)' },
   'editor.contentPlaceholder': { vi: 'Nội dung báo cáo của QA này...', en: 'Report content for this QA...' },
@@ -30,10 +32,14 @@ export const translations = {
   'editor.atOpening': { vi: 'Mở đầu', en: 'Opening' },
   'editor.atClosing': { vi: 'Kết thúc', en: 'Closing' },
   'editor.deleteComponent': { vi: 'Xóa thành phần', en: 'Delete Component' },
+  'editor.noComponents': { vi: 'Chưa có thành phần nào', en: 'No components yet' },
+  'editor.addComponentHere': { vi: 'Thêm thành phần', en: 'Add component' },
+  'editor.moveUp': { vi: 'Di chuyển lên', en: 'Move up' },
+  'editor.moveDown': { vi: 'Di chuyển xuống', en: 'Move down' },
 
   // Preview
   'preview.title': { vi: 'Xem trước', en: 'Preview' },
-  'preview.target': { vi: 'Xem trước cho:', en: 'Preview for:' },
+  'preview.target': { vi: 'Xem trước:', en: 'Preview:' },
   'preview.info': { vi: 'Xem trước này dành cho', en: 'This preview is for' },
   'preview.excluded': { vi: 'Nội dung của', en: 'Content of' },
   'preview.excludedEnd': { vi: 'đã được loại khỏi file.', en: 'has been removed from the file.' },
@@ -54,7 +60,7 @@ export const translations = {
   'settings.compactModeDesc': { vi: 'Gộp nhỏ nội dung cho LLM dễ đọc', en: 'Compact content for LLM readability' },
 
   // Toolbar
-  'toolbar.new': { vi: 'Mới', en: 'New' },
+  'toolbar.new': { vi: 'Thêm mới', en: 'New' },
   'toolbar.open': { vi: 'Mở', en: 'Open' },
   'toolbar.save': { vi: 'Lưu', en: 'Save' },
   'toolbar.exportMd': { vi: 'Export .md', en: 'Export .md' },

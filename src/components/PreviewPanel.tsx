@@ -5,7 +5,7 @@ import { generatePreview, type ExportFile } from "../lib/api";
 import { t } from "../lib/i18n";
 
 export function PreviewPanel() {
-  const { project, language, processContent } = useProjectStore();
+  const { project, language, processContent, compactMode, removeWhitespace } = useProjectStore();
   const [previewTargetId, setPreviewTargetId] = useState<string | null>(null);
   const [preview, setPreview] = useState<ExportFile | null>(null);
   const [loading, setLoading] = useState(false);
@@ -24,7 +24,7 @@ export function PreviewPanel() {
     }
   }, [project.qa_reports, previewTargetId]);
 
-  // Generate preview when target changes
+  // Generate preview when target or project changes
   const refreshPreview = useCallback(async () => {
     if (!previewTargetId || project.qa_reports.length < 2) {
       setPreview(null);
@@ -54,7 +54,6 @@ export function PreviewPanel() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback
       const ta = document.createElement("textarea");
       ta.value = content;
       document.body.appendChild(ta);
@@ -68,6 +67,10 @@ export function PreviewPanel() {
 
   const targetQa = project.qa_reports.find((q) => q.id === previewTargetId);
   const otherCount = project.qa_reports.length - 1;
+
+  // Process preview content based on settings
+  const displayContent = preview ? processContent(preview.markdown) : "";
+  const displayCharCount = displayContent.length;
 
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
@@ -157,9 +160,12 @@ export function PreviewPanel() {
               <div className="px-3 py-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {t("preview.characters", language)}
+                  {(compactMode || removeWhitespace) && (
+                    <span className="ml-1 text-[9px] text-blue-500">(processed)</span>
+                  )}
                 </p>
                 <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">
-                  {preview.markdown.length.toLocaleString()}
+                  {displayCharCount.toLocaleString()}
                 </p>
               </div>
               <div className="px-3 py-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -176,7 +182,7 @@ export function PreviewPanel() {
             <div
               className="markdown-preview prose dark:prose-invert max-w-none bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700"
               dangerouslySetInnerHTML={{
-                __html: marked(preview.markdown, { breaks: true }) as string,
+                __html: marked(displayContent, { breaks: true }) as string,
               }}
             />
           </>

@@ -8,13 +8,18 @@ function generateId(): string {
   return crypto.randomUUID?.() ?? Math.random().toString(36).substring(2, 11);
 }
 
-export type ActiveTab = { type: "report"; qaId: string } | { type: "component"; componentId: string };
+export type MainTab = "reports" | "opening" | "closing";
+
+export type ActiveItem =
+  | { type: "report"; qaId: string }
+  | { type: "component"; componentId: string };
 
 interface ProjectState {
   // Data
   project: Project;
   selectedQaId: string | null;
-  activeTab: ActiveTab;
+  activeMainTab: MainTab;
+  activeItem: ActiveItem | null;
   validation: ValidationReport | null;
   darkMode: boolean;
   language: Language;
@@ -40,12 +45,13 @@ interface ProjectState {
   removeComponent: (id: string) => void;
   updateComponentName: (id: string, name: string) => void;
   updateComponentContent: (id: string, content: string) => void;
-  reorderComponents: (position: "opening" | "closing", fromIndex: number, toIndex: number) => void;
+  moveComponentUp: (id: string) => void;
+  moveComponentDown: (id: string) => void;
 
   // Selection
   selectQa: (id: string | null) => void;
   selectComponent: (id: string) => void;
-  setActiveTab: (tab: ActiveTab) => void;
+  setActiveMainTab: (tab: MainTab) => void;
 
   // Validation
   refreshValidation: () => Promise<void>;
@@ -120,7 +126,8 @@ function migrateProject(project: Project): Project {
 export const useProjectStore = create<ProjectState>((set, get) => ({
   project: { ...DEFAULT_PROJECT },
   selectedQaId: null,
-  activeTab: { type: "component", componentId: "default-opening" },
+  activeMainTab: "reports",
+  activeItem: null,
   validation: null,
   darkMode: window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false,
   language: "vi",
@@ -129,12 +136,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   setProject: (project) => {
     const migrated = migrateProject(project);
+    const firstQa = migrated.qa_reports[0];
     set({
       project: migrated,
-      selectedQaId: migrated.qa_reports[0]?.id ?? null,
-      activeTab: migrated.qa_reports[0]
-        ? { type: "report", qaId: migrated.qa_reports[0].id }
-        : { type: "component", componentId: migrated.components[0]?.id ?? "" },
+      selectedQaId: firstQa?.id ?? null,
+      activeMainTab: "reports",
+      activeItem: firstQa ? { type: "report", qaId: firstQa.id } : null,
     });
     get().refreshValidation();
   },
@@ -143,7 +150,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({
       project: { ...DEFAULT_PROJECT, components: [...DEFAULT_PROJECT.components], qa_reports: [] },
       selectedQaId: null,
-      activeTab: { type: "component", componentId: "default-opening" },
+      activeMainTab: "reports",
+      activeItem: null,
     });
     get().refreshValidation();
   },
@@ -162,7 +170,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         qa_reports: [...state.project.qa_reports, newQa],
       },
       selectedQaId: id,
-      activeTab: { type: "report", qaId: id },
+      activeMainTab: "reports" as MainTab,
+      activeItem: { type: "report" as const, qaId: id },
     }));
     get().refreshValidation();
   },
@@ -174,13 +183,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         state.selectedQaId === id
           ? newReports[0]?.id ?? null
           : state.selectedQaId;
-      const newActiveTab: ActiveTab = newSelected
-        ? { type: "report", qaId: newSelected }
-        : { type: "component", componentId: state.project.components[0]?.id ?? "" };
       return {
         project: { ...state.project, qa_reports: newReports },
         selectedQaId: newSelected,
-        activeTab: newActiveTab,
+        activeItem: newSelected
+          ? { type: "report" as const, qaId: newSelected }
+          : null,
       };
     });
     get().refreshValidation();
@@ -202,7 +210,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       return {
         project: { ...state.project, qa_reports: reports },
         selectedQaId: newId,
-        activeTab: { type: "report", qaId: newId },
+        activeItem: { type: "report" as const, qaId: newId },
       };
     });
     get().refreshValidation();
@@ -244,9 +252,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       return {
         project: { ...state.project, qa_reports: reports },
         selectedQaId: newSelected,
-        activeTab: newSelected
-          ? { type: "report", qaId: newSelected }
-          : state.activeTab,
+        activeItem: newSelected
+          ? { type: "report" as const, qaId: newSelected }
+          : state.activeItem,
       };
     });
     get().refreshValidation();
@@ -256,7 +264,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set((state) => ({
       project: { ...state.project, qa_reports: [] },
       selectedQaId: null,
-      activeTab: { type: "component", componentId: state.project.components[0]?.id ?? "" },
+      activeMainTab: "opening" as MainTab,
+      activeItem: null,
     }));
     get().refreshValidation();
   },
@@ -278,21 +287,24 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         ...state.project,
         components: [...state.project.components, newComponent],
       },
-      activeTab: { type: "component", componentId: id },
+      activeMainTab: position,
+      activeItem: { type: "component" as const, componentId: id },
     }));
   },
 
   removeComponent: (id) => {
     set((state) => {
+      const comp = state.project.components.find(c => c.id === id);
       const newComponents = state.project.components.filter(c => c.id !== id);
-      const currentTab = state.activeTab;
-      let newTab = currentTab;
-      if (currentTab.type === "component" && currentTab.componentId === id) {
-        newTab = { type: "component", componentId: newComponents[0]?.id ?? "" };
+      const currentActive = state.activeItem;
+      let newActive = currentActive;
+      if (currentActive?.type === "component" && currentActive.componentId === id) {
+        const samePos = newComponents.filter(c => c.position === comp?.position);
+        newActive = samePos[0] ? { type: "component" as const, componentId: samePos[0].id } : null;
       }
       return {
         project: { ...state.project, components: newComponents },
-        activeTab: newTab,
+        activeItem: newActive,
       };
     });
   },
@@ -320,30 +332,60 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     get().refreshValidation();
   },
 
-  reorderComponents: (position, fromIndex, toIndex) => {
+  moveComponentUp: (id) => {
     set((state) => {
-      const comps = state.project.components.filter(c => c.position === position);
-      const others = state.project.components.filter(c => c.position !== position);
-      const [moved] = comps.splice(fromIndex, 1);
-      comps.splice(toIndex, 0, moved);
-      // Update order values
-      const reordered = comps.map((c, i) => ({ ...c, order: i }));
-      return {
-        project: { ...state.project, components: [...others, ...reordered] },
-      };
+      const comp = state.project.components.find(c => c.id === id);
+      if (!comp) return state;
+      const samePos = state.project.components
+        .filter(c => c.position === comp.position)
+        .sort((a, b) => a.order - b.order);
+      const idx = samePos.findIndex(c => c.id === id);
+      if (idx <= 0) return state;
+      // Swap orders
+      const prev = samePos[idx - 1];
+      const newComponents = state.project.components.map(c => {
+        if (c.id === id) return { ...c, order: prev.order };
+        if (c.id === prev.id) return { ...c, order: comp.order };
+        return c;
+      });
+      return { project: { ...state.project, components: newComponents } };
+    });
+  },
+
+  moveComponentDown: (id) => {
+    set((state) => {
+      const comp = state.project.components.find(c => c.id === id);
+      if (!comp) return state;
+      const samePos = state.project.components
+        .filter(c => c.position === comp.position)
+        .sort((a, b) => a.order - b.order);
+      const idx = samePos.findIndex(c => c.id === id);
+      if (idx >= samePos.length - 1) return state;
+      const next = samePos[idx + 1];
+      const newComponents = state.project.components.map(c => {
+        if (c.id === id) return { ...c, order: next.order };
+        if (c.id === next.id) return { ...c, order: comp.order };
+        return c;
+      });
+      return { project: { ...state.project, components: newComponents } };
     });
   },
 
   selectQa: (id) => set({
     selectedQaId: id,
-    activeTab: id ? { type: "report", qaId: id } : { type: "component", componentId: get().project.components[0]?.id ?? "" },
+    activeMainTab: "reports",
+    activeItem: id ? { type: "report", qaId: id } : null,
   }),
 
-  selectComponent: (id) => set({
-    activeTab: { type: "component", componentId: id },
-  }),
+  selectComponent: (id) => {
+    const comp = get().project.components.find(c => c.id === id);
+    set({
+      activeMainTab: comp?.position ?? "opening",
+      activeItem: { type: "component", componentId: id },
+    });
+  },
 
-  setActiveTab: (tab) => set({ activeTab: tab }),
+  setActiveMainTab: (tab) => set({ activeMainTab: tab }),
 
   refreshValidation: async () => {
     try {
@@ -383,11 +425,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const state = get();
     let processed = content;
     if (state.removeWhitespace) {
-      // Remove consecutive blank lines (3+ newlines → 2 newlines)
       processed = processed.replace(/\n{3,}/g, "\n\n");
     }
     if (state.compactMode) {
-      // Compact: remove all blank lines, merge into single block
       processed = processed.replace(/\n{2,}/g, "\n");
     }
     return processed;
