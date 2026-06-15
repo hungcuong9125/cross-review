@@ -1,16 +1,42 @@
 use serde::{Deserialize, Serialize};
 
+/// Position of a component in the exported markdown.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum ComponentPosition {
+    Opening,
+    Closing,
+}
+
+/// A reusable component (section) that can be inserted at the opening or closing.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Component {
+    pub id: String,
+    #[serde(default)]
+    pub name: String,
+    pub position: ComponentPosition,
+    #[serde(default)]
+    pub content: String,
+    #[serde(default)]
+    pub order: i32,
+}
+
 /// Represents a complete Review Weaver project.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Project {
     #[serde(default)]
     pub title: String,
-    #[serde(default = "default_opening")]
-    pub opening_text: String,
-    #[serde(default = "default_closing")]
-    pub closing_text: String,
+    #[serde(default)]
+    pub components: Vec<Component>,
     #[serde(default)]
     pub qa_reports: Vec<QaReport>,
+    // Legacy fields for backward compatibility with old project files
+    #[allow(dead_code)]
+    #[serde(default, skip_serializing)]
+    pub opening_text: Option<String>,
+    #[allow(dead_code)]
+    #[serde(default, skip_serializing)]
+    pub closing_text: Option<String>,
 }
 
 /// A single QA team's report.
@@ -44,16 +70,32 @@ fn default_opening() -> String {
 }
 
 fn default_closing() -> String {
-    "---\n\nTôi thì đang nghiêng về việc xây dựng một Node dạng Brief Collector để lưu dữ liệu cho toàn bộ cuộc nói chuyện. Ví dụ user có thể tải lên tệp PDF mới, tài liệu docs mới, hình ảnh hoặc các tệp đính kèm khác. Các dữ liệu này cần được lưu xuyên suốt trong cuộc trò chuyện, sau đó hệ thống mới cân nhắc có cần bổ sung thông tin còn thiếu hay không, rồi mới chuyển sang sửa prompt đầy đủ và gửi Main LLM trả lời.\n\nCác tệp tài liệu sẽ là context xuyên suốt của cuộc trò chuyện.\n".to_string()
+    "Hãy tổng hợp và đề xuất phương án cuối cùng dựa trên các báo cáo trên.\n".to_string()
 }
 
 impl Default for Project {
     fn default() -> Self {
         Self {
             title: String::new(),
-            opening_text: default_opening(),
-            closing_text: default_closing(),
+            components: vec![
+                Component {
+                    id: uuid::Uuid::new_v4().to_string(),
+                    name: "Mở đầu".to_string(),
+                    position: ComponentPosition::Opening,
+                    content: default_opening(),
+                    order: 0,
+                },
+                Component {
+                    id: uuid::Uuid::new_v4().to_string(),
+                    name: "Kết thúc".to_string(),
+                    position: ComponentPosition::Closing,
+                    content: default_closing(),
+                    order: 0,
+                },
+            ],
             qa_reports: Vec::new(),
+            opening_text: None,
+            closing_text: None,
         }
     }
 }

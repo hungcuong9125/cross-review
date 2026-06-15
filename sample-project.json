@@ -1,7 +1,21 @@
 {
   "title": "Review Architecture Decision",
-  "opening_text": "Hãy xem một số báo cáo từ QA sau và REVIEW thêm, đề xuất phương án cuối:\n",
-  "closing_text": "---\n\nTôi thì đang nghiêng về việc xây dựng một Node dạng Brief Collector để lưu dữ liệu cho toàn bộ cuộc nói chuyện. Ví dụ user có thể tải lên tệp PDF mới, tài liệu docs mới, hình ảnh hoặc các tệp đính kèm khác. Các dữ liệu này cần được lưu xuyên suốt trong cuộc trò chuyện, sau đó hệ thống mới cân nhắc có cần bổ sung thông tin còn thiếu hay không, rồi mới chuyển sang sửa prompt đầy đủ và gửi Main LLM trả lời.\n\nCác tệp tài liệu sẽ là context xuyên suốt của cuộc trò chuyện.\n",
+  "components": [
+    {
+      "id": "comp-opening-1",
+      "name": "Mở đầu",
+      "position": "opening",
+      "content": "Hãy xem một số báo cáo từ QA sau và REVIEW thêm, đề xuất phương án cuối:\n",
+      "order": 0
+    },
+    {
+      "id": "comp-closing-1",
+      "name": "Kết thúc",
+      "position": "closing",
+      "content": "Hãy tổng hợp và đề xuất phương án cuối cùng dựa trên các báo cáo trên.",
+      "order": 0
+    }
+  ],
   "qa_reports": [
     {
       "id": "qa-1",

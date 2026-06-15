@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::models::{ExportFile, Project};
+use crate::models::{ComponentPosition, ExportFile, Project};
 use crate::slug::generate_filename;
 use crate::validation::validate_project;
 
@@ -15,9 +15,9 @@ pub enum ExportError {
 /// Generates export files for all QA teams.
 ///
 /// For each QA target, creates a markdown file containing:
-/// 1. Opening text
-/// 2. Reports from all OTHER QA teams (not the target)
-/// 3. Closing text
+/// 1. Opening components (sorted by order)
+/// 2. Reports from all OTHER QA teams (not the target), numbered sequentially
+/// 3. Closing components (sorted by order)
 ///
 /// Returns exactly N files for N QA teams.
 pub fn generate_exports(project: &Project) -> Result<Vec<ExportFile>, ExportError> {
@@ -82,6 +82,28 @@ pub fn generate_preview(
     })
 }
 
+/// Collects opening components sorted by order.
+fn get_opening_components(project: &Project) -> Vec<&crate::models::Component> {
+    let mut comps: Vec<&crate::models::Component> = project
+        .components
+        .iter()
+        .filter(|c| c.position == ComponentPosition::Opening && !c.content.trim().is_empty())
+        .collect();
+    comps.sort_by_key(|c| c.order);
+    comps
+}
+
+/// Collects closing components sorted by order.
+fn get_closing_components(project: &Project) -> Vec<&crate::models::Component> {
+    let mut comps: Vec<&crate::models::Component> = project
+        .components
+        .iter()
+        .filter(|c| c.position == ComponentPosition::Closing && !c.content.trim().is_empty())
+        .collect();
+    comps.sort_by_key(|c| c.order);
+    comps
+}
+
 /// Builds the final markdown string from project parts.
 fn build_markdown(
     project: &Project,
@@ -89,31 +111,37 @@ fn build_markdown(
 ) -> String {
     let mut parts: Vec<String> = Vec::new();
 
-    // Opening text
-    let opening = project.opening_text.trim();
-    if !opening.is_empty() {
-        parts.push(opening.to_string());
+    // Opening components
+    let opening_comps = get_opening_components(project);
+    for comp in &opening_comps {
+        parts.push(comp.content.trim().to_string());
     }
 
-    // Other QA reports with separators
+    // Other QA reports with separators and sequential numbering
     for (i, qa) in other_reports.iter().enumerate() {
         let mut section = String::new();
 
-        // Add separator before each report (not before the first)
-        if i > 0 || !opening.is_empty() {
+        // Add separator before each report (not before the first if no opening)
+        if i > 0 || !opening_comps.is_empty() {
             section.push_str("\n---\n\n");
         }
 
-        section.push_str(&format!("## Báo cáo từ {}\n\n", qa.name));
+        section.push_str(&format!("## {}. Báo cáo từ {}\n\n", i + 1, qa.name));
         section.push_str(qa.content.trim());
 
         parts.push(section);
     }
 
-    // Closing text
-    let closing = project.closing_text.trim();
-    if !closing.is_empty() {
-        parts.push(format!("\n\n---\n\n{}", closing));
+    // Closing components
+    let closing_comps = get_closing_components(project);
+    if !closing_comps.is_empty() {
+        parts.push("\n\n---\n\n".to_string());
+        for (i, comp) in closing_comps.iter().enumerate() {
+            if i > 0 {
+                parts.push("\n\n".to_string());
+            }
+            parts.push(comp.content.trim().to_string());
+        }
     }
 
     parts.join("\n\n")
@@ -122,7 +150,7 @@ fn build_markdown(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::QaReport;
+    use crate::models::{Component, ComponentPosition, QaReport};
 
     fn make_qa(id: &str, name: &str, content: &str) -> QaReport {
         QaReport {
@@ -132,12 +160,36 @@ mod tests {
         }
     }
 
+    fn make_opening(content: &str) -> Component {
+        Component {
+            id: "opening-1".to_string(),
+            name: "Mở đầu".to_string(),
+            position: ComponentPosition::Opening,
+            content: content.to_string(),
+            order: 0,
+        }
+    }
+
+    fn make_closing(content: &str) -> Component {
+        Component {
+            id: "closing-1".to_string(),
+            name: "Kết thúc".to_string(),
+            position: ComponentPosition::Closing,
+            content: content.to_string(),
+            order: 0,
+        }
+    }
+
     fn make_project(qas: Vec<QaReport>) -> Project {
         Project {
             title: "Test Project".to_string(),
-            opening_text: "Opening text".to_string(),
-            closing_text: "Closing text".to_string(),
+            components: vec![
+                make_opening("Opening text"),
+                make_closing("Closing text"),
+            ],
             qa_reports: qas,
+            opening_text: None,
+            closing_text: None,
         }
     }
 
@@ -376,5 +428,80 @@ Final paragraph with [link](https://example.com)."#;
 
         // Preview for QA 2 should have same content as export for QA 2
         assert_eq!(exports[1].markdown, preview.markdown);
+    }
+
+    // Test: Sequential numbering in output
+    #[test]
+    fn test_sequential_numbering() {
+        let qas = vec![
+            make_qa("1", "QA 1", "R1"),
+            make_qa("2", "QA 2", "R2"),
+            make_qa("3", "QA 3", "R3"),
+        ];
+        let project = make_project(qas);
+        let exports = generate_exports(&project).unwrap();
+
+        // Export for QA 1 should have reports from QA 2 and QA 3, numbered 1 and 2
+        let export1 = &exports[0];
+        assert!(export1.markdown.contains("## 1. Báo cáo từ QA 2"));
+        assert!(export1.markdown.contains("## 2. Báo cáo từ QA 3"));
+
+        // Export for QA 2 should have reports from QA 1 and QA 3, numbered 1 and 2
+        let export2 = &exports[1];
+        assert!(export2.markdown.contains("## 1. Báo cáo từ QA 1"));
+        assert!(export2.markdown.contains("## 2. Báo cáo từ QA 3"));
+    }
+
+    // Test: Multiple opening/closing components with ordering
+    #[test]
+    fn test_multiple_components_ordering() {
+        let qas = vec![
+            make_qa("1", "QA 1", "R1"),
+            make_qa("2", "QA 2", "R2"),
+        ];
+        let mut project = make_project(qas);
+        project.components = vec![
+            Component {
+                id: "o1".to_string(),
+                name: "Context".to_string(),
+                position: ComponentPosition::Opening,
+                content: "Context section".to_string(),
+                order: 1,
+            },
+            Component {
+                id: "o2".to_string(),
+                name: "Intro".to_string(),
+                position: ComponentPosition::Opening,
+                content: "Intro section".to_string(),
+                order: 0,
+            },
+            Component {
+                id: "c1".to_string(),
+                name: "Summary".to_string(),
+                position: ComponentPosition::Closing,
+                content: "Summary section".to_string(),
+                order: 0,
+            },
+            Component {
+                id: "c2".to_string(),
+                name: "Footer".to_string(),
+                position: ComponentPosition::Closing,
+                content: "Footer section".to_string(),
+                order: 1,
+            },
+        ];
+
+        let exports = generate_exports(&project).unwrap();
+        let md = &exports[0].markdown;
+
+        // Opening components should be in order: Intro (0), Context (1)
+        let intro_pos = md.find("Intro section").unwrap();
+        let context_pos = md.find("Context section").unwrap();
+        assert!(intro_pos < context_pos, "Intro should come before Context");
+
+        // Closing components should be in order: Summary (0), Footer (1)
+        let summary_pos = md.find("Summary section").unwrap();
+        let footer_pos = md.find("Footer section").unwrap();
+        assert!(summary_pos < footer_pos, "Summary should come before Footer");
     }
 }

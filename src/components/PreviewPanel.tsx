@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import { marked } from "marked";
 import { useProjectStore } from "../state/projectStore";
 import { generatePreview, type ExportFile } from "../lib/api";
+import { t } from "../lib/i18n";
 
 export function PreviewPanel() {
-  const { project } = useProjectStore();
+  const { project, language, processContent } = useProjectStore();
   const [previewTargetId, setPreviewTargetId] = useState<string | null>(null);
   const [preview, setPreview] = useState<ExportFile | null>(null);
   const [loading, setLoading] = useState(false);
@@ -47,14 +48,15 @@ export function PreviewPanel() {
 
   const handleCopy = async () => {
     if (!preview) return;
+    const content = processContent(preview.markdown);
     try {
-      await navigator.clipboard.writeText(preview.markdown);
+      await navigator.clipboard.writeText(content);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // Fallback
       const ta = document.createElement("textarea");
-      ta.value = preview.markdown;
+      ta.value = content;
       document.body.appendChild(ta);
       ta.select();
       document.execCommand("copy");
@@ -73,7 +75,7 @@ export function PreviewPanel() {
       <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
         <div className="flex items-center gap-3">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Preview cho:
+            {t("preview.target", language)}
           </label>
           <select
             value={previewTargetId ?? ""}
@@ -82,7 +84,7 @@ export function PreviewPanel() {
           >
             {project.qa_reports.map((qa) => (
               <option key={qa.id} value={qa.id}>
-                {qa.name || "(chưa đặt tên)"}
+                {qa.name || `(${t("sidebar.unnamed", language)})`}
               </option>
             ))}
           </select>
@@ -95,7 +97,7 @@ export function PreviewPanel() {
             disabled={!preview}
             className="flex-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded text-xs font-medium transition-colors disabled:opacity-50"
           >
-            {copied ? "✓ Đã copy!" : "Copy markdown"}
+            {copied ? `✓ ${t("preview.copied", language)}` : t("preview.copy", language)}
           </button>
           <button
             onClick={refreshPreview}
@@ -112,13 +114,13 @@ export function PreviewPanel() {
         {!previewTargetId || project.qa_reports.length < 2 ? (
           <div className="h-full flex items-center justify-center">
             <p className="text-sm text-gray-400 dark:text-gray-500 text-center">
-              Cần ít nhất 2 QA để xem preview
+              {t("preview.needMore", language)}
             </p>
           </div>
         ) : loading ? (
           <div className="h-full flex items-center justify-center">
             <p className="text-sm text-gray-400 dark:text-gray-500">
-              Đang tạo preview...
+              Loading...
             </p>
           </div>
         ) : preview ? (
@@ -126,9 +128,11 @@ export function PreviewPanel() {
             {/* Info banner */}
             <div className="mb-4 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
               <p className="text-xs text-blue-700 dark:text-blue-300">
-                Preview này dành cho{" "}
-                <strong>{targetQa?.name || "(chưa đặt tên)"}</strong>. Nội dung
-                của {targetQa?.name || "QA này"} đã được loại khỏi file.
+                {t("preview.info", language)}{" "}
+                <strong>{targetQa?.name || `(${t("sidebar.unnamed", language)})`}</strong>.{" "}
+                {t("preview.excluded", language)}{" "}
+                {targetQa?.name || "QA"}{" "}
+                {t("preview.excludedEnd", language)}
               </p>
             </div>
 
@@ -136,7 +140,7 @@ export function PreviewPanel() {
             <div className="mb-4 grid grid-cols-2 gap-2">
               <div className="px-3 py-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Báo cáo đưa vào
+                  {t("preview.reports", language)}
                 </p>
                 <p className="text-lg font-semibold text-green-600 dark:text-green-400">
                   {otherCount}
@@ -144,7 +148,7 @@ export function PreviewPanel() {
               </div>
               <div className="px-3 py-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Báo cáo bị loại
+                  {t("preview.excludedCount", language)}
                 </p>
                 <p className="text-lg font-semibold text-red-500 dark:text-red-400">
                   1
@@ -152,7 +156,7 @@ export function PreviewPanel() {
               </div>
               <div className="px-3 py-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Tổng ký tự
+                  {t("preview.characters", language)}
                 </p>
                 <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">
                   {preview.markdown.length.toLocaleString()}
@@ -160,7 +164,7 @@ export function PreviewPanel() {
               </div>
               <div className="px-3 py-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Tên file
+                  {t("preview.file", language)}
                 </p>
                 <p className="text-sm font-mono font-medium text-gray-700 dark:text-gray-300 truncate">
                   {preview.filename}

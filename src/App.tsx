@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { EditorPanel } from "./components/EditorPanel";
 import { PreviewPanel } from "./components/PreviewPanel";
-import { ValidationChecklist } from "./components/ValidationChecklist";
+import { SettingsPanel } from "./components/SettingsPanel";
 import { Toolbar } from "./components/Toolbar";
 import { useProjectStore } from "./state/projectStore";
 import {
@@ -22,7 +22,7 @@ function App() {
 
   // Load auto-saved draft on mount
   useEffect(() => {
-    const saved = localStorage.getItem("qa-review-weaver-draft");
+    const saved = localStorage.getItem("review-weaver-draft");
     if (saved) {
       try {
         const draft = JSON.parse(saved);
@@ -35,10 +35,10 @@ function App() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-save draft to localStorage
+  // Auto-save draft to localStorage (only QA reports and components)
   useEffect(() => {
     const timer = setTimeout(() => {
-      localStorage.setItem("qa-review-weaver-draft", JSON.stringify(project));
+      localStorage.setItem("review-weaver-draft", JSON.stringify(project));
     }, 500);
     return () => clearTimeout(timer);
   }, [project]);
@@ -52,7 +52,7 @@ function App() {
       switch (e.key.toLowerCase()) {
         case "n":
           e.preventDefault();
-          if (confirm("Tạo project mới? Dữ liệu chưa lưu sẽ bị mất.")) {
+          if (confirm("Create new project? / Tạo dự án mới?")) {
             newProject();
           }
           break;
@@ -69,28 +69,22 @@ function App() {
           e.preventDefault();
           handleExportAll();
           break;
-        case "c":
-          if (e.shiftKey) {
-            e.preventDefault();
-            handleCopyPreview();
-          }
-          break;
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [project, validation]);
+  }, [project, validation]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async () => {
     try {
       const { save } = await import("@tauri-apps/plugin-dialog");
       const path = await save({
         defaultPath: project.title
-          ? `${project.title.toLowerCase().replace(/\s+/g, "-")}.qa-review-weaver.json`
-          : "project.qa-review-weaver.json",
+          ? `${project.title.toLowerCase().replace(/\s+/g, "-")}.review-weaver.json`
+          : "project.review-weaver.json",
         filters: [
-          { name: "QA Review Weaver Project", extensions: ["qa-review-weaver.json"] },
+          { name: "Review Weaver Project", extensions: ["review-weaver.json"] },
           { name: "JSON", extensions: ["json"] },
         ],
       });
@@ -108,7 +102,7 @@ function App() {
       const selected = await open({
         multiple: false,
         filters: [
-          { name: "QA Review Weaver Project", extensions: ["qa-review-weaver.json"] },
+          { name: "Review Weaver Project", extensions: ["review-weaver.json"] },
           { name: "JSON", extensions: ["json"] },
         ],
       });
@@ -123,6 +117,7 @@ function App() {
 
   const handleExportAll = async () => {
     if (!validation?.valid) return;
+    if (project.qa_reports.length === 0) return;
     try {
       const { open } = await import("@tauri-apps/plugin-dialog");
       const dir = await open({ directory: true, multiple: false });
@@ -134,10 +129,6 @@ function App() {
     }
   };
 
-  const handleCopyPreview = async () => {
-    // Copy is handled by PreviewPanel's own button
-  };
-
   return (
     <div className="h-screen flex flex-col bg-gray-100 dark:bg-gray-900">
       {/* Top toolbar */}
@@ -146,7 +137,7 @@ function App() {
       {/* Main content area */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left sidebar */}
-        <div className="w-56 flex-shrink-0 overflow-hidden">
+        <div className="w-72 flex-shrink-0 overflow-hidden">
           <Sidebar />
         </div>
 
@@ -160,7 +151,7 @@ function App() {
           <div className="flex-1 overflow-hidden">
             <PreviewPanel />
           </div>
-          <ValidationChecklist />
+          <SettingsPanel />
         </div>
       </div>
     </div>

@@ -6,10 +6,17 @@ export interface QaReport {
   content: string;
 }
 
+export interface Component {
+  id: string;
+  name: string;
+  position: "opening" | "closing";
+  content: string;
+  order: number;
+}
+
 export interface Project {
   title: string;
-  opening_text: string;
-  closing_text: string;
+  components: Component[];
   qa_reports: QaReport[];
 }
 

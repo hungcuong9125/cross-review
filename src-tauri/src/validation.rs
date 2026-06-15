@@ -1,4 +1,4 @@
-use crate::models::{Project, ValidationReport};
+use crate::models::{ComponentPosition, Project, ValidationReport};
 
 /// Validates a project and returns a report with errors and warnings.
 ///
@@ -9,10 +9,10 @@ pub fn validate_project(project: &Project) -> ValidationReport {
 
     // Must have at least 2 QA teams for cross-review
     if project.qa_reports.is_empty() {
-        errors.push("Chưa có QA nào. Cần ít nhất 2 QA để review chéo.".to_string());
+        errors.push("No QA yet. Need at least 2 QA for cross-review. / Chưa có QA nào. Cần ít nhất 2 QA để review chéo.".to_string());
     } else if project.qa_reports.len() < 2 {
         errors.push(
-            "Chỉ có 1 QA, không thể review chéo. Cần ít nhất 2 QA.".to_string(),
+            "Only 1 QA, cannot cross-review. Need at least 2. / Chỉ có 1 QA, không thể review chéo. Cần ít nhất 2 QA.".to_string(),
         );
     }
 
@@ -25,10 +25,10 @@ pub fn validate_project(project: &Project) -> ValidationReport {
         };
 
         if qa.name.trim().is_empty() {
-            errors.push(format!("{}: thiếu tên.", label));
+            errors.push(format!("{}: missing name. / thiếu tên.", label));
         }
         if qa.content.trim().is_empty() {
-            errors.push(format!("{}: thiếu nội dung báo cáo.", label));
+            errors.push(format!("{}: missing report content. / thiếu nội dung báo cáo.", label));
         }
     }
 
@@ -51,20 +51,26 @@ pub fn validate_project(project: &Project) -> ValidationReport {
     for window in names.windows(2) {
         if window[0].1.to_lowercase() == window[1].1.to_lowercase() {
             warnings.push(format!(
-                "Tên QA trùng nhau: \"{}\" (QA #{} và QA #{}). File export sẽ tự động đánh số để tránh trùng tên.",
-                window[0].1,
-                window[0].0 + 1,
-                window[1].0 + 1
+                "Duplicate QA name: \"{}\" (QA #{} and QA # {}). Filenames will be auto-numbered. / Tên QA trùng nhau: \"{}\" (QA #{} và QA #{}). File export sẽ tự động đánh số để tránh trùng tên.",
+                window[0].1, window[0].0 + 1, window[1].0 + 1,
+                window[0].1, window[0].0 + 1, window[1].0 + 1
             ));
         }
     }
 
-    // Warnings for empty opening/closing
-    if project.opening_text.trim().is_empty() {
-        warnings.push("Phần mở đầu đang trống.".to_string());
+    // Warnings for empty components
+    let has_opening = project.components.iter().any(|c| {
+        c.position == ComponentPosition::Opening && !c.content.trim().is_empty()
+    });
+    let has_closing = project.components.iter().any(|c| {
+        c.position == ComponentPosition::Closing && !c.content.trim().is_empty()
+    });
+
+    if !has_opening {
+        warnings.push("No opening section. / Phần mở đầu đang trống.".to_string());
     }
-    if project.closing_text.trim().is_empty() {
-        warnings.push("Phần kết thúc đang trống.".to_string());
+    if !has_closing {
+        warnings.push("No closing section. / Phần kết thúc đang trống.".to_string());
     }
 
     let valid = errors.is_empty();
@@ -149,8 +155,7 @@ mod tests {
     #[test]
     fn test_empty_opening_closing_are_warnings() {
         let mut project = Project::default();
-        project.opening_text = String::new();
-        project.closing_text = String::new();
+        project.components = Vec::new();
         project.qa_reports.push(make_qa("1", "QA 1", "C1"));
         project.qa_reports.push(make_qa("2", "QA 2", "C2"));
         let report = validate_project(&project);
