@@ -23,7 +23,6 @@ pub enum ExportError {
 ///
 /// Returns exactly N files for N QA teams.
 pub fn generate_exports(project: &Project) -> Result<Vec<ExportFile>, ExportError> {
-    // Validate first
     let validation = validate_project(project);
     if !validation.valid {
         return Err(ExportError::ValidationFailed(validation.errors.join("; ")));
@@ -47,8 +46,7 @@ pub fn generate_exports(project: &Project) -> Result<Vec<ExportFile>, ExportErro
         let filename = generate_filename(&target.name, &used_filenames);
         used_filenames.push(filename.clone());
 
-        // Build markdown
-        let markdown = build_markdown(project, &other_reports);
+            let markdown = build_markdown(project, &other_reports);
 
         exports.push(ExportFile {
             target_qa_id: target.id.clone(),
@@ -116,7 +114,6 @@ fn build_markdown(
 ) -> String {
     let mut parts: Vec<String> = Vec::new();
 
-    // Opening components
     let opening_comps = get_opening_components(project);
     for comp in &opening_comps {
         parts.push(comp.content.trim().to_string());

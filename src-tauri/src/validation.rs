@@ -13,7 +13,6 @@ pub fn validate_project(project: &Project) -> ValidationReport {
         .filter(|qa| qa.active)
         .collect();
 
-    // Must have at least 2 active sources for cross-review
     if active_reports.is_empty() {
         errors.push("No active sources yet. Need at least 2 active sources for cross-review. / Chưa có nguồn hoạt động nào. Cần ít nhất 2 nguồn hoạt động để review chéo.".to_string());
     } else if active_reports.len() < 2 {
@@ -22,7 +21,6 @@ pub fn validate_project(project: &Project) -> ValidationReport {
         );
     }
 
-    // Check each active source report
     let mut active_index = 0;
     for qa in &project.qa_reports {
         if !qa.active {
@@ -43,7 +41,6 @@ pub fn validate_project(project: &Project) -> ValidationReport {
         }
     }
 
-    // Check for duplicate names among active ones
     let mut names: Vec<(usize, &str)> = project
         .qa_reports
         .iter()
@@ -69,7 +66,6 @@ pub fn validate_project(project: &Project) -> ValidationReport {
         }
     }
 
-    // Warnings for empty active components
     let has_opening = project.components.iter().any(|c| {
         c.position == ComponentPosition::Opening && !c.content.trim().is_empty() && c.active
     });

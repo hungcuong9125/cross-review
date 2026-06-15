@@ -6,7 +6,6 @@ use crate::models::{ExportFile, Project, ValidationReport};
 use crate::validation::validate_project;
 use crate::zip_export::export_to_zip;
 
-/// Validates a project and returns a report.
 #[tauri::command]
 pub fn validate_project_cmd(project: Project) -> Result<ValidationReport, String> {
     Ok(validate_project(&project))

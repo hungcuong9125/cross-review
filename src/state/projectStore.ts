@@ -3,7 +3,6 @@ import type { Project, QaReport, Component, ValidationReport } from "../lib/api"
 import { validateProject } from "../lib/api";
 import { t, type Language } from "../lib/i18n";
 
-// Generate a simple UUID-like ID
 function generateId(): string {
   return crypto.randomUUID?.() ?? Math.random().toString(36).substring(2, 11);
 }
@@ -15,7 +14,6 @@ export type ActiveItem =
   | { type: "component"; componentId: string };
 
 interface ProjectState {
-  // Data
   project: Project;
   selectedQaId: string | null;
   activeMainTab: MainTab;
@@ -90,7 +88,7 @@ function migrateProject(project: Project): Project {
     if (!hasOpening) {
       migrated.components.push({
         id: generateId(),
-        name: "Mở đầu",
+        name: t("migration.opening", "vi"),
         position: "opening",
         content: (project as any).opening_text,
         order: 0,
@@ -102,7 +100,7 @@ function migrateProject(project: Project): Project {
     if (!hasClosing) {
       migrated.components.push({
         id: generateId(),
-        name: "Kết thúc",
+        name: t("migration.closing", "vi"),
         position: "closing",
         content: (project as any).closing_text,
         order: 0,
@@ -195,7 +193,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const copySuffix = t("suffix.copy", get().language);
     const newQa: QaReport = {
       id: newId,
-      name: `${qa.name} ${copySuffix}`,
+      name: qa.name ? `${qa.name} ${copySuffix}` : copySuffix,
       content: qa.content,
       active: qa.active,
     };
@@ -346,7 +344,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         .sort((a, b) => a.order - b.order);
       const idx = samePos.findIndex(c => c.id === id);
       if (idx <= 0) return state;
-      // Swap orders
       const prev = samePos[idx - 1];
       const newComponents = state.project.components.map(c => {
         if (c.id === id) return { ...c, order: prev.order };
@@ -355,6 +352,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       });
       return { project: { ...state.project, components: newComponents } };
     });
+    get().refreshValidation();
   },
 
   moveComponentDown: (id) => {
@@ -374,6 +372,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       });
       return { project: { ...state.project, components: newComponents } };
     });
+    get().refreshValidation();
   },
 
   selectQa: (id) => set({
@@ -397,7 +396,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       project: {
         ...state.project,
         qa_reports: state.project.qa_reports.map((q) =>
-          q.id === id ? { ...q, active: q.active === false ? true : false } : q
+          q.id === id ? { ...q, active: q.active === false } : q
         ),
       },
     }));
@@ -409,7 +408,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       project: {
         ...state.project,
         components: state.project.components.map((c) =>
-          c.id === id ? { ...c, active: !(c.active !== false) } : c
+          c.id === id ? { ...c, active: c.active === false } : c
         ),
       },
     }));
@@ -420,7 +419,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set((state) => ({
       project: {
         ...state.project,
-        exclude_self: state.project.exclude_self === false ? true : false,
+        exclude_self: state.project.exclude_self === false,
       },
     }));
     get().refreshValidation();
@@ -498,7 +497,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       processed = processed.replace(/\n{2,}/g, "\n");
     }
     if (state.mergeLines) {
-      // Clean markdown tags that cause global formatting issues when merged into one line
       let lines = processed.split("\n");
       lines = lines.map((line) => {
         const trimmed = line.trim();
@@ -506,7 +504,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         if (trimmed === "---" || trimmed === "___" || trimmed === "***") {
           return "";
         }
-        // Remove heading markdown hashes (e.g. ## Title -> Title)
         if (trimmed.startsWith("#")) {
           return trimmed.replace(/^#+\s*/, "");
         }

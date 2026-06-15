@@ -32,10 +32,6 @@ export function EditorPanel() {
     .filter((c) => c.position === activeMainTab)
     .sort((a, b) => a.order - b.order);
 
-
-
-
-
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-800">
       {/* Content area */}
@@ -83,7 +79,7 @@ export function EditorPanel() {
                       <button
                         onClick={() => updateQaContent(selectedQa.id, "")}
                         className="text-xs font-semibold text-red-400 hover:text-red-500 transition-colors"
-                        title="Clear content"
+                        title={t("editor.clearTooltip", language)}
                       >
                         {t("editor.clear", language)}
                       </button>

@@ -1,12 +1,5 @@
 /// Converts a name to a URL-safe slug suitable for filenames.
-///
-/// Rules:
-/// - Convert to lowercase
-/// - Replace spaces and underscores with hyphens
-/// - Remove non-alphanumeric characters (except hyphens)
-/// - Collapse multiple hyphens
-/// - Trim leading/trailing hyphens
-/// - Vietnamese characters are preserved as-is (UTF-8 filenames)
+/// Vietnamese characters are preserved as-is (UTF-8 filenames).
 pub fn to_slug(name: &str) -> String {
     let slug = name
         .trim()

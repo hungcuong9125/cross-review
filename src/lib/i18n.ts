@@ -2,10 +2,7 @@ export type Language = 'vi' | 'en';
 
 export const translations = {
   // Sidebar
-  'sidebar.qaTeams': { vi: 'NGUỒN NỘI DUNG', en: 'CONTENT SOURCES' },
-  'sidebar.teams': { vi: 'nguồn', en: 'sources' },
   'sidebar.noQa': { vi: 'Chưa có nguồn', en: 'No sources yet' },
-  'sidebar.noQaDesc': { vi: 'Thêm nguồn nội dung đầu tiên để bắt đầu', en: 'Add the first content source to get started' },
   'sidebar.addReport': { vi: 'Thêm nguồn', en: 'Add Source' },
   'sidebar.addOpening': { vi: 'Thêm mở đầu', en: 'Add Opening' },
   'sidebar.addClosing': { vi: 'Thêm kết thúc', en: 'Add Closing' },
@@ -16,13 +13,9 @@ export const translations = {
   'sidebar.unnamed': { vi: 'Chưa đặt tên', en: 'unnamed' },
 
   // Editor
-  'editor.qaReport': { vi: 'Nguồn nội dung', en: 'Content Source' },
   'editor.opening': { vi: 'Mở đầu', en: 'Opening' },
   'editor.closing': { vi: 'Kết thúc', en: 'Closing' },
-  'editor.components': { vi: 'Thành phần', en: 'Components' },
   'editor.selectQa': { vi: 'Chọn một nguồn ở sidebar hoặc thêm mới', en: 'Select a source from the sidebar or add a new one' },
-  'editor.namePlaceholder': { vi: 'Tên nguồn (ví dụ: Team Growth)', en: 'Source name (e.g. Team Growth)' },
-  'editor.contentPlaceholder': { vi: 'Nội dung của nguồn này...', en: 'Content of this source...' },
   'editor.clear': { vi: 'Xóa', en: 'Clear' },
   'editor.chars': { vi: 'ký tự', en: 'chars' },
   'editor.words': { vi: 'từ', en: 'words' },
@@ -38,7 +31,6 @@ export const translations = {
   'editor.moveDown': { vi: 'Di chuyển xuống', en: 'Move down' },
 
   // Preview
-  'preview.title': { vi: 'Xem trước', en: 'Preview' },
   'preview.target': { vi: 'Xem bản gửi', en: 'Preview' },
   'preview.info': { vi: 'Xem trước này dành cho', en: 'This preview is for' },
   'preview.excluded': { vi: 'Nội dung của', en: 'Content of' },
@@ -97,10 +89,15 @@ export const translations = {
   // Preview loading
   'preview.loading': { vi: 'Đang tải...', en: 'Loading...' },
 
-  // Editor placeholders (bilingual fallback)
+  // Editor placeholders
   'editor.sourceNamePlaceholder': { vi: 'TÊN NGUỒN (VÍ DỤ: TEAM GROWTH) *', en: 'SOURCE NAME (E.G. TEAM GROWTH) *' },
   'editor.sourceContentLabel': { vi: 'Nội dung nguồn...', en: 'Source content...' },
   'editor.sourceContentPlaceholder': { vi: 'Nội dung nguồn...', en: 'Source content...' },
+  'editor.clearTooltip': { vi: 'Xóa nội dung', en: 'Clear content' },
+
+  // Migration
+  'migration.opening': { vi: 'Mở đầu', en: 'Opening' },
+  'migration.closing': { vi: 'Kết thúc', en: 'Closing' },
 } as const;
 
 export type TranslationKey = keyof typeof translations;

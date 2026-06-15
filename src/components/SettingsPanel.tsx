@@ -1,4 +1,5 @@
 import { useProjectStore } from "../state/projectStore";
+import { t } from "../lib/i18n";
 
 export function SettingsPanel() {
   const { language, setLanguage } = useProjectStore();
@@ -6,7 +7,7 @@ export function SettingsPanel() {
   return (
     <div className="p-2.5 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
       <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-        {language === "vi" ? "Cài đặt ngôn ngữ" : "Language Settings"}
+        {t("settings.language", language)}
       </span>
       <div className="flex gap-0.5">
         <button

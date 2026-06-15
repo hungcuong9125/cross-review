@@ -38,11 +38,9 @@ pub struct Project {
     pub qa_reports: Vec<QaReport>,
     #[serde(default = "default_true")]
     pub exclude_self: bool,
-    #[allow(dead_code)]
-    #[serde(default, skip_serializing)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub opening_text: Option<String>,
-    #[allow(dead_code)]
-    #[serde(default, skip_serializing)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub closing_text: Option<String>,
 }
 
