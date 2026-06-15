@@ -83,10 +83,28 @@ export const translations = {
 
   // Validation messages
   'validation.ready': { vi: '✓ Sẵn sàng export', en: '✓ Ready to export' },
+
+  // Sidebar tooltips
+  'tooltip.disable': { vi: 'Tắt', en: 'Disable' },
+  'tooltip.enable': { vi: 'Bật', en: 'Enable' },
+  'tooltip.duplicate': { vi: 'Nhân bản', en: 'Duplicate' },
+  'tooltip.delete': { vi: 'Xóa', en: 'Delete' },
+  'tooltip.exportZip': { vi: 'Xuất ZIP', en: 'Export ZIP' },
+
+  // Duplicate suffix
+  'suffix.copy': { vi: '(bản sao)', en: '(copy)' },
+
+  // Preview loading
+  'preview.loading': { vi: 'Đang tải...', en: 'Loading...' },
+
+  // Editor placeholders (bilingual fallback)
+  'editor.sourceNamePlaceholder': { vi: 'TÊN NGUỒN (VÍ DỤ: TEAM GROWTH) *', en: 'SOURCE NAME (E.G. TEAM GROWTH) *' },
+  'editor.sourceContentLabel': { vi: 'Nội dung nguồn...', en: 'Source content...' },
+  'editor.sourceContentPlaceholder': { vi: 'Nội dung nguồn...', en: 'Source content...' },
 } as const;
 
 export type TranslationKey = keyof typeof translations;
 
 export function t(key: TranslationKey, lang: Language): string {
-  return translations[key][lang] || translations[key].vi;
+  return translations[key][lang] ?? translations[key].vi;
 }

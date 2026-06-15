@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { Project, QaReport, Component, ValidationReport } from "../lib/api";
 import { validateProject } from "../lib/api";
-import type { Language } from "../lib/i18n";
+import { t, type Language } from "../lib/i18n";
 
 // Generate a simple UUID-like ID
 function generateId(): string {
@@ -84,9 +84,6 @@ const DEFAULT_PROJECT: Project = {
 // Migrate old project format to new format
 function migrateProject(project: Project): Project {
   const migrated = { ...project, components: [...(project.components || [])] };
-  if (!migrated.components) {
-    migrated.components = [];
-  }
   // Migrate old opening_text/closing_text to components
   if ('opening_text' in (project as any) && (project as any).opening_text) {
     const hasOpening = migrated.components.some(c => c.position === "opening");
@@ -175,12 +172,17 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         state.selectedQaId === id
           ? newReports[0]?.id ?? null
           : state.selectedQaId;
+      // Preserve component selection when deleting a non-selected QA
+      const newActiveItem =
+        state.activeItem?.type === "component"
+          ? state.activeItem
+          : newSelected
+            ? { type: "report" as const, qaId: newSelected }
+            : null;
       return {
         project: { ...state.project, qa_reports: newReports },
         selectedQaId: newSelected,
-        activeItem: newSelected
-          ? { type: "report" as const, qaId: newSelected }
-          : null,
+        activeItem: newActiveItem,
       };
     });
     get().refreshValidation();
@@ -190,9 +192,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const qa = get().project.qa_reports.find((q) => q.id === id);
     if (!qa) return;
     const newId = generateId();
+    const copySuffix = t("suffix.copy", get().language);
     const newQa: QaReport = {
       id: newId,
-      name: `${qa.name} (bản sao)`,
+      name: `${qa.name} ${copySuffix}`,
       content: qa.content,
       active: qa.active,
     };
@@ -242,12 +245,17 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         reports.find((q) => q.id === state.selectedQaId)?.id ??
         reports[0]?.id ??
         null;
+      // Preserve component selection when removing empty QAs
+      const newActiveItem =
+        state.activeItem?.type === "component"
+          ? state.activeItem
+          : newSelected
+            ? { type: "report" as const, qaId: newSelected }
+            : state.activeItem;
       return {
         project: { ...state.project, qa_reports: reports },
         selectedQaId: newSelected,
-        activeItem: newSelected
-          ? { type: "report" as const, qaId: newSelected }
-          : state.activeItem,
+        activeItem: newActiveItem,
       };
     });
     get().refreshValidation();
@@ -284,6 +292,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       activeMainTab: position,
       activeItem: { type: "component" as const, componentId: id },
     }));
+    get().refreshValidation();
   },
 
   removeComponent: (id) => {
@@ -313,6 +322,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         ),
       },
     }));
+    get().refreshValidation();
   },
 
   updateComponentContent: (id, content) => {
@@ -422,9 +432,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const newId = generateId();
     const existing = get().project.components.filter(c => c.position === comp.position);
     const maxOrder = existing.reduce((max, c) => Math.max(max, c.order), -1);
+    const copySuffix = t("suffix.copy", get().language);
     const newComponent: Component = {
       id: newId,
-      name: comp.name ? `${comp.name} (bản sao)` : "",
+      name: comp.name ? `${comp.name} ${copySuffix}` : "",
       position: comp.position,
       content: comp.content,
       order: maxOrder + 1,
@@ -501,11 +512,29 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         }
         return line;
       });
-      processed = lines.filter((l) => l !== "").join("\n");
+
+      // Preserve paragraph breaks (empty lines) as " | " before merging
+      // First pass: collapse consecutive empty lines into a single marker
+      let joined = "";
+      let prevEmpty = false;
+      for (const line of lines) {
+        const isEmpty = line.trim() === "";
+        if (isEmpty) {
+          if (!prevEmpty) {
+            joined += "\n\n"; // paragraph break marker
+          }
+          prevEmpty = true;
+        } else {
+          if (joined && !prevEmpty) {
+            joined += "\n";
+          }
+          joined += line;
+          prevEmpty = false;
+        }
+      }
 
       // Merge all lines into one continuous line
-      // Replace paragraph breaks with " | " separator for LLM readability
-      processed = processed
+      processed = joined
         .replace(/\n{2,}/g, " | ")  // paragraph break → separator
         .replace(/\n/g, " ")         // line break → space
         .replace(/\s{2,}/g, " ")     // multiple spaces → single space

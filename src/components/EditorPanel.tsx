@@ -70,7 +70,7 @@ export function EditorPanel() {
                       value={selectedQa.name}
                       onChange={(e) => updateQaName(selectedQa.id, e.target.value)}
                       className="flex-1 min-w-0 bg-transparent text-sm font-semibold text-gray-800 dark:text-gray-150 focus:outline-none placeholder-gray-400"
-                      placeholder={language === "vi" ? "TÊN NGUỒN (VÍ DỤ: TEAM GROWTH) *" : "SOURCE NAME (E.G. TEAM GROWTH) *"}
+                      placeholder={t("editor.sourceNamePlaceholder", language)}
                     />
                   </div>
 
@@ -78,7 +78,7 @@ export function EditorPanel() {
                   <div className="p-4 flex-1 flex flex-col">
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-550 select-none">
-                        {language === "vi" ? "Nội dung nguồn..." : "Source content..."}
+                        {t("editor.sourceContentLabel", language)}
                       </label>
                       <button
                         onClick={() => updateQaContent(selectedQa.id, "")}
@@ -94,7 +94,7 @@ export function EditorPanel() {
                         updateQaContent(selectedQa.id, e.target.value)
                       }
                       className="flex-1 w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-250 dark:border-gray-750 rounded-lg resize-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none text-sm text-gray-800 dark:text-gray-100 leading-relaxed"
-                      placeholder={language === "vi" ? "Nội dung nguồn..." : "Source content..."}
+                      placeholder={t("editor.sourceContentPlaceholder", language)}
                     />
                     {/* Card Footer: Character count (no border-t, only mt-3) */}
                     <div className="mt-3 flex items-center justify-between text-[10px] font-medium text-gray-400 dark:text-gray-500 select-none">

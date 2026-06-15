@@ -23,12 +23,14 @@ pub fn validate_project(project: &Project) -> ValidationReport {
     }
 
     // Check each active source report
-    for (i, qa) in project.qa_reports.iter().enumerate() {
+    let mut active_index = 0;
+    for qa in &project.qa_reports {
         if !qa.active {
             continue;
         }
-        let label = if qa.name.is_empty() {
-            format!("Source #{}", i + 1)
+        active_index += 1;
+        let label = if qa.name.trim().is_empty() {
+            format!("Source #{}", active_index)
         } else {
             qa.name.clone()
         };

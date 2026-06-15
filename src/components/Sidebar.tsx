@@ -86,7 +86,7 @@ export function Sidebar() {
                       ? "bg-blue-500"
                       : "bg-gray-300 dark:bg-gray-600"
                       }`}
-                    title={qa.active !== false ? "Disable" : "Enable"}
+                    title={qa.active !== false ? t("tooltip.disable", language) : t("tooltip.enable", language)}
                   >
                     <div
                       className={`bg-white w-2.5 h-2.5 rounded-full shadow-sm transform duration-200 ${qa.active !== false ? "translate-x-2.5" : "translate-x-0"
@@ -114,7 +114,7 @@ export function Sidebar() {
                         duplicateQa(qa.id);
                       }}
                       className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
-                      title="Duplicate"
+                      title={t("tooltip.duplicate", language)}
                     >
                       <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -126,7 +126,7 @@ export function Sidebar() {
                         removeQa(qa.id);
                       }}
                       className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                      title="Delete"
+                      title={t("tooltip.delete", language)}
                     >
                       <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -158,7 +158,7 @@ export function Sidebar() {
                       ? "bg-purple-500"
                       : "bg-gray-300 dark:bg-gray-600"
                       }`}
-                    title={comp.active !== false ? "Disable" : "Enable"}
+                    title={comp.active !== false ? t("tooltip.disable", language) : t("tooltip.enable", language)}
                   >
                     <div
                       className={`bg-white w-2.5 h-2.5 rounded-full shadow-sm transform duration-200 ${comp.active !== false ? "translate-x-2.5" : "translate-x-0"
@@ -186,7 +186,7 @@ export function Sidebar() {
                         duplicateComponent(comp.id);
                       }}
                       className="p-1 text-gray-400 hover:text-purple-500 transition-colors"
-                      title="Duplicate"
+                      title={t("tooltip.duplicate", language)}
                     >
                       <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -198,7 +198,7 @@ export function Sidebar() {
                         removeComponent(comp.id);
                       }}
                       className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                      title="Delete"
+                      title={t("tooltip.delete", language)}
                     >
                       <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -230,7 +230,7 @@ export function Sidebar() {
                       ? "bg-orange-500"
                       : "bg-gray-300 dark:bg-gray-600"
                       }`}
-                    title={comp.active !== false ? "Disable" : "Enable"}
+                    title={comp.active !== false ? t("tooltip.disable", language) : t("tooltip.enable", language)}
                   >
                     <div
                       className={`bg-white w-2.5 h-2.5 rounded-full shadow-sm transform duration-200 ${comp.active !== false ? "translate-x-2.5" : "translate-x-0"
@@ -258,7 +258,7 @@ export function Sidebar() {
                         duplicateComponent(comp.id);
                       }}
                       className="p-1 text-gray-400 hover:text-orange-500 transition-colors"
-                      title="Duplicate"
+                      title={t("tooltip.duplicate", language)}
                     >
                       <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -270,7 +270,7 @@ export function Sidebar() {
                         removeComponent(comp.id);
                       }}
                       className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                      title="Delete"
+                      title={t("tooltip.delete", language)}
                     >
                       <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

@@ -197,7 +197,7 @@ export function Toolbar() {
         <ToolbarButton
           onClick={handleExportZip}
           disabled={!canExport}
-          title="Export ZIP"
+          title={t("tooltip.exportZip", language)}
         >
           {t("toolbar.exportZip", language)}
         </ToolbarButton>

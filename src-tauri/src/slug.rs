@@ -14,6 +14,7 @@ pub fn to_slug(name: &str) -> String {
         .replace([' ', '_'], "-")
         .chars()
         .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '.')
+        .take(200) // Cap slug length to stay within filesystem limits
         .collect::<String>();
 
     let mut result = String::new();

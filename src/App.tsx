@@ -51,7 +51,7 @@ function App() {
     if (saved) {
       try {
         const draft = JSON.parse(saved);
-        if (draft && draft.qa_reports) {
+        if (draft && Array.isArray(draft.qa_reports) && Array.isArray(draft.components)) {
           setProject(draft);
         }
       } catch {
