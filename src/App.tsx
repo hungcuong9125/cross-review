@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { EditorPanel } from "./components/EditorPanel";
 import { PreviewPanel } from "./components/PreviewPanel";
@@ -17,6 +17,7 @@ function App() {
     useProjectStore();
 
   const [rightSidebarWidth, setRightSidebarWidth] = useState(400);
+  const cleanupDragRef = useRef<(() => void) | null>(null);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -34,11 +35,22 @@ function App() {
     const handleMouseUp = () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
+      cleanupDragRef.current = null;
+    };
+
+    cleanupDragRef.current = () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
     };
 
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
   };
+
+  // Clean up drag listeners on unmount
+  useEffect(() => {
+    return () => { cleanupDragRef.current?.(); };
+  }, []);
 
   // Apply dark mode class on mount and when it changes
   useEffect(() => {

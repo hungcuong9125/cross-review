@@ -80,7 +80,7 @@ const DEFAULT_PROJECT: Project = {
 };
 
 // Migrate old project format to new format
-function migrateProject(project: Project): Project {
+function migrateProject(project: Project, lang: Language = "vi"): Project {
   const migrated = { ...project, components: [...(project.components || [])] };
   // Migrate old opening_text/closing_text to components
   if ('opening_text' in (project as any) && (project as any).opening_text) {
@@ -88,7 +88,7 @@ function migrateProject(project: Project): Project {
     if (!hasOpening) {
       migrated.components.push({
         id: generateId(),
-        name: t("migration.opening", "vi"),
+        name: t("migration.opening", lang),
         position: "opening",
         content: (project as any).opening_text,
         order: 0,
@@ -100,13 +100,16 @@ function migrateProject(project: Project): Project {
     if (!hasClosing) {
       migrated.components.push({
         id: generateId(),
-        name: t("migration.closing", "vi"),
+        name: t("migration.closing", lang),
         position: "closing",
         content: (project as any).closing_text,
         order: 0,
       });
     }
   }
+  // Clear legacy fields to prevent redundant serialization in saved files
+  delete (migrated as any).opening_text;
+  delete (migrated as any).closing_text;
   return migrated;
 }
 
@@ -123,7 +126,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   mergeLines: false,
 
   setProject: (project) => {
-    const migrated = migrateProject(project);
+    const migrated = migrateProject(project, get().language);
     const firstQa = migrated.qa_reports[0];
     set({
       project: migrated,
@@ -434,7 +437,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const copySuffix = t("suffix.copy", get().language);
     const newComponent: Component = {
       id: newId,
-      name: comp.name ? `${comp.name} ${copySuffix}` : "",
+      name: comp.name ? `${comp.name} ${copySuffix}` : copySuffix,
       position: comp.position,
       content: comp.content,
       order: maxOrder + 1,
@@ -454,8 +457,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     try {
       const report = await validateProject(get().project);
       set({ validation: report });
-    } catch {
-      // If invoke fails (e.g., in dev without Tauri), do local validation
+    } catch (err) {
+      console.error("IPC validation failed, using local fallback:", err);
       const p = get().project;
       const errors: string[] = [];
       const warnings: string[] = [];
@@ -463,10 +466,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       if (activeReports.length < 2) {
         errors.push("Need at least 2 active sources for cross-review. / Cần ít nhất 2 nguồn hoạt động để review chéo.");
       }
+      let activeIndex = 0;
       p.qa_reports.forEach((q) => {
         if (q.active === false) return;
-        if (q.name.trim() === "") errors.push(`${q.id}: missing name. / thiếu tên.`);
-        if (q.content.trim() === "") errors.push(`${q.id}: missing content. / thiếu nội dung.`);
+        activeIndex++;
+        const label = `Source #${activeIndex}`;
+        if (q.name.trim() === "") errors.push(`${label}: missing name. / thiếu tên.`);
+        if (q.content.trim() === "") errors.push(`${label}: missing content. / thiếu nội dung.`);
       });
       set({
         validation: { valid: errors.length === 0, errors, warnings },

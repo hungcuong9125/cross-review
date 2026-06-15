@@ -308,7 +308,11 @@ export function Sidebar() {
           )}
           {qaReports.length > 0 && (
             <button
-              onClick={removeAllQa}
+              onClick={() => {
+                if (confirm(t("dialog.confirmRemoveAll", language))) {
+                  removeAllQa();
+                }
+              }}
               className="flex-1 px-2 py-1 text-[10px] text-red-400 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
             >
               {t("sidebar.removeAll", language)}

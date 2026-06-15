@@ -46,7 +46,7 @@ pub fn generate_exports(project: &Project) -> Result<Vec<ExportFile>, ExportErro
         let filename = generate_filename(&target.name, &used_filenames);
         used_filenames.push(filename.clone());
 
-            let markdown = build_markdown(project, &other_reports);
+        let markdown = build_markdown(project, &other_reports);
 
         exports.push(ExportFile {
             target_qa_id: target.id.clone(),
@@ -85,23 +85,12 @@ pub fn generate_preview(
     })
 }
 
-/// Collects opening components sorted by order.
-fn get_opening_components(project: &Project) -> Vec<&crate::models::Component> {
+/// Collects components at the given position, sorted by order.
+fn get_components(project: &Project, position: ComponentPosition) -> Vec<&crate::models::Component> {
     let mut comps: Vec<&crate::models::Component> = project
         .components
         .iter()
-        .filter(|c| c.position == ComponentPosition::Opening && !c.content.trim().is_empty() && c.active)
-        .collect();
-    comps.sort_by_key(|c| c.order);
-    comps
-}
-
-/// Collects closing components sorted by order.
-fn get_closing_components(project: &Project) -> Vec<&crate::models::Component> {
-    let mut comps: Vec<&crate::models::Component> = project
-        .components
-        .iter()
-        .filter(|c| c.position == ComponentPosition::Closing && !c.content.trim().is_empty() && c.active)
+        .filter(|c| c.position == position && !c.content.trim().is_empty() && c.active)
         .collect();
     comps.sort_by_key(|c| c.order);
     comps
@@ -114,7 +103,7 @@ fn build_markdown(
 ) -> String {
     let mut parts: Vec<String> = Vec::new();
 
-    let opening_comps = get_opening_components(project);
+    let opening_comps = get_components(project, ComponentPosition::Opening);
     for comp in &opening_comps {
         parts.push(comp.content.trim().to_string());
     }
@@ -135,7 +124,7 @@ fn build_markdown(
     }
 
     // Closing components
-    let closing_comps = get_closing_components(project);
+    let closing_comps = get_components(project, ComponentPosition::Closing);
     if !closing_comps.is_empty() {
         parts.push("\n\n---\n\n".to_string());
         for (i, comp) in closing_comps.iter().enumerate() {
