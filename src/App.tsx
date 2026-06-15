@@ -10,9 +10,10 @@ import {
   openProject,
   exportAllMarkdown,
 } from "./lib/api";
+import { t } from "./lib/i18n";
 
 function App() {
-  const { project, setProject, newProject, darkMode, validation } =
+  const { project, setProject, newProject, darkMode, validation, language } =
     useProjectStore();
 
   const [rightSidebarWidth, setRightSidebarWidth] = useState(400);
@@ -62,7 +63,11 @@ function App() {
   // Auto-save draft to localStorage
   useEffect(() => {
     const timer = setTimeout(() => {
-      localStorage.setItem("review-weaver-draft", JSON.stringify(project));
+      try {
+        localStorage.setItem("review-weaver-draft", JSON.stringify(project));
+      } catch (err) {
+        console.warn("Auto-save failed (localStorage quota exceeded):", err);
+      }
     }, 500);
     return () => clearTimeout(timer);
   }, [project]);
@@ -76,7 +81,7 @@ function App() {
       switch (e.key.toLowerCase()) {
         case "n":
           e.preventDefault();
-          if (confirm("Create new project? / Tạo dự án mới?")) {
+          if (confirm(t("dialog.confirmNew", language))) {
             newProject();
           }
           break;
@@ -98,7 +103,7 @@ function App() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [project, validation]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [project, validation, language]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async () => {
     try {
@@ -117,6 +122,7 @@ function App() {
       }
     } catch (err) {
       console.error("Save error:", err);
+      alert(`${t("dialog.saveFail", language)}: ${err}`);
     }
   };
 
@@ -136,6 +142,7 @@ function App() {
       }
     } catch (err) {
       console.error("Open error:", err);
+      alert(`${t("dialog.openFail", language)}: ${err}`);
     }
   };
 
@@ -146,10 +153,12 @@ function App() {
       const { open } = await import("@tauri-apps/plugin-dialog");
       const dir = await open({ directory: true, multiple: false });
       if (dir) {
-        await exportAllMarkdown(project, dir as string);
+        const paths = await exportAllMarkdown(project, dir as string);
+        alert(`${t("dialog.exportSuccess", language)}: ${paths.length} files`);
       }
     } catch (err) {
       console.error("Export error:", err);
+      alert(`${t("dialog.exportFail", language)}: ${err}`);
     }
   };
 

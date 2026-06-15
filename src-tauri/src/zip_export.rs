@@ -14,7 +14,7 @@ pub fn export_to_zip(project: &Project, output_path: &str) -> Result<String, Exp
     let exports = generate_exports(project)?;
 
     let file = File::create(Path::new(output_path))
-        .map_err(|e| ExportError::ValidationFailed(format!("Cannot create zip file: {}", e)))?;
+        .map_err(|e| ExportError::IoError(format!("Cannot create zip file: {}", e)))?;
 
     let mut zip = zip::ZipWriter::new(file);
     let options = SimpleFileOptions::default()
@@ -23,13 +23,13 @@ pub fn export_to_zip(project: &Project, output_path: &str) -> Result<String, Exp
 
     for export in &exports {
         zip.start_file(&export.filename, options)
-            .map_err(|e| ExportError::ValidationFailed(format!("Zip write error: {}", e)))?;
+            .map_err(|e| ExportError::IoError(format!("Zip write error: {}", e)))?;
         zip.write_all(export.markdown.as_bytes())
-            .map_err(|e| ExportError::ValidationFailed(format!("Zip write error: {}", e)))?;
+            .map_err(|e| ExportError::IoError(format!("Zip write error: {}", e)))?;
     }
 
     zip.finish()
-        .map_err(|e| ExportError::ValidationFailed(format!("Zip finish error: {}", e)))?;
+        .map_err(|e| ExportError::IoError(format!("Zip finish error: {}", e)))?;
 
     Ok(output_path.to_string())
 }

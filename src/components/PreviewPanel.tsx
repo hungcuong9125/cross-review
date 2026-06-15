@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { marked } from "marked";
+import DOMPurify from "dompurify";
 import { useProjectStore } from "../state/projectStore";
 import { generatePreview, type ExportFile } from "../lib/api";
 import { t } from "../lib/i18n";
@@ -83,13 +84,17 @@ export function PreviewPanel() {
     }
   };
 
-  const otherCount = project.qa_reports.length;
+  const activeCount = project.qa_reports.filter((q) => q.active !== false).length;
   const displayContent = preview ? processContent(preview.markdown) : "";
   const displayCharCount = displayContent.length;
 
   const filename = preview ? preview.filename : "-";
   const inactiveCount = project.qa_reports.filter((q) => q.active === false).length;
-  const excludedCount = inactiveCount + (project.exclude_self !== false && selectedQaId ? 1 : 0);
+  const selfExcluded = project.exclude_self !== false && selectedQaId ? 1 : 0;
+  const selectedIsInactive = selectedQaId
+    ? project.qa_reports.find((q) => q.id === selectedQaId)?.active === false
+    : false;
+  const excludedCount = inactiveCount + (selfExcluded && !selectedIsInactive ? 1 : 0);
   const isCleanMode = removeWhitespace && compactMode;
   
   const handleToggleClean = () => {
@@ -139,7 +144,7 @@ export function PreviewPanel() {
               {t("preview.reports", language)}
             </p>
             <p className="text-sm font-semibold text-green-600 dark:text-green-400">
-              {otherCount}
+              {activeCount}
             </p>
           </div>
           <div className="px-2.5 py-1.5 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
@@ -217,7 +222,7 @@ export function PreviewPanel() {
               <div
                 className="markdown-preview prose dark:prose-invert max-w-none bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 text-sm"
                 dangerouslySetInnerHTML={{
-                  __html: marked(displayContent, { breaks: true }) as string,
+                  __html: DOMPurify.sanitize(marked(displayContent, { breaks: true }) as string),
                 }}
               />
             ) : (

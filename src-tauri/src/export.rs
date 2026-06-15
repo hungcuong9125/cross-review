@@ -10,6 +10,8 @@ pub enum ExportError {
     ValidationFailed(String),
     #[error("QA with id '{0}' not found")]
     QaNotFound(String),
+    #[error("IO error: {0}")]
+    IoError(String),
 }
 
 /// Generates export files for all QA teams.

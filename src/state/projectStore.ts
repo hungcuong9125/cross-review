@@ -83,7 +83,7 @@ const DEFAULT_PROJECT: Project = {
 
 // Migrate old project format to new format
 function migrateProject(project: Project): Project {
-  const migrated = { ...project };
+  const migrated = { ...project, components: [...(project.components || [])] };
   if (!migrated.components) {
     migrated.components = [];
   }
@@ -194,6 +194,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       id: newId,
       name: `${qa.name} (bản sao)`,
       content: qa.content,
+      active: qa.active,
     };
     set((state) => {
       const idx = state.project.qa_reports.findIndex((q) => q.id === id);
@@ -300,6 +301,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         activeItem: newActive,
       };
     });
+    get().refreshValidation();
   },
 
   updateComponentName: (id, name) => {
@@ -397,7 +399,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       project: {
         ...state.project,
         components: state.project.components.map((c) =>
-          c.id === id ? { ...c, active: c.active === false ? true : false } : c
+          c.id === id ? { ...c, active: !(c.active !== false) } : c
         ),
       },
     }));
@@ -435,6 +437,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       },
       activeItem: { type: "component" as const, componentId: newId },
     }));
+    get().refreshValidation();
   },
 
   refreshValidation: async () => {
@@ -446,10 +449,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const p = get().project;
       const errors: string[] = [];
       const warnings: string[] = [];
-      if (p.qa_reports.length < 2) {
-        errors.push("Need at least 2 sources for cross-review. / Cần ít nhất 2 nguồn để review chéo.");
+      const activeReports = p.qa_reports.filter((q) => q.active !== false);
+      if (activeReports.length < 2) {
+        errors.push("Need at least 2 active sources for cross-review. / Cần ít nhất 2 nguồn hoạt động để review chéo.");
       }
       p.qa_reports.forEach((q) => {
+        if (q.active === false) return;
         if (q.name.trim() === "") errors.push(`${q.id}: missing name. / thiếu tên.`);
         if (q.content.trim() === "") errors.push(`${q.id}: missing content. / thiếu nội dung.`);
       });
