@@ -140,16 +140,13 @@ export function Toolbar() {
 
   return (
     <div className="h-11 flex items-center px-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-      {/* Left: title + project name - extends to sidebar width */}
-      <div className="flex items-center gap-2 min-w-0 w-72">
-        <h1 className="text-xs font-bold text-gray-800 dark:text-gray-200 whitespace-nowrap">
-          Review Weaver
-        </h1>
+      {/* Left: project title - matches sidebar width */}
+      <div className="min-w-0 w-72">
         <input
           type="text"
           value={project.title}
           onChange={(e) => setProjectTitle(e.target.value)}
-          className="flex-1 min-w-0 px-2 py-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded text-xs text-gray-700 dark:text-gray-200 focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors"
+          className="w-full px-2 py-1 bg-transparent border-b border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus:border-blue-500 focus:outline-none text-xs text-gray-700 dark:text-gray-200 transition-colors"
           placeholder={t("toolbar.projectTitle", language)}
         />
       </div>

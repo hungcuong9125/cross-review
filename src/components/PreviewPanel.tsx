@@ -4,12 +4,15 @@ import { useProjectStore } from "../state/projectStore";
 import { generatePreview, type ExportFile } from "../lib/api";
 import { t } from "../lib/i18n";
 
+type ViewMode = "html" | "markdown";
+
 export function PreviewPanel() {
   const { project, language, processContent, compactMode, removeWhitespace } = useProjectStore();
   const [previewTargetId, setPreviewTargetId] = useState<string | null>(null);
   const [preview, setPreview] = useState<ExportFile | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("html");
 
   // Set initial preview target when QA list changes
   useEffect(() => {
@@ -139,7 +142,7 @@ export function PreviewPanel() {
               </p>
             </div>
 
-            {/* Stats */}
+            {/* Stats + view mode toggle */}
             <div className="mb-4 grid grid-cols-2 gap-2">
               <div className="px-3 py-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                 <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -169,22 +172,53 @@ export function PreviewPanel() {
                 </p>
               </div>
               <div className="px-3 py-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {t("preview.file", language)}
-                </p>
-                <p className="text-sm font-mono font-medium text-gray-700 dark:text-gray-300 truncate">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {t("preview.file", language)}
+                  </p>
+                  {/* View mode toggle */}
+                  <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-full p-0.5">
+                    <button
+                      onClick={() => setViewMode("html")}
+                      className={`px-2 py-0.5 text-[9px] font-medium rounded-full transition-all ${
+                        viewMode === "html"
+                          ? "bg-white dark:bg-gray-500 text-gray-700 dark:text-gray-100 shadow-sm"
+                          : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+                      }`}
+                    >
+                      HTML
+                    </button>
+                    <button
+                      onClick={() => setViewMode("markdown")}
+                      className={`px-2 py-0.5 text-[9px] font-medium rounded-full transition-all ${
+                        viewMode === "markdown"
+                          ? "bg-white dark:bg-gray-500 text-gray-700 dark:text-gray-100 shadow-sm"
+                          : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+                      }`}
+                    >
+                      MD
+                    </button>
+                  </div>
+                </div>
+                <p className="text-sm font-mono font-medium text-gray-700 dark:text-gray-300 truncate mt-1">
                   {preview.filename}
                 </p>
               </div>
             </div>
 
-            {/* Markdown preview */}
-            <div
-              className="markdown-preview prose dark:prose-invert max-w-none bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700"
-              dangerouslySetInnerHTML={{
-                __html: marked(displayContent, { breaks: true }) as string,
-              }}
-            />
+            {/* Preview content - HTML or Markdown */}
+            {viewMode === "html" ? (
+              <div
+                className="markdown-preview prose dark:prose-invert max-w-none bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700"
+                dangerouslySetInnerHTML={{
+                  __html: marked(displayContent, { breaks: true }) as string,
+                }}
+              />
+            ) : (
+              <pre className="whitespace-pre-wrap break-words bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-mono text-gray-700 dark:text-gray-200 leading-relaxed">
+                {displayContent}
+              </pre>
+            )}
           </>
         ) : null}
       </div>
