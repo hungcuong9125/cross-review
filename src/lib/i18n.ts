@@ -41,7 +41,7 @@ export const translations = {
   'preview.file': { vi: 'Tên file xuất', en: 'Export filename' },
 
   // Settings
-  'settings.language': { vi: 'Cài đặt ngôn ngữ', en: 'Language Settings' },
+  'settings.language': { vi: 'Ngôn ngữ', en: 'Language' },
   'settings.removeWhitespace': { vi: 'Chuẩn hóa khoảng trắng', en: 'Normalize whitespace' },
   'settings.mergeLines': { vi: 'Xuất thành một dòng', en: 'Export as single line' },
   'settings.excludeSelf': { vi: 'Review chéo', en: 'Cross-review' },

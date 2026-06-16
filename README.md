@@ -1,28 +1,29 @@
 # Review Weave
 
-Review Weave is a professional desktop application designed to compile, merge, and distribute cross-review reports between QA teams or models.
+![Review Weave Interface](./docs/screenshot.png)
 
-## Core Purpose
+**Review Weave** is a lightweight desktop application designed to help QA teams and AI models easily cross-review each other's work.
 
-For $N$ QA reports, Review Weave automatically processes and generates $N$ custom Markdown outputs. Each output file is tailored for a specific recipient QA team and contains reports from all *other* teams, excluding the recipient's own report. This facilitates objective, clean cross-review workflows.
+## How It Works
 
-**Example with 5 QA Teams:**
-- `review-for-qa-1.md` $\rightarrow$ Contains reports from teams 2, 3, 4, 5.
-- `review-for-qa-2.md` $\rightarrow$ Contains reports from teams 1, 3, 4, 5.
-- `review-for-qa-3.md` $\rightarrow$ Contains reports from teams 1, 2, 4, 5.
-- ...and so on.
+When multiple QA teams (or AI models) evaluate the same task, it's helpful to share their reports. However, you don't want a team to see their *own* report in the compiled feedback file.
+
+Review Weave solves this by taking everyone's reports and generating customized files for each team automatically.
+
+**For example, if you have 3 teams (Team A, Team B, Team C):**
+- **Team A** receives a file containing reports from Team B & Team C.
+- **Team B** receives a file containing reports from Team A & Team C.
+- **Team C** receives a file containing reports from Team A & Team B.
 
 ## Key Features
 
-1. **Left Sidebar Organization**: Clearly grouped into *Information Sources*, *Opening Components*, and *Closing Components*. Hovering over items reveals quick **Duplicate** and **Delete** actions.
-2. **Active State Toggles**: Enable/disable individual reports or components. Disabled items are automatically excluded from the final exports and skipped during validation.
-3. **Resizable Right Sidebar**: Drag the left border of the right sidebar to adjust the Markdown/HTML preview panel width (min 400px, max 50% of screen width).
-4. **Bidirectional Selection Sync**: Clicking a source on the left sidebar automatically updates the preview target dropdown on the right, and vice versa.
-5. **Text Preprocessing**:
-   - **Cross-Review**: Toggle `Exclude Self` to hide the target report from its own preview (defaults to active).
-   - **Normalize Whitespace**: Automatically collapses consecutive blank lines and trims text.
-   - **Export as Single Line**: Flattens text into a single continuous line (removing heading hashes `#` and rules `---` to prevent global bolding issues) optimized for LLMs.
-6. **Blank Startup State**: Launches clean with no demo data so you can start working on new projects immediately.
+- **Simple Organization**: Neatly organize your information sources, opening notes, and closing notes in the left sidebar.
+- **Quick Toggles**: Instantly enable or disable specific reports to include or exclude them from the final export.
+- **Live Preview**: See exactly how the Markdown or HTML files will look for each recipient team in real-time.
+- **Smart Text Processing**:
+  - Automatically removes extra blank lines and trims text (`Normalize Whitespace`).
+  - Flattens text into a single continuous line for feeding into LLMs (`Export as Single Line`).
+- **Offline & Fast**: Built with Rust and Tauri, meaning it's lightweight, secure, and works entirely offline.
 
 ## Technology Stack
 
@@ -35,29 +36,29 @@ For $N$ QA reports, Review Weave automatically processes and generates $N$ custo
 
 - [Rust](https://rustup.rs/) (1.70+)
 - [Node.js](https://nodejs.org/) (18+)
-- [npm](https://www.npmjs.com/) (or pnpm/yarn)
+- [pnpm](https://pnpm.io/) (or npm/yarn)
 
 ## Development Guide
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Start the application in development mode
-npm run tauri dev
+pnpm tauri dev
 ```
 
 ## Production Building & Packaging
 
 ```bash
 # Build and package for the current platform
-npm run tauri build
+pnpm tauri build
 
 # Cross-compilation for specific platforms
-npm run tauri build --target x86_64-unknown-linux-gnu    # Linux
-npm run tauri build --target x86_64-apple-darwin           # macOS Intel
-npm run tauri build --target aarch64-apple-darwin           # macOS Apple Silicon
-npm run tauri build --target x86_64-pc-windows-msvc         # Windows
+pnpm tauri build --target x86_64-unknown-linux-gnu    # Linux
+pnpm tauri build --target x86_64-apple-darwin           # macOS Intel
+pnpm tauri build --target aarch64-apple-darwin           # macOS Apple Silicon
+pnpm tauri build --target x86_64-pc-windows-msvc         # Windows
 ```
 
 Packaged installers (e.g. `.dmg` or `.app` on macOS, `.exe` or `.msi` on Windows) are written to `src-tauri/target/release/bundle/`.
