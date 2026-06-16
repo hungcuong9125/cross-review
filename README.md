@@ -63,6 +63,25 @@ pnpm tauri build --target x86_64-pc-windows-msvc         # Windows
 
 Packaged installers (e.g. `.dmg` or `.app` on macOS, `.exe` or `.msi` on Windows) are written to `src-tauri/target/release/bundle/`.
 
+## Linux Troubleshooting (DMA-BUF Rendering Issue)
+
+If you run or install the application on Linux and it fails to open, crashes, or displays a blank window, this is usually caused by compatibility issues in WebKitGTK's DMA-BUF renderer (hardware acceleration) under certain graphics configurations (especially NVIDIA drivers or newer Intel graphics on Wayland/X11).
+
+To resolve this issue, run the application with the `WEBKIT_DISABLE_DMABUF_RENDERER=1` environment variable to disable DMA-BUF rendering:
+
+```bash
+# For installed package (e.g. deb)
+WEBKIT_DISABLE_DMABUF_RENDERER=1 review-weaver
+
+# For AppImage
+WEBKIT_DISABLE_DMABUF_RENDERER=1 ./Review-Weave.AppImage
+```
+
+Alternatively, you can persist this configuration by adding the following line to your shell profile (e.g. `~/.bashrc`, `~/.zshrc`):
+```bash
+export WEBKIT_DISABLE_DMABUF_RENDERER=1
+```
+
 ## Cleaning Build Cache & Application Data
 
 Build files can consume significant disk space over time. Run these commands to reset the project and free up space:
