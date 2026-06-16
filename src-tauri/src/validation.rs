@@ -59,7 +59,7 @@ pub fn validate_project(project: &Project) -> ValidationReport {
     for window in names.windows(2) {
         if window[0].1.to_lowercase() == window[1].1.to_lowercase() {
             warnings.push(format!(
-                "Duplicate source name: \"{}\" (Source #{} and Source # {}). Filenames will be auto-numbered. / Tên nguồn trùng nhau: \"{}\" (Nguồn #{} và Nguồn #{}). File export sẽ tự động đánh số để tránh trùng tên.",
+                "Duplicate source name: \"{}\" (Source #{} and Source #{}). Filenames will be auto-numbered. / Tên nguồn trùng nhau: \"{}\" (Nguồn #{} và Nguồn #{}). File export sẽ tự động đánh số để tránh trùng tên.",
                 window[0].1, window[0].0 + 1, window[1].0 + 1,
                 window[0].1, window[0].0 + 1, window[1].0 + 1
             ));

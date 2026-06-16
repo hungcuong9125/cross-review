@@ -117,7 +117,8 @@ mod tests {
     #[test]
     fn test_vietnamese_slug() {
         let slug = to_slug("Đội QA số 1");
-        assert!(slug.contains("đội") || slug.contains("qa"));
+        assert!(slug.contains("đội"), "Vietnamese diacritics should be preserved, got: {}", slug);
+        assert!(slug.contains("số"), "Vietnamese diacritics should be preserved, got: {}", slug);
         assert!(generate_filename("Đội QA số 1", &[]).starts_with("review-for-"));
     }
 }

@@ -59,7 +59,7 @@ export function PreviewPanel() {
     } finally {
       setLoading(false);
     }
-  }, [project, selectedQaId]);
+  }, [project, selectedQaId, project.exclude_self]);
 
   useEffect(() => {
     refreshPreview();
@@ -75,12 +75,16 @@ export function PreviewPanel() {
     } catch {
       const ta = document.createElement("textarea");
       ta.value = content;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
       document.body.appendChild(ta);
       ta.select();
-      document.execCommand("copy");
+      const ok = document.execCommand("copy");
       document.body.removeChild(ta);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      if (ok) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
     }
   };
 
@@ -222,7 +226,7 @@ export function PreviewPanel() {
               <div
                 className="markdown-preview prose dark:prose-invert max-w-none bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 text-sm"
                 dangerouslySetInnerHTML={{
-                  __html: DOMPurify.sanitize(marked(displayContent, { breaks: true }) as string),
+                  __html: DOMPurify.sanitize(marked.parse(displayContent, { breaks: true }) as string),
                 }}
               />
             ) : (

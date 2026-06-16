@@ -7,6 +7,8 @@ function generateId(): string {
   return crypto.randomUUID?.() ?? Math.random().toString(36).substring(2, 11);
 }
 
+let validationGeneration = 0;
+
 export type MainTab = "reports" | "opening" | "closing";
 
 export type ActiveItem =
@@ -80,7 +82,7 @@ const DEFAULT_PROJECT: Project = {
 };
 
 // Migrate old project format to new format
-function migrateProject(project: Project, lang: Language = "vi"): Project {
+function migrateProject(project: Project): Project {
   const migrated = { ...project, components: [...(project.components || [])] };
   // Migrate old opening_text/closing_text to components
   if ('opening_text' in (project as any) && (project as any).opening_text) {
@@ -88,7 +90,7 @@ function migrateProject(project: Project, lang: Language = "vi"): Project {
     if (!hasOpening) {
       migrated.components.push({
         id: generateId(),
-        name: t("migration.opening", lang),
+        name: "Opening",
         position: "opening",
         content: (project as any).opening_text,
         order: 0,
@@ -100,7 +102,7 @@ function migrateProject(project: Project, lang: Language = "vi"): Project {
     if (!hasClosing) {
       migrated.components.push({
         id: generateId(),
-        name: t("migration.closing", lang),
+        name: "Closing",
         position: "closing",
         content: (project as any).closing_text,
         order: 0,
@@ -126,7 +128,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   mergeLines: false,
 
   setProject: (project) => {
-    const migrated = migrateProject(project, get().language);
+    const migrated = migrateProject(project);
     const firstQa = migrated.qa_reports[0];
     set({
       project: migrated,
@@ -266,7 +268,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set((state) => ({
       project: { ...state.project, qa_reports: [] },
       selectedQaId: null,
-      activeMainTab: "opening" as MainTab,
       activeItem: null,
     }));
     get().refreshValidation();
@@ -344,7 +345,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       if (!comp) return state;
       const samePos = state.project.components
         .filter(c => c.position === comp.position)
-        .sort((a, b) => a.order - b.order);
+        .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
       const idx = samePos.findIndex(c => c.id === id);
       if (idx <= 0) return state;
       const prev = samePos[idx - 1];
@@ -364,7 +365,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       if (!comp) return state;
       const samePos = state.project.components
         .filter(c => c.position === comp.position)
-        .sort((a, b) => a.order - b.order);
+        .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
       const idx = samePos.findIndex(c => c.id === id);
       if (idx >= samePos.length - 1) return state;
       const next = samePos[idx + 1];
@@ -454,10 +455,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 
   refreshValidation: async () => {
+    const gen = ++validationGeneration;
     try {
       const report = await validateProject(get().project);
+      if (gen !== validationGeneration) return;
       set({ validation: report });
     } catch (err) {
+      if (gen !== validationGeneration) return;
       console.error("IPC validation failed, using local fallback:", err);
       const p = get().project;
       const errors: string[] = [];
@@ -499,7 +503,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     if (state.removeWhitespace) {
       processed = processed.replace(/\n{3,}/g, "\n\n");
     }
-    if (state.compactMode) {
+    // Skip compactMode when mergeLines is active — mergeLines needs paragraph
+    // breaks (\n\n) intact to produce the ' | ' separator.
+    if (state.compactMode && !state.mergeLines) {
       processed = processed.replace(/\n{2,}/g, "\n");
     }
     if (state.mergeLines) {

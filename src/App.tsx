@@ -58,6 +58,7 @@ function App() {
   }, [darkMode]);
 
   // Load auto-saved draft on mount
+  const draftLoaded = useRef(false);
   useEffect(() => {
     const saved = localStorage.getItem("review-weaver-draft");
     if (saved) {
@@ -70,10 +71,12 @@ function App() {
         // Ignore invalid saved state
       }
     }
+    draftLoaded.current = true;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-save draft to localStorage
+  // Auto-save draft to localStorage (skip until draft is loaded)
   useEffect(() => {
+    if (!draftLoaded.current) return;
     const timer = setTimeout(() => {
       try {
         localStorage.setItem("review-weaver-draft", JSON.stringify(project));
@@ -159,8 +162,14 @@ function App() {
   };
 
   const handleExportAll = async () => {
-    if (!validation?.valid) return;
-    if (project.qa_reports.length === 0) return;
+    if (!validation?.valid) {
+      alert(t("dialog.validationFail", language));
+      return;
+    }
+    if (project.qa_reports.length === 0) {
+      alert(t("dialog.noReport", language));
+      return;
+    }
     try {
       const { open } = await import("@tauri-apps/plugin-dialog");
       const dir = await open({ directory: true, multiple: false });

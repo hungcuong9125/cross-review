@@ -94,10 +94,6 @@ export const translations = {
   'editor.sourceContentLabel': { vi: 'Nội dung nguồn...', en: 'Source content...' },
   'editor.sourceContentPlaceholder': { vi: 'Nội dung nguồn...', en: 'Source content...' },
   'editor.clearTooltip': { vi: 'Xóa nội dung', en: 'Clear content' },
-
-  // Migration
-  'migration.opening': { vi: 'Mở đầu', en: 'Opening' },
-  'migration.closing': { vi: 'Kết thúc', en: 'Closing' },
 } as const;
 
 export type TranslationKey = keyof typeof translations;

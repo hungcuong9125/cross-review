@@ -1,6 +1,66 @@
 import { useProjectStore } from "../state/projectStore";
 import { t } from "../lib/i18n";
 
+function CopyIcon() {
+  return (
+    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+    </svg>
+  );
+}
+
+function DeleteIcon() {
+  return (
+    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  );
+}
+
+function SidebarItem({
+  name, fallbackName, active, isActive, toggleColor, activeTextClass, activeBgClass, onSelect, onToggle, onDuplicate, onDelete, duplicateHoverClass,
+}: {
+  name: string;
+  fallbackName: string;
+  active?: boolean;
+  isActive: boolean;
+  toggleColor: string;
+  activeTextClass: string;
+  activeBgClass: string;
+  duplicateHoverClass: string;
+  onSelect: () => void;
+  onToggle: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+}) {
+  const { language } = useProjectStore();
+  return (
+    <div className="group relative flex items-center gap-1.5">
+      <button
+        onClick={(e) => { e.stopPropagation(); onToggle(); }}
+        className={`w-6 h-3.5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none flex-shrink-0 flex items-center ${active !== false ? toggleColor : "bg-gray-300 dark:bg-gray-600"}`}
+        title={active !== false ? t("tooltip.disable", language) : t("tooltip.enable", language)}
+      >
+        <div className={`bg-white w-2.5 h-2.5 rounded-full shadow-sm transform duration-200 ${active !== false ? "translate-x-2.5" : "translate-x-0"}`} />
+      </button>
+      <button
+        onClick={onSelect}
+        className={`flex-1 text-left px-2.5 py-2 rounded-md text-sm transition-colors flex items-center gap-2 min-w-0 ${isActive ? `${activeTextClass} font-semibold ${activeBgClass}` : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/30"} ${active === false ? "opacity-40 line-through text-gray-400" : ""}`}
+      >
+        <span className="truncate">{name || fallbackName}</span>
+      </button>
+      <div className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover:flex gap-0.5">
+        <button onClick={(e) => { e.stopPropagation(); onDuplicate(); }} className={`p-1 text-gray-400 ${duplicateHoverClass} transition-colors`} title={t("tooltip.duplicate", language)}>
+          <CopyIcon />
+        </button>
+        <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-1 text-gray-400 hover:text-red-500 transition-colors" title={t("tooltip.delete", language)}>
+          <DeleteIcon />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function Sidebar() {
   const {
     project,
@@ -75,65 +135,21 @@ export function Sidebar() {
             </div>
             <div className="space-y-0">
               {qaReports.map((qa) => (
-                <div key={qa.id} className="group relative flex items-center gap-1.5">
-                  {/* Toggle Switch */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleQaActive(qa.id);
-                    }}
-                    className={`w-6 h-3.5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none flex-shrink-0 flex items-center ${qa.active !== false
-                      ? "bg-blue-500"
-                      : "bg-gray-300 dark:bg-gray-600"
-                      }`}
-                    title={qa.active !== false ? t("tooltip.disable", language) : t("tooltip.enable", language)}
-                  >
-                    <div
-                      className={`bg-white w-2.5 h-2.5 rounded-full shadow-sm transform duration-200 ${qa.active !== false ? "translate-x-2.5" : "translate-x-0"
-                        }`}
-                    />
-                  </button>
-
-                  <button
-                    onClick={() => selectQa(qa.id)}
-                    className={`flex-1 text-left px-2.5 py-2 rounded-md text-sm transition-colors flex items-center gap-2 min-w-0 ${isActive(qa.id, "report")
-                      ? "text-blue-600 dark:text-blue-400 font-semibold bg-blue-50/60 dark:bg-blue-950/20"
-                      : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/30"
-                      } ${qa.active === false ? "opacity-40 line-through text-gray-400" : ""}`}
-                  >
-                    <span className="truncate">
-                      {qa.name || t("sidebar.unnamed", language)}
-                    </span>
-                  </button>
-
-                  {/* Hover actions */}
-                  <div className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover:flex gap-0.5">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        duplicateQa(qa.id);
-                      }}
-                      className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
-                      title={t("tooltip.duplicate", language)}
-                    >
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeQa(qa.id);
-                      }}
-                      className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                      title={t("tooltip.delete", language)}
-                    >
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
+                <SidebarItem
+                  key={qa.id}
+                  name={qa.name}
+                  fallbackName={t("sidebar.unnamed", language)}
+                  active={qa.active}
+                  isActive={isActive(qa.id, "report")}
+                  toggleColor="bg-blue-500"
+                  activeTextClass="text-blue-600 dark:text-blue-400"
+                  activeBgClass="bg-blue-50/60 dark:bg-blue-950/20"
+                  duplicateHoverClass="hover:text-blue-500"
+                  onSelect={() => selectQa(qa.id)}
+                  onToggle={() => toggleQaActive(qa.id)}
+                  onDuplicate={() => duplicateQa(qa.id)}
+                  onDelete={() => removeQa(qa.id)}
+                />
               ))}
             </div>
           </div>
@@ -147,65 +163,21 @@ export function Sidebar() {
             </div>
             <div className="space-y-0">
               {openingComps.map((comp) => (
-                <div key={comp.id} className="group relative flex items-center gap-1.5">
-                  {/* Toggle Switch */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleComponentActive(comp.id);
-                    }}
-                    className={`w-6 h-3.5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none flex-shrink-0 flex items-center ${comp.active !== false
-                      ? "bg-purple-500"
-                      : "bg-gray-300 dark:bg-gray-600"
-                      }`}
-                    title={comp.active !== false ? t("tooltip.disable", language) : t("tooltip.enable", language)}
-                  >
-                    <div
-                      className={`bg-white w-2.5 h-2.5 rounded-full shadow-sm transform duration-200 ${comp.active !== false ? "translate-x-2.5" : "translate-x-0"
-                        }`}
-                    />
-                  </button>
-
-                  <button
-                    onClick={() => selectComponent(comp.id)}
-                    className={`flex-1 text-left px-2.5 py-2 rounded-md text-sm transition-colors flex items-center gap-2 min-w-0 ${isActive(comp.id, "component")
-                      ? "text-purple-600 dark:text-purple-400 font-semibold bg-purple-50/60 dark:bg-purple-950/20"
-                      : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/30"
-                      } ${comp.active === false ? "opacity-40 line-through text-gray-400" : ""}`}
-                  >
-                    <span className="truncate">
-                      {comp.name || t("editor.opening", language)}
-                    </span>
-                  </button>
-
-                  {/* Hover actions */}
-                  <div className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover:flex gap-0.5">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        duplicateComponent(comp.id);
-                      }}
-                      className="p-1 text-gray-400 hover:text-purple-500 transition-colors"
-                      title={t("tooltip.duplicate", language)}
-                    >
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeComponent(comp.id);
-                      }}
-                      className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                      title={t("tooltip.delete", language)}
-                    >
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
+                <SidebarItem
+                  key={comp.id}
+                  name={comp.name}
+                  fallbackName={t("editor.opening", language)}
+                  active={comp.active}
+                  isActive={isActive(comp.id, "component")}
+                  toggleColor="bg-purple-500"
+                  activeTextClass="text-purple-600 dark:text-purple-400"
+                  activeBgClass="bg-purple-50/60 dark:bg-purple-950/20"
+                  duplicateHoverClass="hover:text-purple-500"
+                  onSelect={() => selectComponent(comp.id)}
+                  onToggle={() => toggleComponentActive(comp.id)}
+                  onDuplicate={() => duplicateComponent(comp.id)}
+                  onDelete={() => removeComponent(comp.id)}
+                />
               ))}
             </div>
           </div>
@@ -219,65 +191,21 @@ export function Sidebar() {
             </div>
             <div className="space-y-0">
               {closingComps.map((comp) => (
-                <div key={comp.id} className="group relative flex items-center gap-1.5">
-                  {/* Toggle Switch */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleComponentActive(comp.id);
-                    }}
-                    className={`w-6 h-3.5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none flex-shrink-0 flex items-center ${comp.active !== false
-                      ? "bg-orange-500"
-                      : "bg-gray-300 dark:bg-gray-600"
-                      }`}
-                    title={comp.active !== false ? t("tooltip.disable", language) : t("tooltip.enable", language)}
-                  >
-                    <div
-                      className={`bg-white w-2.5 h-2.5 rounded-full shadow-sm transform duration-200 ${comp.active !== false ? "translate-x-2.5" : "translate-x-0"
-                        }`}
-                    />
-                  </button>
-
-                  <button
-                    onClick={() => selectComponent(comp.id)}
-                    className={`flex-1 text-left px-2.5 py-2 rounded-md text-sm transition-colors flex items-center gap-2 min-w-0 ${isActive(comp.id, "component")
-                      ? "text-orange-600 dark:text-orange-400 font-semibold bg-orange-50/60 dark:bg-orange-950/20"
-                      : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/30"
-                      } ${comp.active === false ? "opacity-40 line-through text-gray-400" : ""}`}
-                  >
-                    <span className="truncate">
-                      {comp.name || t("editor.closing", language)}
-                    </span>
-                  </button>
-
-                  {/* Hover actions */}
-                  <div className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover:flex gap-0.5">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        duplicateComponent(comp.id);
-                      }}
-                      className="p-1 text-gray-400 hover:text-orange-500 transition-colors"
-                      title={t("tooltip.duplicate", language)}
-                    >
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeComponent(comp.id);
-                      }}
-                      className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                      title={t("tooltip.delete", language)}
-                    >
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
+                <SidebarItem
+                  key={comp.id}
+                  name={comp.name}
+                  fallbackName={t("editor.closing", language)}
+                  active={comp.active}
+                  isActive={isActive(comp.id, "component")}
+                  toggleColor="bg-orange-500"
+                  activeTextClass="text-orange-600 dark:text-orange-400"
+                  activeBgClass="bg-orange-50/60 dark:bg-orange-950/20"
+                  duplicateHoverClass="hover:text-orange-500"
+                  onSelect={() => selectComponent(comp.id)}
+                  onToggle={() => toggleComponentActive(comp.id)}
+                  onDuplicate={() => duplicateComponent(comp.id)}
+                  onDelete={() => removeComponent(comp.id)}
+                />
               ))}
             </div>
           </div>

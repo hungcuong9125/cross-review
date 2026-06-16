@@ -142,6 +142,23 @@ The compiled Markdown outputs follow this structural convention:
 
 ## Changelog
 
+### v0.5.5 (2026-06-16)
+- **Security**: Enabled Content Security Policy in Tauri config — restricts script/style/connect sources.
+- **Fix**: Auto-save draft no longer overwrites loaded project on mount (added `draftLoaded` ref guard).
+- **Fix**: `refreshValidation` race condition — stale async IPC responses are now discarded via generation counter.
+- **Fix**: Preview panel now refreshes when `exclude_self` toggle changes (missing `useCallback` dependency).
+- **Fix**: `marked()` call replaced with `marked.parse()` for reliable synchronous return type.
+- **Fix**: `execCommand("copy")` fallback now checks return value and only shows "Copied!" on success.
+- **Fix**: `handleExportAll` now shows alert on validation failure, matching Toolbar behavior.
+- **Fix**: `removeAllQa` no longer forces tab switch to "opening" — user stays on current tab.
+- **Fix**: `compactMode` no longer destroys paragraph breaks needed by `mergeLines` (skip when mergeLines is active).
+- **Fix**: `moveComponentUp/Down` sort is now deterministic with `id` tiebreaker for equal-order components.
+- **Fix**: `migrateProject` no longer bakes language into component names — uses neutral "Opening"/"Closing".
+- **Fix**: Inconsistent spacing in duplicate-name validation warning (`Source # {}` → `Source #{}`).
+- **Fix**: Vietnamese slug test strengthened — now asserts diacritics preservation with descriptive error messages.
+- **Refactor**: Extracted `SidebarItem`, `CopyIcon`, `DeleteIcon` components — eliminated ~72 lines of triplicated JSX.
+- **Chore**: Removed unused `migration.opening` / `migration.closing` translation keys.
+
 ### v0.5.4 (2026-06-16)
 - **Fix**: Replaced hardcoded text in settings panel title with `t()` translation function.
 - **Fix**: Fixed empty-check fallback on copy: if duplicating an unnamed QA, ensure it appends the copy suffix properly (`qa.name ? ... : copySuffix`).
