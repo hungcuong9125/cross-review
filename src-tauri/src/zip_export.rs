@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
 
@@ -12,8 +12,17 @@ use crate::models::Project;
 /// Returns the path to the created zip file.
 pub fn export_to_zip(project: &Project, output_path: &str) -> Result<String, ExportError> {
     let exports = generate_exports(project)?;
+    let path = Path::new(output_path);
 
-    let file = File::create(Path::new(output_path))
+    // Ensure parent directory exists
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() && !parent.exists() {
+            fs::create_dir_all(parent)
+                .map_err(|e| ExportError::IoError(format!("Cannot create directory: {}", e)))?;
+        }
+    }
+
+    let file = File::create(path)
         .map_err(|e| ExportError::IoError(format!("Cannot create zip file: {}", e)))?;
 
     let mut zip = zip::ZipWriter::new(file);
@@ -21,15 +30,24 @@ pub fn export_to_zip(project: &Project, output_path: &str) -> Result<String, Exp
         .compression_method(CompressionMethod::Deflated)
         .unix_permissions(0o644);
 
-    for export in &exports {
-        zip.start_file(&export.filename, options)
-            .map_err(|e| ExportError::IoError(format!("Zip write error: {}", e)))?;
-        zip.write_all(export.markdown.as_bytes())
-            .map_err(|e| ExportError::IoError(format!("Zip write error: {}", e)))?;
-    }
+    // Use a closure so we can clean up the partial file on error
+    let write_result = (|| -> Result<(), ExportError> {
+        for export in &exports {
+            zip.start_file(&export.filename, options)
+                .map_err(|e| ExportError::IoError(format!("Zip write error: {}", e)))?;
+            zip.write_all(export.markdown.as_bytes())
+                .map_err(|e| ExportError::IoError(format!("Zip write error: {}", e)))?;
+        }
+        zip.finish()
+            .map_err(|e| ExportError::IoError(format!("Zip finish error: {}", e)))?;
+        Ok(())
+    })();
 
-    zip.finish()
-        .map_err(|e| ExportError::IoError(format!("Zip finish error: {}", e)))?;
+    if let Err(e) = write_result {
+        // Clean up partial zip file on error
+        let _ = fs::remove_file(path);
+        return Err(e);
+    }
 
     Ok(output_path.to_string())
 }

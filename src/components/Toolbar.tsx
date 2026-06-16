@@ -46,7 +46,7 @@ export function Toolbar() {
       const { save } = await import("@tauri-apps/plugin-dialog");
       const path = await save({
         defaultPath: project.title
-          ? `${project.title.toLowerCase().replace(/\s+/g, "-")}.review-weaver.json`
+          ? `${project.title.toLowerCase().replace(/[^a-z0-9._-]/g, "-").replace(/-{2,}/g, "-")}.review-weaver.json`
           : "project.review-weaver.json",
         filters: [
           { name: "Review Weaver Project", extensions: ["review-weaver.json"] },
@@ -116,15 +116,15 @@ export function Toolbar() {
     try {
       const { save } = await import("@tauri-apps/plugin-dialog");
       const defaultName = project.title
-        ? `${project.title.toLowerCase().replace(/\s+/g, "-")}-reviews.zip`
+        ? `${project.title.toLowerCase().replace(/[^a-z0-9._-]/g, "-").replace(/-{2,}/g, "-")}-reviews.zip`
         : "review-weaver-export.zip";
       const path = await save({
         defaultPath: defaultName,
         filters: [{ name: "ZIP Archive", extensions: ["zip"] }],
       });
       if (path) {
-        await exportAllZip(project, path);
-        alert(`${t("dialog.exportSuccess", language)}: ${path}`);
+        const result = await exportAllZip(project, path);
+        alert(`${t("dialog.exportSuccess", language)}: ${result}`);
       }
     } catch (err) {
       console.error("Zip export error:", err);

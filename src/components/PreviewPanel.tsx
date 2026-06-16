@@ -59,7 +59,7 @@ export function PreviewPanel() {
     } finally {
       setLoading(false);
     }
-  }, [project, selectedQaId, project.exclude_self]);
+  }, [project, selectedQaId]);
 
   useEffect(() => {
     refreshPreview();

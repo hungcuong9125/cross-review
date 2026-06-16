@@ -125,7 +125,7 @@ function App() {
       const { save } = await import("@tauri-apps/plugin-dialog");
       const path = await save({
         defaultPath: project.title
-          ? `${project.title.toLowerCase().replace(/\s+/g, "-")}.review-weaver.json`
+          ? `${project.title.toLowerCase().replace(/[^a-z0-9._-]/g, "-").replace(/-{2,}/g, "-")}.review-weaver.json`
           : "project.review-weaver.json",
         filters: [
           { name: "Review Weaver Project", extensions: ["review-weaver.json"] },

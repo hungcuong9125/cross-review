@@ -31,12 +31,7 @@ pub fn to_slug(name: &str) -> String {
 /// Format: `review-for-{slug}.md`
 /// If the slug already exists in the used list, appends `-2`, `-3`, etc.
 pub fn generate_filename(target_name: &str, used_filenames: &[String]) -> String {
-    let slug = if target_name.trim().is_empty() {
-        "unnamed".to_string()
-    } else {
-        to_slug(target_name)
-    };
-
+    let slug = to_slug(target_name);
     let base = if slug.is_empty() {
         "unnamed".to_string()
     } else {

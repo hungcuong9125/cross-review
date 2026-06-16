@@ -32,9 +32,6 @@ export const translations = {
 
   // Preview
   'preview.target': { vi: 'Xem bản gửi', en: 'Preview' },
-  'preview.info': { vi: 'Xem trước này dành cho', en: 'This preview is for' },
-  'preview.excluded': { vi: 'Nội dung của', en: 'Content of' },
-  'preview.excludedEnd': { vi: 'đã được loại khỏi bản gửi.', en: 'has been excluded from the submission.' },
   'preview.needMore': { vi: 'Cần ít nhất 2 nguồn để xem trước.', en: 'Need at least 2 sources to preview.' },
   'preview.copy': { vi: 'Copy Markdown', en: 'Copy Markdown' },
   'preview.copied': { vi: 'Đã copy!', en: 'Copied!' },
@@ -44,12 +41,9 @@ export const translations = {
   'preview.file': { vi: 'Tên file xuất', en: 'Export filename' },
 
   // Settings
-  'settings.title': { vi: 'Cài đặt', en: 'Settings' },
   'settings.language': { vi: 'Cài đặt ngôn ngữ', en: 'Language Settings' },
   'settings.removeWhitespace': { vi: 'Chuẩn hóa khoảng trắng', en: 'Normalize whitespace' },
-  'settings.removeWhitespaceDesc': { vi: 'Loại bỏ dòng trống liên tiếp, thu gọn', en: 'Remove blank lines, compact content' },
   'settings.mergeLines': { vi: 'Xuất thành một dòng', en: 'Export as single line' },
-  'settings.mergeLinesDesc': { vi: 'Xuất văn bản liên tục trên một dòng', en: 'Continuous text on a single line' },
   'settings.excludeSelf': { vi: 'Review chéo', en: 'Cross-review' },
 
   // Toolbar

@@ -34,7 +34,6 @@ export function EditorPanel() {
 
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-800">
-      {/* Content area */}
       <div className="flex-1 overflow-y-auto">
         {/* QA Reports tab */}
         {activeMainTab === "reports" && (
@@ -59,7 +58,6 @@ export function EditorPanel() {
                 <div
                   className="bg-white dark:bg-gray-850 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm flex-1 flex flex-col min-h-[400px] transition-all duration-200"
                 >
-                  {/* Card Header: Title input with uppercase placeholder */}
                   <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                     <input
                       type="text"
@@ -70,7 +68,6 @@ export function EditorPanel() {
                     />
                   </div>
 
-                  {/* Card Body */}
                   <div className="p-4 flex-1 flex flex-col">
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-550 select-none">
@@ -92,7 +89,6 @@ export function EditorPanel() {
                       className="flex-1 w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-250 dark:border-gray-750 rounded-lg resize-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none text-sm text-gray-800 dark:text-gray-100 leading-relaxed"
                       placeholder={t("editor.sourceContentPlaceholder", language)}
                     />
-                    {/* Card Footer: Character count (no border-t, only mt-3) */}
                     <div className="mt-3 flex items-center justify-between text-[10px] font-medium text-gray-400 dark:text-gray-500 select-none">
                       <div>
                         <span>{selectedQa.content.length.toLocaleString()} {t("editor.chars", language)}</span>
@@ -129,7 +125,6 @@ export function EditorPanel() {
                     key={comp.id}
                     className="bg-white dark:bg-gray-850 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm transition-all duration-200"
                   >
-                    {/* Component header: No Badge */}
                     <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                       <input
                         type="text"
@@ -173,7 +168,6 @@ export function EditorPanel() {
                       </div>
                     </div>
 
-                    {/* Component content */}
                     <div className="p-4 flex flex-col">
                       <div className="flex items-center justify-between mb-1.5">
                         <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-555 select-none">
@@ -187,7 +181,6 @@ export function EditorPanel() {
                         className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-255 dark:border-gray-750 rounded-lg resize-y focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none text-sm text-gray-800 dark:text-gray-100 leading-relaxed"
                         placeholder={t("editor.componentContent", language)}
                       />
-                      {/* Character Count (no border-t, only mt-3) */}
                       <div className="mt-3 flex items-center justify-between text-[10px] font-medium text-gray-400 dark:text-gray-500 select-none">
                         <div>
                           <span>{comp.content.length.toLocaleString()} {t("editor.chars", language)}</span>

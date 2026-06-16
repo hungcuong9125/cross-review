@@ -66,7 +66,7 @@ pub fn generate_preview(
     let target = project
         .qa_reports
         .iter()
-        .find(|qa| qa.id == target_qa_id)
+        .find(|qa| qa.id == target_qa_id && qa.active)
         .ok_or_else(|| ExportError::QaNotFound(target_qa_id.to_string()))?;
 
     let other_reports: Vec<&crate::models::QaReport> = project

@@ -88,24 +88,30 @@ function migrateProject(project: Project): Project {
   if ('opening_text' in (project as any) && (project as any).opening_text) {
     const hasOpening = migrated.components.some(c => c.position === "opening");
     if (!hasOpening) {
+      const maxOrder = migrated.components
+        .filter(c => c.position === "opening")
+        .reduce((max, c) => Math.max(max, c.order), -1);
       migrated.components.push({
         id: generateId(),
         name: "Opening",
         position: "opening",
         content: (project as any).opening_text,
-        order: 0,
+        order: maxOrder + 1,
       });
     }
   }
   if ('closing_text' in (project as any) && (project as any).closing_text) {
     const hasClosing = migrated.components.some(c => c.position === "closing");
     if (!hasClosing) {
+      const maxOrder = migrated.components
+        .filter(c => c.position === "closing")
+        .reduce((max, c) => Math.max(max, c.order), -1);
       migrated.components.push({
         id: generateId(),
         name: "Closing",
         position: "closing",
         content: (project as any).closing_text,
-        order: 0,
+        order: maxOrder + 1,
       });
     }
   }
@@ -268,7 +274,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set((state) => ({
       project: { ...state.project, qa_reports: [] },
       selectedQaId: null,
-      activeItem: null,
+      // Preserve component selection — components are not deleted
+      activeItem:
+        state.activeItem?.type === "component" ? state.activeItem : null,
     }));
     get().refreshValidation();
   },
@@ -510,8 +518,15 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }
     if (state.mergeLines) {
       let lines = processed.split("\n");
+      let inCodeBlock = false;
       lines = lines.map((line) => {
         const trimmed = line.trim();
+        // Track fenced code blocks — don't transform content inside them
+        if (trimmed.startsWith("```") || trimmed.startsWith("~~~")) {
+          inCodeBlock = !inCodeBlock;
+          return line;
+        }
+        if (inCodeBlock) return line;
         // Remove markdown horizontal rules
         if (trimmed === "---" || trimmed === "___" || trimmed === "***") {
           return "";

@@ -142,6 +142,20 @@ The compiled Markdown outputs follow this structural convention:
 
 ## Changelog
 
+### v0.5.6 (2026-06-16)
+- **Security**: Narrowed filesystem permission scope from `**` (entire filesystem) to `$HOME/$DESKTOP/$DOCUMENT/$DOWNLOAD`.
+- **Fix**: `mergeLines` content processing no longer corrupts fenced code blocks — tracks ` ``` `/`~~~` state and skips heading/rule stripping inside blocks.
+- **Fix**: `removeAllQa` now preserves component selection when deleting all QA reports (components are not deleted).
+- **Fix**: `migrateProject` uses `maxOrder + 1` instead of hardcoded `0` for migrated component order, preventing order collisions.
+- **Fix**: Save/Export dialog filenames now sanitize filesystem-hostile characters (`/`, `:`, `*`, `?`, `<>`, `|`).
+- **Fix**: `generate_preview` now checks `target.active` — consistent with `generate_exports` which skips inactive targets.
+- **Fix**: `exportAllZip` success alert now shows actual output path returned from backend instead of user-selected input path.
+- **Fix**: ZIP export creates missing parent directories and cleans up partial files on error.
+- **Fix**: Removed redundant `project.exclude_self` from `refreshPreview` dependency array.
+- **Chore**: Removed 6 unused translation keys (`preview.info`, `preview.excluded`, `preview.excludedEnd`, `settings.title`, `settings.removeWhitespaceDesc`, `settings.mergeLinesDesc`).
+- **Chore**: Removed redundant JSX comments from EditorPanel.
+- **Chore**: Simplified `generate_filename` by removing redundant unnamed-input check in slug module.
+
 ### v0.5.5 (2026-06-16)
 - **Security**: Enabled Content Security Policy in Tauri config — restricts script/style/connect sources.
 - **Fix**: Auto-save draft no longer overwrites loaded project on mount (added `draftLoaded` ref guard).
