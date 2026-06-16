@@ -1,6 +1,6 @@
 # Review Weave
 
-![Review Weave Interface](./docs/screenshot.png)
+![Review Weave Interface](./screenshot.png)
 
 **Review Weave** is a lightweight desktop application designed to help QA teams and AI models easily cross-review each other's work.
 
