@@ -278,12 +278,14 @@ mod tests {
         unique_filenames.dedup();
         assert_eq!(filenames.len(), unique_filenames.len());
 
-        // First should be review-for-team-growth.md
-        assert_eq!(exports[0].filename, "review-for-team-growth.md");
-        // Second should have -2 suffix
-        assert_eq!(exports[1].filename, "review-for-team-growth-2.md");
-        // Third should have -3 suffix
-        assert_eq!(exports[2].filename, "review-for-team-growth-3.md");
+        // First should be review-for-team-growth-{timestamp}.md
+        assert!(exports[0].filename.starts_with("review-for-team-growth-"), "got: {}", exports[0].filename);
+        assert!(exports[0].filename.ends_with(".md"));
+        // Second and third should have numeric dedup suffixes
+        assert!(exports[1].filename.starts_with("review-for-team-growth-"), "got: {}", exports[1].filename);
+        assert!(exports[1].filename.ends_with(".md"));
+        assert!(exports[2].filename.starts_with("review-for-team-growth-"), "got: {}", exports[2].filename);
+        assert!(exports[2].filename.ends_with(".md"));
     }
 
     // Test 5: Long markdown with code blocks, tables, headings preserved

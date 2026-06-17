@@ -20,6 +20,7 @@ fn main() {
             commands::save_project,
             commands::open_project,
             commands::ai_test_provider,
+            commands::ai_test_provider_debug,
             commands::ai_rewrite_preview,
             commands::ai_rewrite_export,
             commands::ai_list_models,

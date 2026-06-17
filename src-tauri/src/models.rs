@@ -11,9 +11,8 @@ pub enum AiProviderKind {
     Anthropic,
     Gemini,
     Deepseek,
-    Groq,
-    Cohere,
-    Xai,
+    Mimo,
+    Opencodego,
     OpenaiCompatible,
 }
 
@@ -25,9 +24,8 @@ impl AiProviderKind {
             Self::Anthropic => "anthropic",
             Self::Gemini => "gemini",
             Self::Deepseek => "deepseek",
-            Self::Groq => "groq",
-            Self::Cohere => "cohere",
-            Self::Xai => "xai",
+            Self::Mimo => "mimo",
+            Self::Opencodego => "opencodego",
             Self::OpenaiCompatible => "openaicompatible",
         }
     }
@@ -52,6 +50,9 @@ pub struct AiProviderConfig {
     pub system_prompt: String,
     #[serde(default = "default_max_input_chars")]
     pub max_input_chars: usize,
+    /// Reasoning effort level: "none", "low", "medium", "high", "max". Empty = none.
+    #[serde(default)]
+    pub thinking_effort: String,
 }
 
 fn default_max_input_chars() -> usize {
@@ -69,6 +70,7 @@ impl std::fmt::Debug for AiProviderConfig {
             .field("model", &self.model)
             .field("system_prompt", &self.system_prompt)
             .field("max_input_chars", &self.max_input_chars)
+            .field("thinking_effort", &self.thinking_effort)
             .finish()
     }
 }
@@ -241,4 +243,17 @@ impl Default for Project {
             ai_config: None,
         }
     }
+}
+
+/// Captured debug information from an AI provider call.
+#[derive(Clone, Serialize, Deserialize)]
+pub struct DebugLog {
+    pub timestamp: String,
+    pub provider: String,
+    pub model: String,
+    pub thinking_effort: String,
+    pub request_messages: String,
+    pub response_text: String,
+    pub duration_ms: u64,
+    pub success: bool,
 }

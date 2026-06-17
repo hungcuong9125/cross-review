@@ -1,12 +1,19 @@
 import { useState, useEffect } from "react";
 import { useProjectStore } from "../state/projectStore";
-import { aiTestProvider, aiListModels, aiRewriteExport, aiCancelRequest, aiDefaultPrompt, exportAllMarkdown, exportAllZip, type AiProviderKind, type AiErrorPayload } from "../lib/api";
+import { aiTestProvider, aiTestProviderDebug, aiListModels, aiRewriteExport, aiCancelRequest, aiDefaultPrompt, type AiProviderKind, type AiErrorPayload, type DebugLog } from "../lib/api";
 import { t } from "../lib/i18n";
 import { useToast } from "../hooks/useToast";
 import { isApiKeyScrubbed, clearApiKeyScrubbed } from "../lib/sanitize";
 
-const PROVIDER_KINDS: AiProviderKind[] = [
-  "ollama", "openai", "anthropic", "gemini", "deepseek", "groq", "cohere", "xai", "openaicompatible",
+const PROVIDER_KINDS: { value: AiProviderKind; label: string }[] = [
+  { value: "ollama", label: "Ollama" },
+  { value: "openai", label: "OpenAI" },
+  { value: "anthropic", label: "Anthropic" },
+  { value: "gemini", label: "Gemini" },
+  { value: "deepseek", label: "DeepSeek" },
+  { value: "mimo", label: "Xiaomi MiMo" },
+  { value: "opencodego", label: "OpenCode Go" },
+  { value: "openaicompatible", label: "OpenAI Compatible" },
 ];
 
 export function SettingsPanel() {
@@ -18,7 +25,8 @@ export function SettingsPanel() {
     mergeLines, toggleMergeLines,
     toggleExcludeSelf,
     aiBusy, setAiBusy,
-    appendAiTab,
+    appendAiTab, appendDebugTab,
+    setActiveMainTab,
   } = useProjectStore();
 
   const { success, error: toastError, info } = useToast();
@@ -30,11 +38,15 @@ export function SettingsPanel() {
   const [draftModel, setDraftModel] = useState(project.ai_config?.model ?? "");
   const [draftMaxChars, setDraftMaxChars] = useState(project.ai_config?.max_input_chars ?? 500000);
   const [draftSystemPrompt, setDraftSystemPrompt] = useState(project.ai_config?.system_prompt ?? "");
+  const [draftThinkingEffort, setDraftThinkingEffort] = useState(project.ai_config?.thinking_effort ?? "");
   const [showApiKey, setShowApiKey] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
   const [models, setModels] = useState<string[]>([]);
   const [showKeyBanner, setShowKeyBanner] = useState(isApiKeyScrubbed() && !project.ai_config?.api_key && !!project.ai_config);
   const [defaultPrompt, setDefaultPrompt] = useState("");
+  const [debugEnabled, setDebugEnabled] = useState(false);
+  const [debugLogs, setDebugLogs] = useState<DebugLog[]>([]);
+  const [selectedLog, setSelectedLog] = useState<DebugLog | null>(null);
 
   // Sync draft state when project.ai_config changes (e.g. opening a different project file)
   useEffect(() => {
@@ -44,12 +56,13 @@ export function SettingsPanel() {
     setDraftModel(project.ai_config?.model ?? "");
     setDraftMaxChars(project.ai_config?.max_input_chars ?? 500000);
     setDraftSystemPrompt(project.ai_config?.system_prompt ?? "");
+    setDraftThinkingEffort(project.ai_config?.thinking_effort ?? "");
     setShowKeyBanner(isApiKeyScrubbed() && !project.ai_config?.api_key && !!project.ai_config);
   }, [project.ai_config]);
 
   // Fetch the default rewrite prompt from backend on mount
   useEffect(() => {
-    aiDefaultPrompt().then(setDefaultPrompt).catch(() => {});
+    aiDefaultPrompt().then(setDefaultPrompt).catch(() => { });
   }, []);
 
   const isDirty = draftKind !== (project.ai_config?.kind ?? "ollama")
@@ -57,7 +70,8 @@ export function SettingsPanel() {
     || draftApiKey !== (project.ai_config?.api_key ?? "")
     || draftModel !== (project.ai_config?.model ?? "")
     || draftMaxChars !== (project.ai_config?.max_input_chars ?? 500000)
-    || draftSystemPrompt !== (project.ai_config?.system_prompt ?? "");
+    || draftSystemPrompt !== (project.ai_config?.system_prompt ?? "")
+    || draftThinkingEffort !== (project.ai_config?.thinking_effort ?? "");
 
   const handleSave = () => {
     const newConfig = {
@@ -67,6 +81,7 @@ export function SettingsPanel() {
       model: draftModel,
       max_input_chars: draftMaxChars,
       system_prompt: draftSystemPrompt,
+      thinking_effort: draftThinkingEffort,
     };
     useProjectStore.setState((state) => ({
       project: { ...state.project, ai_config: newConfig },
@@ -78,17 +93,31 @@ export function SettingsPanel() {
 
   const handleTest = async () => {
     setTestResult(null);
+    const config = {
+      kind: draftKind,
+      base_url: draftBaseUrl,
+      api_key: draftApiKey,
+      model: draftModel,
+      max_input_chars: draftMaxChars,
+      system_prompt: draftSystemPrompt,
+      thinking_effort: draftThinkingEffort,
+    };
     try {
-      await aiTestProvider({
-        kind: draftKind,
-        base_url: draftBaseUrl,
-        api_key: draftApiKey,
-        model: draftModel,
-        max_input_chars: draftMaxChars,
-        system_prompt: draftSystemPrompt,
-      });
-      setTestResult("ok");
-      success(t("settings.aiProvider.testOk", language));
+      if (debugEnabled) {
+        const log = await aiTestProviderDebug(config);
+        setDebugLogs((prev) => [log, ...prev]);
+        if (log.success) {
+          setTestResult("ok");
+          success(t("settings.aiProvider.testOk", language));
+        } else {
+          setTestResult(log.response_text);
+          toastError(log.response_text);
+        }
+      } else {
+        await aiTestProvider(config);
+        setTestResult("ok");
+        success(t("settings.aiProvider.testOk", language));
+      }
     } catch (err) {
       const msg = typeof err === "string" ? err : (err as AiErrorPayload).message ?? String(err);
       setTestResult(msg);
@@ -96,25 +125,27 @@ export function SettingsPanel() {
     }
   };
 
-  const handleDetectModels = async () => {
-    try {
-      const result = await aiListModels({
-        kind: draftKind,
-        base_url: draftBaseUrl,
-        api_key: draftApiKey,
-        model: draftModel,
-        max_input_chars: draftMaxChars,
-        system_prompt: draftSystemPrompt,
-      });
-      setModels(result);
-      if (result.length > 0 && !draftModel) {
-        setDraftModel(result[0]);
-      }
-    } catch (err) {
-      const msg = typeof err === "string" ? err : (err as AiErrorPayload).message ?? String(err);
-      toastError(msg);
+  // Auto-fetch models when provider kind changes
+  useEffect(() => {
+    if (draftKind === "openaicompatible") {
+      setModels([]);
+      return;
     }
-  };
+    let cancelled = false;
+    aiListModels({
+      kind: draftKind,
+      base_url: draftBaseUrl,
+      api_key: draftApiKey,
+      model: "",
+      max_input_chars: draftMaxChars,
+      system_prompt: "",
+      thinking_effort: "",
+    }).then((result) => {
+      if (cancelled) return;
+      setModels(result);
+    }).catch(() => { });
+    return () => { cancelled = true; };
+  }, [draftKind]);
 
   const handleGenerate = async () => {
     if (aiBusy) return;
@@ -132,6 +163,16 @@ export function SettingsPanel() {
     }
     setAiBusy(true);
     try {
+      // Run debug test first if debug is enabled
+      if (debugEnabled) {
+        try {
+          const debugLog = await aiTestProviderDebug(cfg);
+          appendDebugTab(debugLog);
+          setActiveMainTab("home");
+        } catch {
+          // Debug test failed, continue with main generate
+        }
+      }
       const result = await aiRewriteExport(useProjectStore.getState().project);
       const now = new Date();
       const title = `AI ${now.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit" })} ${now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
@@ -187,81 +228,6 @@ export function SettingsPanel() {
     }
   };
 
-
-  const handleExportMd = async () => {
-    if (project.qa_reports.length === 0) { info(t("dialog.noReport", language)); return; }
-    try {
-      const { open } = await import("@tauri-apps/plugin-dialog");
-      const dir = await open({ directory: true, multiple: false });
-      if (dir) {
-        const paths = await exportAllMarkdown(project, dir as string);
-        success(`${t("dialog.exportSuccess", language)}: ${paths.length} files`);
-      }
-    } catch (err) { toastError(`${t("dialog.exportFail", language)}: ${err}`); }
-  };
-
-  const handleExportZip = async () => {
-    if (project.qa_reports.length === 0) { info(t("dialog.noReport", language)); return; }
-    try {
-      const { save } = await import("@tauri-apps/plugin-dialog");
-      const defaultName = project.title
-        ? `${project.title.toLowerCase().replace(/[^a-z0-9._-]/g, "-").replace(/-{2,}/g, "-")}-reviews.zip`
-        : "review-weaver-export.zip";
-      const path = await save({ defaultPath: defaultName, filters: [{ name: "ZIP Archive", extensions: ["zip"] }] });
-      if (path) {
-        const result = await exportAllZip(project, path);
-        success(`${t("dialog.exportSuccess", language)}: ${result}`);
-      }
-    } catch (err) { toastError(`${t("dialog.exportFail", language)}: ${err}`); }
-  };
-
-  const handleImport = async () => {
-    try {
-      const { open } = await import("@tauri-apps/plugin-dialog");
-      const selected = await open({
-        multiple: true,
-        filters: [
-          { name: "Markdown & ZIP", extensions: ["md", "zip"] },
-          { name: "Markdown", extensions: ["md"] },
-          { name: "ZIP Archive", extensions: ["zip"] },
-        ],
-      });
-      if (!selected) return;
-      const files = Array.isArray(selected) ? selected : [selected];
-      const { readTextFile } = await import("@tauri-apps/plugin-fs");
-      const newReports: { id: string; name: string; content: string; active: boolean }[] = [];
-      for (const filePath of files) {
-        if (filePath.endsWith(".zip")) {
-          // For zip: read as binary, extract .md files
-          const { readFile } = await import("@tauri-apps/plugin-fs");
-          const zipData = await readFile(filePath);
-          const { ZipReader, BlobReader, TextWriter } = await import("@zip.js/zip.js");
-          const blob = new Blob([zipData]);
-          const reader = new ZipReader(new BlobReader(blob));
-          const entries = await reader.getEntries();
-          for (const entry of entries) {
-            if (entry.filename.endsWith(".md") && !entry.directory && entry.getData) {
-              const text = await entry.getData(new TextWriter());
-              const name = entry.filename.replace(/\.md$/, "").replace(/[_-]/g, " ");
-              newReports.push({ id: crypto.randomUUID?.() ?? Math.random().toString(36).substring(2, 11), name, content: text, active: true });
-            }
-          }
-          await reader.close();
-        } else if (filePath.endsWith(".md")) {
-          const text = await readTextFile(filePath);
-          const name = filePath.split("/").pop()?.replace(/\.md$/, "").replace(/[_-]/g, " ") ?? "Imported";
-          newReports.push({ id: crypto.randomUUID?.() ?? Math.random().toString(36).substring(2, 11), name, content: text, active: true });
-        }
-      }
-      if (newReports.length > 0) {
-        useProjectStore.setState((state) => ({
-          project: { ...state.project, qa_reports: [...state.project.qa_reports, ...newReports] },
-        }));
-        success(`Imported ${newReports.length} file(s)`);
-      }
-    } catch (err) { toastError(`Import failed: ${err}`); }
-  };
-
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700">
       <div className="flex-1 overflow-y-auto p-3 space-y-4">
@@ -278,7 +244,7 @@ export function SettingsPanel() {
               {t("settings.previewFormat.markdown", language)}
             </button>
           </div>
-          <label className="flex items-center gap-1.5 mt-2 cursor-pointer">
+          <label className="flex items-center gap-1.5 mt-4 cursor-pointer">
             <input type="checkbox" checked={compactMode} onChange={toggleCompactMode} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
             <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.compactMode", language)}</span>
           </label>
@@ -293,6 +259,10 @@ export function SettingsPanel() {
           <label className="flex items-center gap-1.5 mt-1 cursor-pointer">
             <input type="checkbox" checked={mergeLines} onChange={toggleMergeLines} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
             <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.mergeLines", language)}</span>
+          </label>
+          <label className="flex items-center gap-1.5 mt-1 cursor-pointer">
+            <input type="checkbox" checked={debugEnabled} onChange={() => setDebugEnabled(!debugEnabled)} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
+            <span className="text-xs text-gray-600 dark:text-gray-400">{language === "vi" ? "Bật debug" : "Enable debug"}</span>
           </label>
         </div>
 
@@ -317,10 +287,16 @@ export function SettingsPanel() {
           <div className="space-y-2">
             {/* Kind */}
             <div>
-              <label className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">{t("settings.aiProvider.kind", language)}</label>
-              <select value={draftKind} onChange={(e) => setDraftKind(e.target.value as AiProviderKind)}
+              <label className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">{t("settings.aiProvider.name", language)}</label>
+              <select value={draftKind} onChange={(e) => {
+                const newKind = e.target.value as AiProviderKind;
+                setDraftKind(newKind);
+                // Clear base_url when switching provider so default endpoint is used
+                setDraftBaseUrl("");
+                setDraftModel("");
+              }}
                 className="w-full h-7 text-xs px-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded">
-                {PROVIDER_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
+                {PROVIDER_KINDS.map(k => <option key={k.value} value={k.value}>{k.label}</option>)}
               </select>
             </div>
 
@@ -344,30 +320,42 @@ export function SettingsPanel() {
               </div>
             </div>
 
-            {/* Model + Detect */}
+            {/* Model */}
             <div>
               <label className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">{t("settings.aiProvider.model", language)}</label>
-              <div className="flex gap-1">
+              {draftKind === "openaicompatible" ? (
                 <input type="text" value={draftModel} onChange={(e) => setDraftModel(e.target.value)}
-                  className="flex-1 h-7 text-xs px-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent" />
-                <button onClick={handleDetectModels} className="px-2 h-7 text-[10px] bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 whitespace-nowrap">
-                  {t("settings.aiProvider.detectModels", language)}
-                </button>
-              </div>
-              {models.length > 0 && (
-                <select className="w-full h-7 mt-1 text-xs px-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded"
-                  value={draftModel} onChange={(e) => setDraftModel(e.target.value)}>
-                  <option value="">-- select --</option>
+                  placeholder={language === "vi" ? "Nhập tên model" : "Enter model name"}
+                  className="w-full h-7 text-xs px-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent" />
+              ) : (
+                <select value={draftModel} onChange={(e) => setDraftModel(e.target.value)}
+                  className="w-full h-7 text-xs px-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded">
+                  <option value="">{language === "vi" ? "-- Chọn model triển khai --" : "-- Select model --"}</option>
                   {models.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
               )}
             </div>
 
-            {/* Max chars */}
-            <div>
-              <label className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">{t("settings.aiProvider.maxChars", language)}</label>
-              <input type="number" value={draftMaxChars} onChange={(e) => { const v = parseInt(e.target.value, 10); setDraftMaxChars(Number.isNaN(v) ? 500000 : Math.max(1, v)); }}
-                className="w-full h-7 text-xs px-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent" />
+            {/* Thinking effort + Max chars — 2 columns */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">
+                  {language === "vi" ? "Mức độ suy nghĩ" : "Thinking Effort"}
+                </label>
+                <select value={draftThinkingEffort} onChange={(e) => setDraftThinkingEffort(e.target.value)}
+                  className="w-full h-7 text-xs px-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded">
+                  <option value="">{language === "vi" ? "Không" : "None"}</option>
+                  <option value="low">{language === "vi" ? "Thấp" : "Low"}</option>
+                  <option value="medium">{language === "vi" ? "Trung bình" : "Medium"}</option>
+                  <option value="high">{language === "vi" ? "Cao" : "High"}</option>
+                  <option value="max">{language === "vi" ? "Tối đa" : "Max"}</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">{t("settings.aiProvider.maxChars", language)}</label>
+                <input type="number" value={draftMaxChars} onChange={(e) => { const v = parseInt(e.target.value, 10); setDraftMaxChars(Number.isNaN(v) ? 500000 : Math.max(1, v)); }}
+                  className="w-full h-7 text-xs px-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent" />
+              </div>
             </div>
 
             {/* System prompt */}
@@ -399,9 +387,74 @@ export function SettingsPanel() {
           </div>
         </div>
 
-        <hr className="border-gray-200 dark:border-gray-700" />
+        {/* Debug logs */}
+        {debugEnabled && debugLogs.length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                {language === "vi" ? "Nhật ký debug" : "Debug Logs"}
+              </h3>
+              <button onClick={() => setDebugLogs([])} className="text-[10px] text-red-400 hover:text-red-600 transition-colors">
+                {language === "vi" ? "Xoá" : "Clear"}
+              </button>
+            </div>
+            <div className="max-h-40 overflow-y-auto space-y-1 border border-gray-200 dark:border-gray-700 rounded p-1.5">
+              {debugLogs.map((log, i) => (
+                <button key={i} onClick={() => setSelectedLog(log)}
+                  className="w-full text-left px-2 py-1.5 text-[10px] rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2">
+                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${log.success ? "bg-green-500" : "bg-red-500"}`} />
+                  <span className="text-gray-500 dark:text-gray-400 font-mono">{log.provider}</span>
+                  <span className="text-gray-700 dark:text-gray-300 truncate flex-1">{log.model}</span>
+                  <span className="text-gray-400 dark:text-gray-500 flex-shrink-0">{log.duration_ms}ms</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
-        {/* Generate button */}
+      {/* Debug log detail modal */}
+      {selectedLog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setSelectedLog(null)}>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-[90vw] max-w-2xl max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200">
+                {language === "vi" ? "Chi tiết debug" : "Debug Detail"}
+              </h3>
+              <button onClick={() => setSelectedLog(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-lg">×</button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-2">
+                <div><span className="text-gray-500">Provider:</span> <span className="font-mono">{selectedLog.provider}</span></div>
+                <div><span className="text-gray-500">Model:</span> <span className="font-mono">{selectedLog.model}</span></div>
+                <div><span className="text-gray-500">Thinking:</span> <span className="font-mono">{selectedLog.thinking_effort || "none"}</span></div>
+                <div><span className="text-gray-500">Duration:</span> <span className="font-mono">{selectedLog.duration_ms}ms</span></div>
+                <div className="col-span-2">
+                  <span className="text-gray-500">Status:</span>{" "}
+                  <span className={selectedLog.success ? "text-green-600 font-semibold" : "text-red-500 font-semibold"}>
+                    {selectedLog.success ? "OK" : "FAILED"}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <p className="text-gray-500 font-semibold mb-1">Request:</p>
+                <pre className="bg-gray-50 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto whitespace-pre-wrap break-words">
+                  {selectedLog.request_messages}
+                </pre>
+              </div>
+              <div>
+                <p className="text-gray-500 font-semibold mb-1">{selectedLog.success ? "Response:" : "Error:"}</p>
+                <pre className="bg-gray-50 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto whitespace-pre-wrap break-words">
+                  {selectedLog.response_text}
+                </pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sticky generate button — always visible */}
+      <div className="p-2.5 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 space-y-1">
         <button
           onClick={handleGenerate}
           disabled={aiBusy || !project.ai_config?.model}
@@ -409,26 +462,11 @@ export function SettingsPanel() {
         >
           {aiBusy ? t("action.generating", language) : t("action.generateReport", language)}
         </button>
-
-        {/* Cancel button (only when busy) */}
         {aiBusy && (
           <button onClick={handleCancel} className="w-full py-1.5 text-xs font-medium text-red-500 hover:text-red-600 transition-colors">
             {t("action.cancel", language)}
           </button>
         )}
-      </div>
-
-      {/* Export / Import footer */}
-      <div className="p-2.5 border-t border-gray-200 dark:border-gray-700 flex gap-1.5 flex-shrink-0">
-        <button onClick={handleExportMd} className="flex-1 px-2 py-1.5 text-[11px] font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors">
-          {t("footer.exportMd", language)}
-        </button>
-        <button onClick={handleExportZip} className="flex-1 px-2 py-1.5 text-[11px] font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors">
-          {t("footer.exportZip", language)}
-        </button>
-        <button onClick={handleImport} className="flex-1 px-2 py-1.5 text-[11px] font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors">
-          {t("footer.import", language)}
-        </button>
       </div>
     </div>
   );

@@ -105,7 +105,7 @@ export function PreviewBody() {
         </div>
 
         {/* Stats grid */}
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           <div className="px-2.5 py-1.5 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
             <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">
               {t("preview.reports", language)}

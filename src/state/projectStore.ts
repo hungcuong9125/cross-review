@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Project, QaReport, Component, ValidationReport } from "../lib/api";
+import type { Project, QaReport, Component, ValidationReport, DebugLog } from "../lib/api";
 import { validateProject } from "../lib/api";
 import { t, type Language } from "../lib/i18n";
 
@@ -11,11 +11,12 @@ let validationGeneration = 0;
 
 const DEFAULT_PREVIEW_TAB = { id: "preview" as const, kind: "preview" as const, title: "Preview" };
 
-export type MainTab = "home" | "reports" | "opening" | "closing";
+export type MainTab = "home" | "reports" | "opening" | "closing" | "debug";
 
 export type ContentTab =
   | { id: "preview"; kind: "preview"; title: string }
-  | { id: string; kind: "ai"; title: string; markdown: string };
+  | { id: string; kind: "ai"; title: string; markdown: string }
+  | { id: string; kind: "debug"; title: string; log: DebugLog };
 
 export type ActiveItem =
   | { type: "report"; qaId: string }
@@ -38,6 +39,7 @@ interface ProjectState {
   activeContentTabId: string;
   setActiveContentTab: (id: string) => void;
   appendAiTab: (markdown: string, title: string) => string;
+  appendDebugTab: (log: DebugLog) => string;
   closeContentTab: (id: string) => void;
   closeAllAiTabs: () => void;
 
@@ -550,6 +552,16 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const id = `ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     set((state) => ({
       contentTabs: [...state.contentTabs, { id, kind: "ai" as const, title, markdown }],
+      activeContentTabId: id,
+    }));
+    return id;
+  },
+
+  appendDebugTab: (log) => {
+    const id = `debug-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const title = `Debug ${log.provider}/${log.model}`;
+    set((state) => ({
+      contentTabs: [...state.contentTabs, { id, kind: "debug" as const, title, log }],
       activeContentTabId: id,
     }));
     return id;

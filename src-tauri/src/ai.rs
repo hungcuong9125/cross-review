@@ -3,10 +3,10 @@ use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use crate::models::{
-    AiErrorCode, AiErrorPayload, AiProviderConfig, AiProviderKind, Project, QaReport,
+    AiErrorCode, AiErrorPayload, AiProviderConfig, AiProviderKind, DebugLog, Project, QaReport,
 };
 use genai::adapter::AdapterKind;
-use genai::chat::{ChatMessage, ChatRequest};
+use genai::chat::{ChatMessage, ChatOptions, ChatRequest};
 use genai::resolver::{AuthData, Endpoint, ProviderConfig, ServiceTargetResolver};
 use genai::Client;
 
@@ -73,9 +73,8 @@ fn to_adapter(kind: AiProviderKind) -> AdapterKind {
         AiProviderKind::Anthropic => AdapterKind::Anthropic,
         AiProviderKind::Gemini => AdapterKind::Gemini,
         AiProviderKind::Deepseek => AdapterKind::DeepSeek,
-        AiProviderKind::Groq => AdapterKind::Groq,
-        AiProviderKind::Cohere => AdapterKind::Cohere,
-        AiProviderKind::Xai => AdapterKind::Xai,
+        AiProviderKind::Mimo => AdapterKind::Mimo,
+        AiProviderKind::Opencodego => AdapterKind::OpenCodeGo,
         AiProviderKind::OpenaiCompatible => AdapterKind::OpenAI,
     }
 }
@@ -90,7 +89,19 @@ fn build_client(cfg: &AiProviderConfig) -> Result<Client, AiErrorPayload> {
             message: "OpenaiCompatible requires a base_url".to_string(),
         });
     }
-    let user_base_url = cfg.base_url.trim().to_string();
+    // Ensure trailing slash so genai's Url::join("chat/completions") resolves correctly.
+    // Without a trailing slash, "https://host/v1".join("chat/completions") → "https://host/chat/completions"
+    // With a trailing slash,    "https://host/v1/".join("chat/completions") → "https://host/v1/chat/completions"
+    let user_base_url = {
+        let trimmed = cfg.base_url.trim();
+        if trimmed.is_empty() {
+            String::new()
+        } else if trimmed.ends_with('/') {
+            trimmed.to_string()
+        } else {
+            format!("{trimmed}/")
+        }
+    };
     let user_api_key = cfg.api_key.clone();
 
     let target_resolver = ServiceTargetResolver::from_resolver_fn(
@@ -180,10 +191,23 @@ fn build_chat_request(cfg: &AiProviderConfig, sources: &[&QaReport]) -> ChatRequ
 const REWRITE_TIMEOUT_SECS: u64 = 120;
 const TEST_TIMEOUT_SECS: u64 = 30;
 
+fn build_chat_options(cfg: &AiProviderConfig) -> Option<ChatOptions> {
+    use genai::chat::ReasoningEffort;
+    let effort = match cfg.thinking_effort.trim().to_lowercase().as_str() {
+        "low" => Some(ReasoningEffort::Low),
+        "medium" => Some(ReasoningEffort::Medium),
+        "high" => Some(ReasoningEffort::High),
+        "max" => Some(ReasoningEffort::Max),
+        _ => None, // "none" or empty → no reasoning effort
+    };
+    effort.map(|e| ChatOptions::default().with_reasoning_effort(e))
+}
+
 async fn exec(
     client: Client,
     model: &str,
     request: ChatRequest,
+    chat_options: Option<ChatOptions>,
     cancel: CancellationToken,
     timeout_secs: u64,
     api_key_for_scrub: &str,
@@ -192,7 +216,7 @@ async fn exec(
     let api_key_for_scrub = api_key_for_scrub.to_string();
     let fut = async move {
         tokio::select! {
-            res = tokio::time::timeout(Duration::from_secs(timeout_secs), client.exec_chat(model, request, None)) => {
+            res = tokio::time::timeout(Duration::from_secs(timeout_secs), client.exec_chat(model, request, chat_options.as_ref())) => {
                 match res {
                     Ok(Ok(chat_res)) => {
                         chat_res.first_text()
@@ -270,11 +294,13 @@ pub async fn rewrite_for_target(
     }
     let request = build_chat_request(cfg, &sources);
     let client = build_client(cfg)?;
+    let chat_options = build_chat_options(cfg);
     register_cancel(cancel.clone());
     let result = exec(
         client,
         &cfg.model,
         request,
+        chat_options,
         cancel,
         REWRITE_TIMEOUT_SECS,
         &cfg.api_key,
@@ -313,11 +339,13 @@ pub async fn rewrite_all(
     }
     let request = build_chat_request(cfg, &sources);
     let client = build_client(cfg)?;
+    let chat_options = build_chat_options(cfg);
     register_cancel(cancel.clone());
     let result = exec(
         client,
         &cfg.model,
         request,
+        chat_options,
         cancel,
         REWRITE_TIMEOUT_SECS,
         &cfg.api_key,
@@ -332,6 +360,7 @@ pub async fn test_provider(cfg: &AiProviderConfig) -> Result<(), AiErrorPayload>
         .with_system("Reply with the single word: ok")
         .append_message(ChatMessage::user("ping"));
     let cancel = CancellationToken::new();
+    let chat_options = build_chat_options(cfg);
     // Don't register test's cancel token globally - test should run to completion.
     // Also don't call clear_cancel() here — a concurrent rewrite may have a
     // registered token that we must not wipe.
@@ -339,6 +368,7 @@ pub async fn test_provider(cfg: &AiProviderConfig) -> Result<(), AiErrorPayload>
         client,
         &cfg.model,
         request,
+        chat_options,
         cancel,
         TEST_TIMEOUT_SECS,
         &cfg.api_key,
@@ -346,6 +376,67 @@ pub async fn test_provider(cfg: &AiProviderConfig) -> Result<(), AiErrorPayload>
     .await;
     let _ = result?;
     Ok(())
+}
+
+/// Like `test_provider` but returns a debug log with request/response details.
+pub async fn test_provider_debug(cfg: &AiProviderConfig) -> Result<DebugLog, AiErrorPayload> {
+    let client = build_client(cfg)?;
+    let request = ChatRequest::default()
+        .with_system("Reply with the single word: ok")
+        .append_message(ChatMessage::user("ping"));
+    let cancel = CancellationToken::new();
+    let chat_options = build_chat_options(cfg);
+
+    // Capture request details
+    let request_json = serde_json::json!({
+        "system": "Reply with the single word: ok",
+        "messages": [{"role": "user", "content": "ping"}],
+        "model": cfg.model,
+        "thinking_effort": cfg.thinking_effort,
+    });
+    let request_summary = serde_json::to_string_pretty(&request_json).unwrap_or_default();
+
+    let start = std::time::Instant::now();
+    let result = exec(
+        client,
+        &cfg.model,
+        request,
+        chat_options,
+        cancel,
+        TEST_TIMEOUT_SECS,
+        &cfg.api_key,
+    )
+    .await;
+    let duration_ms = start.elapsed().as_millis() as u64;
+
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    let timestamp = format!("{}", ts);
+
+    match result {
+        Ok(text) => Ok(DebugLog {
+            timestamp,
+            provider: cfg.kind.as_str().to_string(),
+            model: cfg.model.clone(),
+            thinking_effort: cfg.thinking_effort.clone(),
+            request_messages: request_summary,
+            response_text: text,
+            duration_ms,
+            success: true,
+        }),
+        Err(e) => Ok(DebugLog {
+            timestamp,
+            provider: cfg.kind.as_str().to_string(),
+            model: cfg.model.clone(),
+            thinking_effort: cfg.thinking_effort.clone(),
+            request_messages: request_summary,
+            response_text: e.message.clone(),
+            duration_ms,
+            success: false,
+        }),
+    }
 }
 
 pub async fn list_models(cfg: &AiProviderConfig) -> Result<Vec<String>, AiErrorPayload> {
@@ -390,43 +481,63 @@ pub async fn list_models(cfg: &AiProviderConfig) -> Result<Vec<String>, AiErrorP
                 "gemma3".to_string(),
             ]
         }
-        AiProviderKind::Openai | AiProviderKind::OpenaiCompatible => {
+        AiProviderKind::Openai => {
             vec![
-                "gpt-4o".to_string(),
-                "gpt-4o-mini".to_string(),
-                "gpt-4-turbo".to_string(),
-                "gpt-3.5-turbo".to_string(),
+                "gpt-5.5".to_string(),
+                "gpt-5.4".to_string(),
+                "gpt-5.3".to_string(),
             ]
         }
         AiProviderKind::Anthropic => {
             vec![
-                "claude-3-5-sonnet-latest".to_string(),
-                "claude-3-opus-latest".to_string(),
-                "claude-3-haiku-latest".to_string(),
+                "claude-sonnet-4-6".to_string(),
+                "claude-sonnet-4-5".to_string(),
+                "claude-opus-4-8".to_string(),
+                "claude-opus-4-7".to_string(),
+                "claude-opus-4-6".to_string(),
+                "claude-haiku-4-5".to_string(),
             ]
         }
         AiProviderKind::Gemini => {
             vec![
-                "gemini-2.5-flash".to_string(),
-                "gemini-2.5-pro".to_string(),
-                "gemini-1.5-flash".to_string(),
+                "gemini-3.5-flash".to_string(),
+                "gemini-3.1-pro-preview".to_string(),
             ]
         }
         AiProviderKind::Deepseek => {
-            vec!["deepseek-chat".to_string(), "deepseek-coder".to_string()]
-        }
-        AiProviderKind::Groq => {
             vec![
-                "llama-3.3-70b-versatile".to_string(),
-                "mixtral-8x7b-32768".to_string(),
+                "deepseek-v4-flash".to_string(),
+                "deepseek-v4-pro".to_string(),
             ]
         }
-        AiProviderKind::Cohere => {
-            vec!["command-r-plus".to_string(), "command-r".to_string()]
+        AiProviderKind::Mimo => {
+            vec![
+                "mimo-v2.5".to_string(),
+                "mimo-v2.5-pro".to_string(),
+            ]
         }
-        AiProviderKind::Xai => {
-            vec!["grok-2".to_string(), "grok-2-mini".to_string()]
+        AiProviderKind::Opencodego => {
+            vec![
+                "deepseek-v4-flash".to_string(),
+                "deepseek-v4-pro".to_string(),
+                "glm-5".to_string(),
+                "glm-5.1".to_string(),
+                "glm-5.2".to_string(),
+                "kimi-k2.5".to_string(),
+                "kimi-k2.6".to_string(),
+                "kimi-k2.7-code".to_string(),
+                "mimo-v2.5".to_string(),
+                "mimo-v2.5-pro".to_string(),
+                "minimax-m2.7".to_string(),
+                "minimax-m3".to_string(),
+                "qwen3.5-plus".to_string(),
+                "qwen3.6-plus".to_string(),
+                "qwen3.7-max".to_string(),
+                "qwen3.7-plus".to_string(),
+            ]
         }
+        // OpenaiCompatible: no fallback — user types model name freely
+        AiProviderKind::OpenaiCompatible => vec![],
     })
 }
 
@@ -444,6 +555,7 @@ mod tests {
             model: "gpt-4o".to_string(),
             system_prompt: String::new(),
             max_input_chars: 50_000,
+            thinking_effort: String::new(),
         };
         let debug_str = format!("{:?}", cfg);
         assert!(
@@ -470,6 +582,7 @@ mod tests {
             model: "llama3.2".to_string(),
             system_prompt: String::new(),
             max_input_chars: 50_000,
+            thinking_effort: String::new(),
         };
         let debug_str = format!("{:?}", cfg);
         assert!(
@@ -521,6 +634,7 @@ mod tests {
             model: "x".into(),
             system_prompt: "ABCDEFGHIJ".into(), // 10 chars
             max_input_chars: 100_000,
+            thinking_effort: String::new(),
         };
         // source chars: name(1) + content(5) + 16 = 22, + system_prompt(10) + 64 = 96
         let total = estimate_total_chars(&source_refs, &cfg);
@@ -621,6 +735,7 @@ mod tests {
             model: "llama3.2".into(),
             system_prompt: String::new(),
             max_input_chars: 1, // impossibly low — always triggers InputTooLarge
+            thinking_effort: String::new(),
         };
         let total = estimate_total_chars(&source_refs, &cfg);
         assert!(total > cfg.max_input_chars, "estimate_total_chars should exceed max_input_chars limit");
@@ -643,6 +758,7 @@ mod tests {
             model: "test-model".into(),
             system_prompt: String::new(),
             max_input_chars: 50_000,
+            thinking_effort: String::new(),
         };
         let result = build_client(&cfg);
         assert!(result.is_ok(), "build_client should succeed with custom base_url");
@@ -655,6 +771,7 @@ mod tests {
             model: String::new(),
             system_prompt: String::new(),
             max_input_chars: 50_000,
+            thinking_effort: String::new(),
         };
         let result_no_url = build_client(&cfg_no_url);
         assert!(result_no_url.is_err(), "OpenaiCompatible should fail without base_url");
@@ -718,6 +835,7 @@ mod integration {
                 model: "llama3.2:1b".into(),
                 system_prompt: String::new(),
                 max_input_chars: 200_000,
+                thinking_effort: String::new(),
             }),
         };
 

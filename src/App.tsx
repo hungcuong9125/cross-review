@@ -201,7 +201,7 @@ function App() {
 
         {/* Center content */}
         <div className="flex-1 min-w-0 overflow-hidden">
-          {activeMainTab === "home" ? (
+          {activeMainTab === "home" || activeMainTab === "debug" ? (
             <ContentTabs />
           ) : (
             <EditorPanel />

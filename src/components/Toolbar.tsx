@@ -27,6 +27,11 @@ const TabIcons = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
     </svg>
   ),
+  debug: (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
 };
 
 export function Toolbar() {
@@ -85,12 +90,14 @@ export function Toolbar() {
   };
 
   const showAiBadge = contentTabs.length > 1 && activeContentTabId === "preview";
+  const debugTabCount = contentTabs.filter((t) => t.kind === "debug").length;
 
-  const mainTabs: { key: MainTab; label: string; icon: React.ReactNode; badge?: boolean }[] = [
+  const mainTabs: { key: MainTab; label: string; icon: React.ReactNode; badge?: boolean; count?: number }[] = [
     { key: "home", label: t("tab.home", language), icon: TabIcons.home, badge: showAiBadge },
     { key: "reports", label: t("sidebar.reports", language), icon: TabIcons.reports },
     { key: "opening", label: t("editor.opening", language), icon: TabIcons.opening },
     { key: "closing", label: t("editor.closing", language), icon: TabIcons.closing },
+    { key: "debug", label: language === "vi" ? "Debug" : "Debug", icon: TabIcons.debug, count: debugTabCount },
   ];
 
   return (
@@ -125,6 +132,11 @@ export function Toolbar() {
                 </span>
                 {tab.badge && (
                   <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-blue-500" title="AI tabs available" />
+                )}
+                {tab.count !== undefined && tab.count > 0 && (
+                  <span className="ml-0.5 px-1 py-0.5 text-[8px] font-bold bg-orange-500 text-white rounded-full leading-none" title="Debug logs">
+                    {tab.count}
+                  </span>
                 )}
                 {tab.label}
               </button>

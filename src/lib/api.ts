@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 export type AiProviderKind =
   | "ollama" | "openai" | "anthropic" | "gemini"
-  | "deepseek" | "groq" | "cohere" | "xai" | "openaicompatible";
+  | "deepseek" | "mimo" | "opencodego" | "openaicompatible";
 
 export interface AiProviderConfig {
   kind: AiProviderKind;
@@ -11,6 +11,7 @@ export interface AiProviderConfig {
   model: string;
   system_prompt: string;
   max_input_chars: number;
+  thinking_effort: string;
 }
 
 export interface AiRewriteResult {
@@ -104,6 +105,21 @@ export async function openProject(path: string): Promise<Project> {
 
 export async function aiTestProvider(config: AiProviderConfig): Promise<void> {
   return invoke<void>("ai_test_provider", { config });
+}
+
+export interface DebugLog {
+  timestamp: string;
+  provider: string;
+  model: string;
+  thinking_effort: string;
+  request_messages: string;
+  response_text: string;
+  duration_ms: number;
+  success: boolean;
+}
+
+export async function aiTestProviderDebug(config: AiProviderConfig): Promise<DebugLog> {
+  return invoke<DebugLog>("ai_test_provider_debug", { config });
 }
 
 export async function aiRewriteExport(project: Project): Promise<AiRewriteResult> {

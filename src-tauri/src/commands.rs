@@ -4,7 +4,7 @@ use std::path::Path;
 use crate::ai;
 use crate::export::{generate_exports, generate_preview};
 use crate::models::{
-    AiErrorPayload, AiProviderConfig, AiRewriteResult, ExportFile, Project, ValidationReport,
+    AiErrorPayload, AiProviderConfig, AiRewriteResult, DebugLog, ExportFile, Project, ValidationReport,
 };
 use crate::validation::validate_project;
 use crate::zip_export::export_to_zip;
@@ -74,6 +74,11 @@ pub fn open_project(path: String) -> Result<Project, String> {
 #[tauri::command]
 pub async fn ai_test_provider(config: AiProviderConfig) -> Result<(), AiErrorPayload> {
     ai::test_provider(&config).await
+}
+
+#[tauri::command]
+pub async fn ai_test_provider_debug(config: AiProviderConfig) -> Result<DebugLog, AiErrorPayload> {
+    ai::test_provider_debug(&config).await
 }
 
 #[tauri::command]

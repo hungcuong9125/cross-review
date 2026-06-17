@@ -55,8 +55,8 @@ export const translations = {
   'toolbar.darkMode': { vi: 'Tối', en: 'Dark' },
 
   // Footer actions
-  'footer.exportMd': { vi: 'Xuất .md', en: 'Export .md' },
-  'footer.exportZip': { vi: 'Xuất .zip', en: 'Export .zip' },
+  'footer.exportMd': { vi: 'Xuất tệp .md', en: 'Export .md' },
+  'footer.exportZip': { vi: 'Xuất tệp .zip', en: 'Export .zip' },
   'footer.import': { vi: 'Nhập tệp', en: 'Import' },
 
   // Dialogs
@@ -103,7 +103,7 @@ export const translations = {
 
   // Settings — AI provider
   'settings.aiProvider': { vi: 'AI Provider', en: 'AI provider' },
-  'settings.aiProvider.kind': { vi: 'Loại', en: 'Kind' },
+  'settings.aiProvider.name': { vi: 'Nhà cung cấp', en: 'Provider' },
   'settings.aiProvider.baseUrl': { vi: 'Base URL', en: 'Base URL' },
   'settings.aiProvider.apiKey': { vi: 'API key', en: 'API key' },
   'settings.aiProvider.model': { vi: 'Model', en: 'Model' },
@@ -120,7 +120,7 @@ export const translations = {
   'settings.aiPrompt.reset': { vi: 'Khôi phục mặc định', en: 'Reset to default' },
 
   // Generate / cancel
-  'action.generateReport': { vi: 'Tạo báo cáo tổng hợp', en: 'Generate consolidated report' },
+  'action.generateReport': { vi: 'Tạo báo cáo tổng hợp', en: 'Generate Consolidated Report' },
   'action.generating': { vi: 'Đang tạo...', en: 'Generating...' },
   'action.cancel': { vi: 'Huỷ', en: 'Cancel' },
 

@@ -70,7 +70,7 @@ export function EditorPanel() {
 
                   <div className="p-4 flex-1 flex flex-col">
                     <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-550 select-none">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-550 select-none mb-2">
                         {t("editor.sourceContentLabel", language)}
                       </label>
                       <button
@@ -120,7 +120,7 @@ export function EditorPanel() {
               </div>
             ) : (
               currentComponents.map((comp, index) => {
-              return (
+                return (
                   <div
                     key={comp.id}
                     className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm transition-all duration-200"
