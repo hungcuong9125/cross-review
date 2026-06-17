@@ -39,7 +39,7 @@ pub struct AiProviderConfig {
 }
 
 fn default_max_input_chars() -> usize {
-    50_000
+    500_000
 }
 
 /// Manual Debug impl that redacts api_key - NEVER derive Debug on this struct.

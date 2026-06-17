@@ -2,8 +2,6 @@ import { useProjectStore, type MainTab } from "../state/projectStore";
 import {
   saveProject,
   openProject,
-  exportAllMarkdown,
-  exportAllZip,
 } from "../lib/api";
 import { t } from "../lib/i18n";
 
@@ -34,12 +32,10 @@ const TabIcons = {
 export function Toolbar() {
   const {
     project, setProject, newProject, setProjectTitle,
-    darkMode, toggleDarkMode, validation, language,
+    darkMode, toggleDarkMode, language, setLanguage,
     activeMainTab, setActiveMainTab,
     contentTabs, activeContentTabId,
   } = useProjectStore();
-
-  const canExport = validation?.valid ?? false;
 
   const handleNew = () => {
     if (confirm(t("dialog.confirmNew", language))) {
@@ -85,56 +81,6 @@ export function Toolbar() {
     } catch (err) {
       console.error("Open error:", err);
       alert(`${t("dialog.openFail", language)}: ${err}`);
-    }
-  };
-
-  const handleExportAll = async () => {
-    if (!canExport) {
-      alert(t("dialog.validationFail", language));
-      return;
-    }
-    if (project.qa_reports.length === 0) {
-      alert(t("dialog.noReport", language));
-      return;
-    }
-    try {
-      const { open } = await import("@tauri-apps/plugin-dialog");
-      const dir = await open({ directory: true, multiple: false });
-      if (dir) {
-        const paths = await exportAllMarkdown(project, dir as string);
-        alert(`${t("dialog.exportSuccess", language)}: ${paths.length} files`);
-      }
-    } catch (err) {
-      console.error("Export error:", err);
-      alert(`${t("dialog.exportFail", language)}: ${err}`);
-    }
-  };
-
-  const handleExportZip = async () => {
-    if (!canExport) {
-      alert(t("dialog.validationFail", language));
-      return;
-    }
-    if (project.qa_reports.length === 0) {
-      alert(t("dialog.noReport", language));
-      return;
-    }
-    try {
-      const { save } = await import("@tauri-apps/plugin-dialog");
-      const defaultName = project.title
-        ? `${project.title.toLowerCase().replace(/[^a-z0-9._-]/g, "-").replace(/-{2,}/g, "-")}-reviews.zip`
-        : "review-weaver-export.zip";
-      const path = await save({
-        defaultPath: defaultName,
-        filters: [{ name: "ZIP Archive", extensions: ["zip"] }],
-      });
-      if (path) {
-        const result = await exportAllZip(project, path);
-        alert(`${t("dialog.exportSuccess", language)}: ${result}`);
-      }
-    } catch (err) {
-      console.error("Zip export error:", err);
-      alert(`${t("dialog.exportFail", language)}: ${err}`);
     }
   };
 
@@ -199,20 +145,10 @@ export function Toolbar() {
           {t("toolbar.save", language)}
         </ToolbarButton>
         <div className="w-px h-4 bg-gray-200 dark:bg-gray-600 mx-0.5" />
-        <ToolbarButton
-          onClick={handleExportAll}
-          disabled={!canExport}
-          title="Ctrl/Cmd + E"
-        >
-          {t("toolbar.exportMd", language)}
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={handleExportZip}
-          disabled={!canExport}
-          title={t("tooltip.exportZip", language)}
-        >
-          {t("toolbar.exportZip", language)}
-        </ToolbarButton>
+        <div className="flex gap-0.5">
+          <button onClick={() => setLanguage("vi")} className={`px-2 py-1 text-[10px] font-semibold rounded-l transition-colors ${language === "vi" ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600"}`}>VI</button>
+          <button onClick={() => setLanguage("en")} className={`px-2 py-1 text-[10px] font-semibold rounded-r transition-colors ${language === "en" ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600"}`}>EN</button>
+        </div>
         <div className="w-px h-4 bg-gray-200 dark:bg-gray-600 mx-0.5" />
         <button
           onClick={toggleDarkMode}

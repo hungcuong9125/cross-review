@@ -124,3 +124,7 @@ export async function aiListModels(config: AiProviderConfig): Promise<string[]> 
 export async function aiCancelRequest(): Promise<boolean> {
   return invoke<boolean>("ai_cancel_request");
 }
+
+export async function aiDefaultPrompt(): Promise<string> {
+  return invoke<string>("ai_default_prompt");
+}

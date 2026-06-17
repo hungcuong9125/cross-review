@@ -24,6 +24,7 @@ fn main() {
             commands::ai_rewrite_export,
             commands::ai_list_models,
             commands::ai_cancel_request,
+            commands::ai_default_prompt,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

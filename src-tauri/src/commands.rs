@@ -134,3 +134,8 @@ pub async fn ai_rewrite_export(
 pub async fn ai_cancel_request() -> Result<bool, String> {
     Ok(ai::cancel_in_flight())
 }
+
+#[tauri::command]
+pub fn ai_default_prompt() -> String {
+    ai::default_rewrite_prompt().to_string()
+}

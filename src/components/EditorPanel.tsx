@@ -33,7 +33,7 @@ export function EditorPanel() {
     .sort((a, b) => a.order - b.order);
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-gray-800">
+    <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
       <div className="flex-1 overflow-y-auto">
         {/* QA Reports tab */}
         {activeMainTab === "reports" && (
@@ -56,7 +56,7 @@ export function EditorPanel() {
               <div className="flex-1 flex flex-col p-5 gap-5 overflow-y-auto">
                 {/* Source Card */}
                 <div
-                  className="bg-white dark:bg-gray-850 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm flex-1 flex flex-col min-h-[400px] transition-all duration-200"
+                  className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm flex-1 flex flex-col min-h-[400px] transition-all duration-200"
                 >
                   <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                     <input
@@ -105,7 +105,7 @@ export function EditorPanel() {
 
         {/* Opening / Closing components tab */}
         {(activeMainTab === "opening" || activeMainTab === "closing") && (
-          <div className="p-5 space-y-5 overflow-y-auto">
+          <div className="p-5 space-y-5 overflow-y-auto bg-gray-50 dark:bg-gray-900">
             {currentComponents.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-400 dark:text-gray-550 mb-3 text-sm">
@@ -123,7 +123,7 @@ export function EditorPanel() {
               return (
                   <div
                     key={comp.id}
-                    className="bg-white dark:bg-gray-850 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm transition-all duration-200"
+                    className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm transition-all duration-200"
                   >
                     <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                       <input
@@ -198,7 +198,7 @@ export function EditorPanel() {
             {currentComponents.length > 0 && (
               <button
                 onClick={() => addComponent(activeMainTab)}
-                className="w-full py-3 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-400 dark:text-gray-555 hover:border-blue-300 dark:hover:border-blue-700 hover:text-blue-500 transition-colors bg-white dark:bg-gray-850 shadow-sm"
+                className="w-full py-3 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-400 dark:text-gray-555 hover:border-blue-300 dark:hover:border-blue-700 hover:text-blue-500 transition-colors bg-white dark:bg-gray-800 shadow-sm"
               >
                 + {t("editor.addComponentHere", language)}
               </button>

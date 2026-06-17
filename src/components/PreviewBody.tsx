@@ -16,6 +16,7 @@ export function PreviewBody() {
     selectedQaId,
     selectQaOnly,
     previewFormat,
+    setPreviewMarkdown,
   } = useProjectStore();
 
   const [preview, setPreview] = useState<ExportFile | null>(null);
@@ -60,6 +61,11 @@ export function PreviewBody() {
 
   const activeCount = project.qa_reports.filter((q) => q.active !== false).length;
   const displayContent = preview ? processContent(preview.markdown) : "";
+
+  // Sync preview content to store for footer copy
+  useEffect(() => {
+    setPreviewMarkdown(displayContent);
+  }, [displayContent, setPreviewMarkdown]);
   const displayCharCount = displayContent.length;
 
   const filename = preview ? preview.filename : "-";

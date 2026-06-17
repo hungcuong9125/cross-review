@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
 import { useProjectStore } from "../state/projectStore";
-import { aiTestProvider, aiListModels, aiRewriteExport, aiCancelRequest, type AiProviderKind, type AiErrorPayload } from "../lib/api";
+import { aiTestProvider, aiListModels, aiRewriteExport, aiCancelRequest, aiDefaultPrompt, exportAllMarkdown, exportAllZip, type AiProviderKind, type AiErrorPayload } from "../lib/api";
 import { t } from "../lib/i18n";
 import { useToast } from "../hooks/useToast";
 import { isApiKeyScrubbed, clearApiKeyScrubbed } from "../lib/sanitize";
-import pkg from "../../package.json";
 
 const PROVIDER_KINDS: AiProviderKind[] = [
   "ollama", "openai", "anthropic", "gemini", "deepseek", "groq", "cohere", "xai", "openaicompatible",
@@ -12,7 +11,7 @@ const PROVIDER_KINDS: AiProviderKind[] = [
 
 export function SettingsPanel() {
   const {
-    project, language, setLanguage,
+    project, language,
     previewFormat, setPreviewFormat,
     compactMode, toggleCompactMode,
     removeWhitespace, toggleRemoveWhitespace,
@@ -29,12 +28,13 @@ export function SettingsPanel() {
   const [draftBaseUrl, setDraftBaseUrl] = useState(project.ai_config?.base_url ?? "");
   const [draftApiKey, setDraftApiKey] = useState(project.ai_config?.api_key ?? "");
   const [draftModel, setDraftModel] = useState(project.ai_config?.model ?? "");
-  const [draftMaxChars, setDraftMaxChars] = useState(project.ai_config?.max_input_chars ?? 50000);
+  const [draftMaxChars, setDraftMaxChars] = useState(project.ai_config?.max_input_chars ?? 500000);
   const [draftSystemPrompt, setDraftSystemPrompt] = useState(project.ai_config?.system_prompt ?? "");
   const [showApiKey, setShowApiKey] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
   const [models, setModels] = useState<string[]>([]);
   const [showKeyBanner, setShowKeyBanner] = useState(isApiKeyScrubbed() && !project.ai_config?.api_key && !!project.ai_config);
+  const [defaultPrompt, setDefaultPrompt] = useState("");
 
   // Sync draft state when project.ai_config changes (e.g. opening a different project file)
   useEffect(() => {
@@ -42,16 +42,21 @@ export function SettingsPanel() {
     setDraftBaseUrl(project.ai_config?.base_url ?? "");
     setDraftApiKey(project.ai_config?.api_key ?? "");
     setDraftModel(project.ai_config?.model ?? "");
-    setDraftMaxChars(project.ai_config?.max_input_chars ?? 50000);
+    setDraftMaxChars(project.ai_config?.max_input_chars ?? 500000);
     setDraftSystemPrompt(project.ai_config?.system_prompt ?? "");
     setShowKeyBanner(isApiKeyScrubbed() && !project.ai_config?.api_key && !!project.ai_config);
   }, [project.ai_config]);
+
+  // Fetch the default rewrite prompt from backend on mount
+  useEffect(() => {
+    aiDefaultPrompt().then(setDefaultPrompt).catch(() => {});
+  }, []);
 
   const isDirty = draftKind !== (project.ai_config?.kind ?? "ollama")
     || draftBaseUrl !== (project.ai_config?.base_url ?? "")
     || draftApiKey !== (project.ai_config?.api_key ?? "")
     || draftModel !== (project.ai_config?.model ?? "")
-    || draftMaxChars !== (project.ai_config?.max_input_chars ?? 50000)
+    || draftMaxChars !== (project.ai_config?.max_input_chars ?? 500000)
     || draftSystemPrompt !== (project.ai_config?.system_prompt ?? "");
 
   const handleSave = () => {
@@ -113,19 +118,21 @@ export function SettingsPanel() {
 
   const handleGenerate = async () => {
     if (aiBusy) return;
-    const cfg = project.ai_config;
+    // Auto-save draft config before generating so unsaved changes take effect
+    handleSave();
+    const cfg = useProjectStore.getState().project.ai_config;
     if (!cfg || !cfg.model) {
       info(t("toast.aiNotConfigured", language));
       return;
     }
-    const activeCount = project.qa_reports.filter(q => q.active !== false).length;
+    const activeCount = useProjectStore.getState().project.qa_reports.filter(q => q.active !== false).length;
     if (activeCount < 2) {
       info(t("toast.needTwoSources", language));
       return;
     }
     setAiBusy(true);
     try {
-      const result = await aiRewriteExport(project);
+      const result = await aiRewriteExport(useProjectStore.getState().project);
       const now = new Date();
       const title = `AI ${now.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit" })} ${now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
       appendAiTab(result.markdown, title);
@@ -177,6 +184,80 @@ export function SettingsPanel() {
 
   const handleApiKeyChange = (val: string) => {
     setDraftApiKey(val);
+  };
+
+  const handleExportMd = async () => {
+    if (project.qa_reports.length === 0) { info(t("dialog.noReport", language)); return; }
+    try {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const dir = await open({ directory: true, multiple: false });
+      if (dir) {
+        const paths = await exportAllMarkdown(project, dir as string);
+        success(`${t("dialog.exportSuccess", language)}: ${paths.length} files`);
+      }
+    } catch (err) { toastError(`${t("dialog.exportFail", language)}: ${err}`); }
+  };
+
+  const handleExportZip = async () => {
+    if (project.qa_reports.length === 0) { info(t("dialog.noReport", language)); return; }
+    try {
+      const { save } = await import("@tauri-apps/plugin-dialog");
+      const defaultName = project.title
+        ? `${project.title.toLowerCase().replace(/[^a-z0-9._-]/g, "-").replace(/-{2,}/g, "-")}-reviews.zip`
+        : "review-weaver-export.zip";
+      const path = await save({ defaultPath: defaultName, filters: [{ name: "ZIP Archive", extensions: ["zip"] }] });
+      if (path) {
+        const result = await exportAllZip(project, path);
+        success(`${t("dialog.exportSuccess", language)}: ${result}`);
+      }
+    } catch (err) { toastError(`${t("dialog.exportFail", language)}: ${err}`); }
+  };
+
+  const handleImport = async () => {
+    try {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const selected = await open({
+        multiple: true,
+        filters: [
+          { name: "Markdown & ZIP", extensions: ["md", "zip"] },
+          { name: "Markdown", extensions: ["md"] },
+          { name: "ZIP Archive", extensions: ["zip"] },
+        ],
+      });
+      if (!selected) return;
+      const files = Array.isArray(selected) ? selected : [selected];
+      const { readTextFile } = await import("@tauri-apps/plugin-fs");
+      const newReports: { id: string; name: string; content: string; active: boolean }[] = [];
+      for (const filePath of files) {
+        if (filePath.endsWith(".zip")) {
+          // For zip: read as binary, extract .md files
+          const { readFile } = await import("@tauri-apps/plugin-fs");
+          const zipData = await readFile(filePath);
+          const { ZipReader, BlobReader, TextWriter } = await import("@zip.js/zip.js");
+          const blob = new Blob([zipData]);
+          const reader = new ZipReader(new BlobReader(blob));
+          const entries = await reader.getEntries();
+          for (const entry of entries) {
+            if (entry.filename.endsWith(".md") && !entry.directory && entry.getData) {
+              const text = await entry.getData(new TextWriter());
+              const name = entry.filename.replace(/\.md$/, "").replace(/[_-]/g, " ");
+              newReports.push({ id: crypto.randomUUID?.() ?? Math.random().toString(36).substring(2, 11), name, content: text, active: true });
+            }
+          }
+          await reader.close();
+        } else if (filePath.endsWith(".md")) {
+          const text = await readTextFile(filePath);
+          const name = filePath.split("/").pop()?.replace(/\.md$/, "").replace(/[_-]/g, " ") ?? "Imported";
+          newReports.push({ id: crypto.randomUUID?.() ?? Math.random().toString(36).substring(2, 11), name, content: text, active: true });
+        }
+      }
+      if (newReports.length > 0) {
+        useProjectStore.setState((state) => ({
+          project: { ...state.project, qa_reports: [...state.project.qa_reports, ...newReports] },
+        }));
+        success(`Imported ${newReports.length} file(s)`);
+      }
+    } catch (err) { toastError(`Import failed: ${err}`); }
   };
 
   return (
@@ -283,7 +364,7 @@ export function SettingsPanel() {
             {/* Max chars */}
             <div>
               <label className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">{t("settings.aiProvider.maxChars", language)}</label>
-              <input type="number" value={draftMaxChars} onChange={(e) => { const v = parseInt(e.target.value); setDraftMaxChars(Number.isNaN(v) ? 50000 : Math.max(1, v)); }}
+              <input type="number" value={draftMaxChars} onChange={(e) => { const v = parseInt(e.target.value); setDraftMaxChars(Number.isNaN(v) ? 500000 : Math.max(1, v)); }}
                 className="w-full h-7 text-xs px-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent" />
             </div>
 
@@ -291,7 +372,7 @@ export function SettingsPanel() {
             <div>
               <label className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">{t("settings.aiPrompt", language)}</label>
               <textarea value={draftSystemPrompt} onChange={(e) => setDraftSystemPrompt(e.target.value)}
-                rows={4} placeholder="Custom system prompt..."
+                rows={6} placeholder={defaultPrompt || "Custom system prompt..."}
                 className="w-full text-xs px-2 py-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent resize-none" />
               <button onClick={() => setDraftSystemPrompt("")} className="text-[10px] text-blue-500 hover:underline mt-0.5">
                 {t("settings.aiPrompt.reset", language)}
@@ -335,18 +416,17 @@ export function SettingsPanel() {
         )}
       </div>
 
-      {/* Language switcher + version footer (PRESERVED) */}
-      <div className="p-2.5 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            {t("settings.language", language)}
-          </span>
-          <div className="flex gap-0.5">
-            <button onClick={() => setLanguage("vi")} className={`px-2.5 py-0.5 text-[9px] font-semibold rounded-l transition-colors ${language === "vi" ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600"}`}>VI</button>
-            <button onClick={() => setLanguage("en")} className={`px-2.5 py-0.5 text-[9px] font-semibold rounded-r transition-colors ${language === "en" ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600"}`}>EN</button>
-          </div>
-        </div>
-        <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500">Version: {pkg.version}</span>
+      {/* Export / Import footer */}
+      <div className="p-2.5 border-t border-gray-200 dark:border-gray-700 flex gap-1.5 flex-shrink-0">
+        <button onClick={handleExportMd} className="flex-1 px-2 py-1.5 text-[11px] font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors">
+          {t("footer.exportMd", language)}
+        </button>
+        <button onClick={handleExportZip} className="flex-1 px-2 py-1.5 text-[11px] font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors">
+          {t("footer.exportZip", language)}
+        </button>
+        <button onClick={handleImport} className="flex-1 px-2 py-1.5 text-[11px] font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors">
+          {t("footer.import", language)}
+        </button>
       </div>
     </div>
   );

@@ -95,6 +95,10 @@ interface ProjectState {
 
   // Content processing
   processContent: (content: string) => string;
+
+  // Preview markdown (for copy in footer)
+  previewMarkdown: string;
+  setPreviewMarkdown: (md: string) => void;
 }
 
 const DEFAULT_PROJECT: Project = {
@@ -159,6 +163,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   activeContentTabId: "preview",
   previewFormat: "html",
   aiBusy: false,
+  previewMarkdown: "",
 
   setProject: (project) => {
     const migrated = migrateProject(project);
@@ -567,6 +572,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       return { darkMode: newMode };
     });
   },
+
+  setPreviewMarkdown: (md) => set({ previewMarkdown: md }),
 
   processContent: (content: string) => {
     const state = get();

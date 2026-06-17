@@ -50,11 +50,14 @@ export const translations = {
   'toolbar.new': { vi: 'Thêm mới', en: 'New' },
   'toolbar.open': { vi: 'Mở', en: 'Open' },
   'toolbar.save': { vi: 'Lưu', en: 'Save' },
-  'toolbar.exportMd': { vi: 'Xuất .md', en: 'Export .md' },
-  'toolbar.exportZip': { vi: 'Xuất .zip', en: 'Export .zip' },
   'toolbar.projectTitle': { vi: 'Tên dự án', en: 'Project title' },
   'toolbar.lightMode': { vi: 'Sáng', en: 'Light' },
   'toolbar.darkMode': { vi: 'Tối', en: 'Dark' },
+
+  // Footer actions
+  'footer.exportMd': { vi: 'Xuất .md', en: 'Export .md' },
+  'footer.exportZip': { vi: 'Xuất .zip', en: 'Export .zip' },
+  'footer.import': { vi: 'Nhập tệp', en: 'Import' },
 
   // Dialogs
   'dialog.confirmNew': { vi: 'Tạo dự án mới? Dữ liệu chưa lưu sẽ bị mất.', en: 'Create new project? Unsaved data will be lost.' },
