@@ -14,6 +14,7 @@ export interface AiProviderConfig {
   thinking_effort: string;
   translate_vietnamese: boolean;
   remove_chinese: boolean;
+  prompt_level: string;
 }
 
 export interface AiRewriteResult {

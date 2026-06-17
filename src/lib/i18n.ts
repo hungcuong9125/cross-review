@@ -118,7 +118,7 @@ export const translations = {
   'settings.aiProvider.dirty': { vi: 'Có thay đổi chưa lưu', en: 'Unsaved changes' },
 
   // Settings — Prompt
-  'settings.aiPrompt': { vi: 'Prompt cho AI', en: 'Rewrite prompt' },
+  'settings.aiPrompt': { vi: 'Chế độ prompt', en: 'Prompt mode' },
   'settings.aiPrompt.reset': { vi: 'Khôi phục mặc định', en: 'Reset to default' },
 
   // Generate / cancel

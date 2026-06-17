@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useProjectStore } from "../state/projectStore";
-import { aiTestProvider, aiTestProviderDebug, aiListModels, aiRewriteExport, aiCancelRequest, aiDefaultPrompt, exportSettings, importSettings, type AiProviderKind, type AiErrorPayload, type DebugLog, type AppSettings } from "../lib/api";
+import { aiTestProvider, aiTestProviderDebug, aiListModels, aiRewriteExport, aiCancelRequest, exportSettings, importSettings, type AiProviderKind, type AiErrorPayload, type DebugLog, type AppSettings } from "../lib/api";
 import { t } from "../lib/i18n";
 import { useToast } from "../hooks/useToast";
 import { isApiKeyScrubbed, clearApiKeyScrubbed } from "../lib/sanitize";
@@ -37,14 +37,14 @@ export function SettingsPanel() {
   const [draftBaseUrl, setDraftBaseUrl] = useState(project.ai_config?.base_url ?? "");
   const [draftApiKey, setDraftApiKey] = useState(project.ai_config?.api_key ?? "");
   const [draftModel, setDraftModel] = useState(project.ai_config?.model ?? "");
-  const [draftMaxChars, setDraftMaxChars] = useState(project.ai_config?.max_input_chars ?? 500000);
+  const [draftMaxChars] = useState(2_000_000);
   const [draftSystemPrompt, setDraftSystemPrompt] = useState(project.ai_config?.system_prompt ?? "");
   const [draftThinkingEffort, setDraftThinkingEffort] = useState(project.ai_config?.thinking_effort ?? "");
+  const [draftPromptLevel, setDraftPromptLevel] = useState(project.ai_config?.prompt_level ?? "2");
   const [showApiKey, setShowApiKey] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
   const [models, setModels] = useState<string[]>([]);
   const [showKeyBanner, setShowKeyBanner] = useState(isApiKeyScrubbed() && !project.ai_config?.api_key && !!project.ai_config);
-  const [defaultPrompt, setDefaultPrompt] = useState("");
   const [draftTranslateVietnamese, setDraftTranslateVietnamese] = useState(project.ai_config?.translate_vietnamese ?? false);
   const [draftRemoveChinese, setDraftRemoveChinese] = useState(project.ai_config?.remove_chinese ?? false);
   const [debugLogs, setDebugLogs] = useState<DebugLog[]>([]);
@@ -56,29 +56,24 @@ export function SettingsPanel() {
     setDraftBaseUrl(project.ai_config?.base_url ?? "");
     setDraftApiKey(project.ai_config?.api_key ?? "");
     setDraftModel(project.ai_config?.model ?? "");
-    setDraftMaxChars(project.ai_config?.max_input_chars ?? 500000);
     setDraftSystemPrompt(project.ai_config?.system_prompt ?? "");
     setDraftThinkingEffort(project.ai_config?.thinking_effort ?? "");
+    setDraftPromptLevel(project.ai_config?.prompt_level ?? "2");
     setDraftTranslateVietnamese(project.ai_config?.translate_vietnamese ?? false);
     setDraftRemoveChinese(project.ai_config?.remove_chinese ?? false);
     setShowApiKey(false);
     setShowKeyBanner(isApiKeyScrubbed() && !project.ai_config?.api_key && !!project.ai_config);
   }, [project.ai_config]);
 
-  // Fetch the default rewrite prompt from backend on mount
-  useEffect(() => {
-    aiDefaultPrompt().then(setDefaultPrompt).catch(() => { });
-  }, []);
-
   const isDirty = draftKind !== (project.ai_config?.kind ?? "ollama")
     || draftBaseUrl !== (project.ai_config?.base_url ?? "")
     || draftApiKey !== (project.ai_config?.api_key ?? "")
     || draftModel !== (project.ai_config?.model ?? "")
-    || draftMaxChars !== (project.ai_config?.max_input_chars ?? 500000)
     || draftSystemPrompt !== (project.ai_config?.system_prompt ?? "")
     || draftThinkingEffort !== (project.ai_config?.thinking_effort ?? "")
     || draftTranslateVietnamese !== (project.ai_config?.translate_vietnamese ?? false)
-    || draftRemoveChinese !== (project.ai_config?.remove_chinese ?? false);
+    || draftRemoveChinese !== (project.ai_config?.remove_chinese ?? false)
+    || draftPromptLevel !== (project.ai_config?.prompt_level ?? "2");
 
   const handleSave = () => {
     const newConfig = {
@@ -91,6 +86,7 @@ export function SettingsPanel() {
       thinking_effort: draftThinkingEffort,
       translate_vietnamese: draftTranslateVietnamese,
       remove_chinese: draftRemoveChinese,
+      prompt_level: draftPromptLevel,
     };
     useProjectStore.setState((state) => ({
       project: { ...state.project, ai_config: newConfig },
@@ -112,6 +108,7 @@ export function SettingsPanel() {
       thinking_effort: draftThinkingEffort,
       translate_vietnamese: draftTranslateVietnamese,
       remove_chinese: draftRemoveChinese,
+      prompt_level: draftPromptLevel,
     };
     try {
       if (debugEnabled) {
@@ -153,6 +150,7 @@ export function SettingsPanel() {
       thinking_effort: "",
       translate_vietnamese: false,
       remove_chinese: false,
+      prompt_level: "2",
     }).then((result) => {
       if (cancelled) return;
       setModels(result);
@@ -286,11 +284,11 @@ export function SettingsPanel() {
           setDraftBaseUrl(settings.ai_config.base_url);
           setDraftApiKey(settings.ai_config.api_key);
           setDraftModel(settings.ai_config.model);
-          setDraftMaxChars(settings.ai_config.max_input_chars);
           setDraftSystemPrompt(settings.ai_config.system_prompt);
           setDraftThinkingEffort(settings.ai_config.thinking_effort);
           setDraftTranslateVietnamese(settings.ai_config.translate_vietnamese);
           setDraftRemoveChinese(settings.ai_config.remove_chinese);
+          setDraftPromptLevel(settings.ai_config.prompt_level);
         }
         success(language === "vi" ? "Đã nhập cài đặt" : "Settings imported");
       }
@@ -403,24 +401,22 @@ export function SettingsPanel() {
               </div>
             </div>
 
-            {/* Model */}
-            <div>
-              <label className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">{t("settings.aiProvider.model", language)}</label>
-              {draftKind === "openaicompatible" ? (
-                <input type="text" value={draftModel} onChange={(e) => setDraftModel(e.target.value)}
-                  placeholder={language === "vi" ? "Nhập tên model" : "Enter model name"}
-                  className="w-full h-7 text-xs px-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent" />
-              ) : (
-                <select value={draftModel} onChange={(e) => setDraftModel(e.target.value)}
-                  className="w-full h-7 text-xs px-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded">
-                  <option value="">{language === "vi" ? "-- Chọn model triển khai --" : "-- Select model --"}</option>
-                  {models.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
-              )}
-            </div>
-
-            {/* Thinking effort + Max chars — 2 columns */}
+            {/* Model + Thinking Mode — 2 columns */}
             <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">{t("settings.aiProvider.model", language)}</label>
+                {draftKind === "openaicompatible" ? (
+                  <input type="text" value={draftModel} onChange={(e) => setDraftModel(e.target.value)}
+                    placeholder={language === "vi" ? "Nhập tên model" : "Enter model name"}
+                    className="w-full h-7 text-xs px-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent" />
+                ) : (
+                  <select value={draftModel} onChange={(e) => setDraftModel(e.target.value)}
+                    className="w-full h-7 text-xs px-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded">
+                    <option value="">{language === "vi" ? "-- Chọn model --" : "-- Select model --"}</option>
+                    {models.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                )}
+              </div>
               <div>
                 <label className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">
                   {language === "vi" ? "Chế độ suy nghĩ" : "Thinking Mode"}
@@ -434,11 +430,6 @@ export function SettingsPanel() {
                   <option value="max">{language === "vi" ? "Tối đa" : "Max"}</option>
                 </select>
               </div>
-              <div>
-                <label className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">{t("settings.aiProvider.maxChars", language)}</label>
-                <input type="number" value={draftMaxChars} onChange={(e) => { const v = parseInt(e.target.value, 10); setDraftMaxChars(Number.isNaN(v) ? 500000 : Math.max(1, v)); }}
-                  className="w-full h-7 text-xs px-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent" />
-              </div>
             </div>
             {draftThinkingEffort && (
               <p className="text-[10px] text-red-500 dark:text-red-400 -mt-1">
@@ -448,26 +439,51 @@ export function SettingsPanel() {
               </p>
             )}
 
-            {/* System prompt */}
+            {/* Prompt level */}
             <div>
               <label className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">{t("settings.aiPrompt", language)}</label>
-              <textarea value={draftSystemPrompt} onChange={(e) => setDraftSystemPrompt(e.target.value)}
-                rows={6} placeholder={defaultPrompt || "Custom system prompt..."}
-                className="w-full text-xs px-2 py-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent resize-none" />
-              <div className="flex items-center justify-between mt-0.5">
-                <button onClick={() => setDraftSystemPrompt("")} className="text-[10px] text-blue-500 hover:underline">
-                  {t("settings.aiPrompt.reset", language)}
-                </button>
-                <div className="flex items-center gap-4">
-                  <button onClick={handleImportSettings} className="text-[10px] text-blue-500 hover:underline">
-                    {language === "vi" ? "Nhập cài đặt" : "Import settings"}
+              <select value={draftPromptLevel} onChange={(e) => setDraftPromptLevel(e.target.value)}
+                className="w-full h-7 text-xs px-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded">
+                <option value="1">{language === "vi" ? "Mức 1: Giữ nguyên nguồn" : "Level 1: Source-Preserved Summary"}</option>
+                <option value="2">{language === "vi" ? "Mức 2: Báo cáo thống nhất" : "Level 2: Unified Final Report"}</option>
+                <option value="3">{language === "vi" ? "Mức 3: Bàn giao QA" : "Level 3: QA Review Handoff"}</option>
+                <option value="4">{language === "vi" ? "Mức 4: Prompt tuỳ chỉnh" : "Level 4: Custom Prompt"}</option>
+              </select>
+            </div>
+
+            {/* Custom prompt textarea — only shown for level 4 */}
+            {draftPromptLevel === "4" && (
+              <div>
+                <textarea value={draftSystemPrompt} onChange={(e) => setDraftSystemPrompt(e.target.value)}
+                  rows={6} placeholder={language === "vi" ? "Nhập prompt tuỳ chỉnh tại đây..." : "Enter your custom prompt here..."}
+                  className="w-full text-xs px-2 py-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent resize-none" />
+                <div className="flex items-center justify-between mt-0.5">
+                  <button onClick={() => setDraftSystemPrompt("")} className="text-[10px] text-blue-500 hover:underline">
+                    {t("settings.aiPrompt.reset", language)}
                   </button>
-                  <button onClick={handleExportSettings} className="text-[10px] text-blue-500 hover:underline">
-                    {language === "vi" ? "Xuất cài đặt" : "Export settings"}
-                  </button>
+                  <div className="flex items-center gap-4">
+                    <button onClick={handleImportSettings} className="text-[10px] text-blue-500 hover:underline">
+                      {language === "vi" ? "Nhập cài đặt" : "Import settings"}
+                    </button>
+                    <button onClick={handleExportSettings} className="text-[10px] text-blue-500 hover:underline">
+                      {language === "vi" ? "Xuất cài đặt" : "Export settings"}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* Import/Export settings — shown when not level 4 */}
+            {draftPromptLevel !== "4" && (
+              <div className="flex items-center justify-end gap-4 mt-0.5">
+                <button onClick={handleImportSettings} className="text-[10px] text-blue-500 hover:underline">
+                  {language === "vi" ? "Nhập cài đặt" : "Import settings"}
+                </button>
+                <button onClick={handleExportSettings} className="text-[10px] text-blue-500 hover:underline">
+                  {language === "vi" ? "Xuất cài đặt" : "Export settings"}
+                </button>
+              </div>
+            )}
 
             {/* Test + Save buttons */}
             <div className="flex gap-1">

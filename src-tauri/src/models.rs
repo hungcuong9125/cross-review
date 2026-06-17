@@ -55,10 +55,18 @@ pub struct AiProviderConfig {
     /// When true, strip CJK characters from AI output.
     #[serde(default)]
     pub remove_chinese: bool,
+    /// Prompt level: "1"=Source-Preserved Summary, "2"=Unified Final Report,
+    /// "3"=QA Review Handoff, "4"=Custom Prompt. Default "2".
+    #[serde(default = "default_prompt_level")]
+    pub prompt_level: String,
+}
+
+fn default_prompt_level() -> String {
+    "2".to_string()
 }
 
 fn default_max_input_chars() -> usize {
-    500_000
+    2_000_000
 }
 
 impl std::fmt::Debug for AiProviderConfig {
@@ -74,6 +82,7 @@ impl std::fmt::Debug for AiProviderConfig {
             .field("thinking_effort", &self.thinking_effort)
             .field("translate_vietnamese", &self.translate_vietnamese)
             .field("remove_chinese", &self.remove_chinese)
+            .field("prompt_level", &self.prompt_level)
             .finish()
     }
 }

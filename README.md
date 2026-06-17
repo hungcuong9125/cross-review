@@ -25,6 +25,21 @@ Review Weave solves this by taking everyone's reports and generating customized 
   - Flattens text into a single continuous line for feeding into LLMs (`Export as Single Line`).
 - **Offline & Fast**: Built with Rust and Tauri, meaning it's lightweight, secure, and works entirely offline.
 
+## Prompt Modes
+
+When using AI to generate consolidated reports, you can choose from 4 prompt modes in Settings:
+
+| Mode | Name | Description |
+|------|------|-------------|
+| **Level 1** | Source-Preserved Summary | Keeps each source report as a separate section. Includes a comparison table. Best when you need to see what each team reported individually. |
+| **Level 2** | Unified Final Report | Merges all sources into one deduplicated report with executive summary, findings, recommendations. Best for a single clean output. |
+| **Level 3** | QA Review Handoff | Produces a structured handoff document for the next reviewer. Focuses on claims needing verification, files to inspect, and reproduction scenarios. |
+| **Level 4** | Custom Prompt | Write your own system prompt. The textarea appears when this level is selected. |
+
+**Default:** Level 2 (Unified Final Report).
+
+Level 1–3 prompts are optimized for specific use cases and cannot be edited. Level 4 lets you fully customize the AI behavior.
+
 ## Technology Stack
 
 - **Backend**: Rust (Tauri 2 commands, validation engine, markdown exporter, file packaging)
@@ -168,6 +183,21 @@ The compiled Markdown outputs follow this structural convention:
 ```
 
 ## Changelog
+
+### v0.6.6 (2026-06-18)
+- **Feature**: 4-level prompt system — dropdown to select prompt mode:
+  - Level 1: Source-Preserved Summary — keeps reports separate with comparison table
+  - Level 2: Unified Final Report — merges into one deduplicated report (default)
+  - Level 3: QA Review Handoff — structured handoff document for next reviewer
+  - Level 4: Custom Prompt — user writes their own prompt (textarea shown)
+- **Changed**: `prompt_level` field added to `AiProviderConfig` (Rust + TypeScript)
+- **Changed**: `build_chat_request()` selects prompt based on `prompt_level` instead of always using default
+- **Changed**: System prompt textarea only visible when Level 4 (Custom Prompt) is selected
+- **Changed**: Renamed "Rewrite prompt" label to "Prompt mode" for clarity
+- **Changed**: Removed "Max input characters" from UI — internal hard cap raised to 2M chars (~500K tokens)
+- **Changed**: Model and Thinking Mode now share the same row (2-column grid layout)
+- **Docs**: Added "Prompt Modes" section in README explaining the 4 prompt levels
+- **Version**: Bumped to 0.6.6.
 
 ### v0.6.5 (2026-06-18)
 - **Fixed**: Debug mode now captures actual request/response from real rewrite — replaced fake "ping" test with real `ChatRequest` serialization and response capture via `capture_request_debug()` and `make_debug_log()`.
