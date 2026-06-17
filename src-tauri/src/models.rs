@@ -17,6 +17,22 @@ pub enum AiProviderKind {
     OpenaiCompatible,
 }
 
+impl AiProviderKind {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Ollama => "ollama",
+            Self::Openai => "openai",
+            Self::Anthropic => "anthropic",
+            Self::Gemini => "gemini",
+            Self::Deepseek => "deepseek",
+            Self::Groq => "groq",
+            Self::Cohere => "cohere",
+            Self::Xai => "xai",
+            Self::OpenaiCompatible => "openaicompatible",
+        }
+    }
+}
+
 fn default_kind() -> AiProviderKind {
     AiProviderKind::Ollama
 }

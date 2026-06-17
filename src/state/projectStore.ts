@@ -175,6 +175,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       activeItem: firstQa ? { type: "report", qaId: firstQa.id } : null,
       contentTabs: [DEFAULT_PREVIEW_TAB],
       activeContentTabId: "preview",
+      previewMarkdown: "",
+      aiBusy: false,
+      validation: null,
     });
     get().refreshValidation();
   },
@@ -187,6 +190,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       activeItem: null,
       contentTabs: [DEFAULT_PREVIEW_TAB],
       activeContentTabId: "preview",
+      previewMarkdown: "",
+      aiBusy: false,
+      validation: null,
     });
     get().refreshValidation();
   },
@@ -449,7 +455,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       project: {
         ...state.project,
         qa_reports: state.project.qa_reports.map((q) =>
-          q.id === id ? { ...q, active: q.active === false } : q
+          q.id === id ? { ...q, active: !(q.active === false) } : q
         ),
       },
     }));
@@ -461,7 +467,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       project: {
         ...state.project,
         components: state.project.components.map((c) =>
-          c.id === id ? { ...c, active: c.active === false } : c
+          c.id === id ? { ...c, active: !(c.active === false) } : c
         ),
       },
     }));
@@ -601,7 +607,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         if (trimmed === "---" || trimmed === "___" || trimmed === "***") {
           return "";
         }
-        if (trimmed.startsWith("#")) {
+        if (/^#{1,6}\s/.test(trimmed)) {
           return trimmed.replace(/^#+\s*/, "");
         }
         return line;

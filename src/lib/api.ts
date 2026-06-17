@@ -106,13 +106,6 @@ export async function aiTestProvider(config: AiProviderConfig): Promise<void> {
   return invoke<void>("ai_test_provider", { config });
 }
 
-export async function aiRewritePreview(
-  project: Project,
-  targetQaId: string,
-): Promise<AiRewriteResult> {
-  return invoke<AiRewriteResult>("ai_rewrite_preview", { project, targetQaId });
-}
-
 export async function aiRewriteExport(project: Project): Promise<AiRewriteResult> {
   return invoke<AiRewriteResult>("ai_rewrite_export", { project });
 }

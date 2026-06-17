@@ -95,7 +95,7 @@ pub async fn ai_rewrite_preview(
     let provider = project
         .ai_config
         .as_ref()
-        .map(|c| format!("{:?}", c.kind).to_lowercase())
+        .map(|c| c.kind.as_str().to_string())
         .unwrap_or_else(|| "ollama".to_string());
     let output = ai::rewrite_for_target(&project, &target_qa_id, cancel).await?;
     Ok(AiRewriteResult {
@@ -119,7 +119,7 @@ pub async fn ai_rewrite_export(
     let provider = project
         .ai_config
         .as_ref()
-        .map(|c| format!("{:?}", c.kind).to_lowercase())
+        .map(|c| c.kind.as_str().to_string())
         .unwrap_or_else(|| "ollama".to_string());
     let output = ai::rewrite_all(&project, cancel).await?;
     Ok(AiRewriteResult {

@@ -270,7 +270,6 @@ pub async fn rewrite_for_target(
     }
     let request = build_chat_request(cfg, &sources);
     let client = build_client(cfg)?;
-    let input_chars = estimate_total_chars(&sources, cfg);
     register_cancel(cancel.clone());
     let result = exec(
         client,
@@ -281,10 +280,7 @@ pub async fn rewrite_for_target(
         &cfg.api_key,
     )
     .await;
-    // Don't call clear_cancel() here — a concurrent request may have
-    // registered its own token after ours. register_cancel() handles
-    // replacement; the slot always holds the most recent token.
-    result.map(|markdown| RewriteOutput { markdown, input_chars })
+    result.map(|markdown| RewriteOutput { markdown, input_chars: chars })
 }
 
 pub async fn rewrite_all(
@@ -317,7 +313,6 @@ pub async fn rewrite_all(
     }
     let request = build_chat_request(cfg, &sources);
     let client = build_client(cfg)?;
-    let input_chars = estimate_total_chars(&sources, cfg);
     register_cancel(cancel.clone());
     let result = exec(
         client,
@@ -328,8 +323,7 @@ pub async fn rewrite_all(
         &cfg.api_key,
     )
     .await;
-    // Don't call clear_cancel() — same reasoning as rewrite_for_target.
-    result.map(|markdown| RewriteOutput { markdown, input_chars })
+    result.map(|markdown| RewriteOutput { markdown, input_chars: chars })
 }
 
 pub async fn test_provider(cfg: &AiProviderConfig) -> Result<(), AiErrorPayload> {

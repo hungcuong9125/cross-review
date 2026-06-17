@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useProjectStore } from "../state/projectStore";
 import { t } from "../lib/i18n";
+import { useToast } from "../hooks/useToast";
 import { PreviewBody } from "./PreviewBody";
 import { exportAllMarkdown, exportAllZip } from "../lib/api";
 import { marked } from "marked";
@@ -11,8 +13,10 @@ export function ContentTabs() {
     contentTabs, activeContentTabId, setActiveContentTab,
     closeContentTab, closeAllAiTabs, language,
     processContent, previewFormat, project,
-    previewMarkdown,
+    previewMarkdown, validation,
   } = useProjectStore();
+  const { success, error: toastError, info } = useToast();
+  const [copied, setCopied] = useState(false);
 
   const activeTab = contentTabs.find((tab) => tab.id === activeContentTabId);
 
@@ -29,31 +33,47 @@ export function ContentTabs() {
     try {
       await navigator.clipboard.writeText(content);
     } catch {
-      // clipboard API may be unavailable in non-HTTPS contexts
+      // Fallback for non-HTTPS contexts where Clipboard API is unavailable
+      const textarea = document.createElement("textarea");
+      textarea.value = content;
+      textarea.style.cssText = "position:fixed;left:-9999px";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
     }
+    setCopied(true);
+    success(t("toast.copied", language));
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleExportMd = async () => {
     if (project.qa_reports.length === 0) return;
+    if (validation && !validation.valid) { info(t("dialog.validationFail", language)); return; }
     try {
       const { open } = await import("@tauri-apps/plugin-dialog");
       const dir = await open({ directory: true, multiple: false });
       if (dir) {
-        await exportAllMarkdown(project, dir as string);
+        const paths = await exportAllMarkdown(project, dir as string);
+        success(`${t("dialog.exportSuccess", language)}: ${paths.length} files`);
       }
-    } catch (err) { console.error("Export error:", err); }
+    } catch (err) { toastError(`${t("dialog.exportFail", language)}: ${err}`); }
   };
 
   const handleExportZip = async () => {
     if (project.qa_reports.length === 0) return;
+    if (validation && !validation.valid) { info(t("dialog.validationFail", language)); return; }
     try {
       const { save } = await import("@tauri-apps/plugin-dialog");
       const defaultName = project.title
         ? `${project.title.toLowerCase().replace(/[^a-z0-9._-]/g, "-").replace(/-{2,}/g, "-")}-reviews.zip`
         : "review-weaver-export.zip";
       const path = await save({ defaultPath: defaultName, filters: [{ name: "ZIP Archive", extensions: ["zip"] }] });
-      if (path) await exportAllZip(project, path);
-    } catch (err) { console.error("Zip export error:", err); }
+      if (path) {
+        const result = await exportAllZip(project, path);
+        success(`${t("dialog.exportSuccess", language)}: ${result}`);
+      }
+    } catch (err) { toastError(`${t("dialog.exportFail", language)}: ${err}`); }
   };
 
   return (
@@ -74,7 +94,7 @@ export function ContentTabs() {
             </div>
           );
         })}
-        {contentTabs.length > 2 && (
+        {contentTabs.length > 1 && (
           <button onClick={closeAllAiTabs}
             className="ml-2 px-2 py-1 text-[10px] text-gray-400 hover:text-red-500 transition-colors whitespace-nowrap">
             {t("tab.closeAllAi", language)}
@@ -115,8 +135,8 @@ export function ContentTabs() {
 
           {/* Center: Copy Markdown */}
           <div className="flex-1 flex justify-center">
-            <button onClick={handleCopy} className="px-6 py-1.5 text-xs font-bold bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors shadow-sm">
-              {t("preview.copy", language)}
+            <button onClick={handleCopy} className={`px-6 py-1.5 text-xs font-bold rounded-lg transition-colors shadow-sm ${copied ? "bg-green-500 text-white" : "bg-blue-500 hover:bg-blue-600 text-white"}`}>
+              {copied ? t("toast.copied", language) : t("preview.copy", language)}
             </button>
           </div>
 
