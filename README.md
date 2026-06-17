@@ -169,6 +169,53 @@ The compiled Markdown outputs follow this structural convention:
 
 ## Changelog
 
+### v0.6.4 (2026-06-18)
+- **Feature**: Remove Chinese characters — `strip_chinese()` removes CJK ideographs and CJK punctuation from AI output (toggle: "Remove Chinese").
+- **Feature**: Translate Vietnamese — prepends Vietnamese instruction to system prompt so LLM responds in Vietnamese (toggle: "Translate Vietnamese").
+- **Feature**: Import/Export Settings — save and restore all app settings (AI config, UI toggles) as JSON files.
+- **Feature**: 2-column checkbox layout — reorganized settings toggles: left column (Cross-review, Compact mode, Normalize whitespace, Export as single line), right column (Enable debug, Remove Chinese, Translate Vietnamese).
+- **Feature**: Export/Import settings links in SettingsPanel footer (same line as Reset to default).
+
+### v0.6.3 (2026-06-18)
+- **Feature**: Xiaomi MiMo provider — native genai adapter with default endpoint `https://api.xiaomimimo.com/v1/`.
+- **Feature**: OpenCode Go provider — 16 models, default endpoint `https://opencode.ai/zen/go/v1`.
+- **Feature**: Debug/Log mode — `DebugLog` struct, `ai_test_provider_debug` IPC command, Debug main tab with orange badge, clean debug view (no preview header/stats), scrollable debug logs with detail modal.
+- **Feature**: Thinking Effort dropdown — None/Low/Medium/High/Max, passed to genai `ReasoningEffort` (OpenAI, Anthropic, Gemini supported; others silently ignored).
+- **Feature**: Export filename timestamps — `review-for-{slug}-{YYYYMMDD-HHmmss}.md` with numeric dedup.
+- **Feature**: Auto-fetch models on provider change (replaced Detect Models button).
+- **Change**: Removed Groq, Cohere, xAI providers. Updated model lists (OpenAI gpt-5.x, Anthropic claude-sonnet/opus-4.x, Gemini 3.x, DeepSeek v4).
+- **Change**: OpenAI Compatible — no fallback models, free text input for model name.
+- **Change**: Provider dropdown labels capitalized (OpenAI, Anthropic, Xiaomi MiMo, etc.).
+- **Fix**: MiMo 404 error — added trailing slash normalization in `build_client()` for correct URL path joining.
+- **Fix**: `base_url` and `model` reset when switching provider kind (prevents stale endpoint).
+- **UI**: Export/Import moved to left sidebar footer (2×2 grid with Remove All Sources).
+- **UI**: Sticky "Generate Consolidated Report" button, stats grid 4-column single row.
+- **UI**: Copy Markdown button full-width matching Generate button size.
+
+### v0.6.2 (2026-06-18)
+- **Fix**: `toggleQaActive` — undefined `active` now toggles to `true` (was silently `false`).
+- **Fix**: "Close All AI Tabs" button shows with 1+ AI tabs (was 2+).
+- **Fix**: `processContent` merge mode — regex now requires space after `#` to strip headings.
+- **Fix**: `setProject`/`newProject` — reset `validation`, `previewMarkdown`, `aiBusy` on project switch.
+- **Fix**: `handleCancel` — added try/catch to prevent `aiBusy` stuck state.
+- **Fix**: `parseInt` — added radix 10 parameter.
+- **UX**: ContentTabs export buttons — added validation guard (matches keyboard shortcut).
+- **UX**: ContentTabs export — show toast on success/error.
+- **UX**: Copy button — added clipboard DOM fallback + visual "Copied!" feedback.
+- **Efficiency**: Removed redundant `estimate_total_chars` call in rewrite functions.
+- **Efficiency**: Use `AiProviderKind.as_str()` instead of Debug format in commands.
+- **Dead code**: Removed unused `aiRewritePreview` from `api.ts`.
+
+### v0.6.1 (2026-06-18)
+- **Refactor**: Unified content footer for Preview and AI tabs — Export .md | Export .zip | Copy Markdown | Version.
+- **Feature**: Import supports multiple .md and .zip files with auto-detection.
+- **Feature**: VI/EN language toggle in toolbar (replaced old export buttons).
+- **Feature**: `previewMarkdown` state in store for Preview tab copy support.
+- **Change**: Default `max_input_chars` raised from 50,000 to 500,000.
+- **Change**: Default system prompt shown as placeholder in Rewrite prompt textarea.
+- **UI**: Darker background for Sources/Opening/Closing areas.
+- **UI**: Export/Import buttons moved to SettingsPanel sidebar.
+
 ### v0.6.0 (2026-06-17)
 - **Feature**: AI-Powered Report Consolidation — integrates LLM providers (OpenAI, Anthropic, Gemini, Deepseek, Groq, Cohere, xAI, Ollama, and any OpenAI-compatible endpoint) to automatically rewrite and deduplicate multiple QA reports into a single consolidated report.
 - **Feature**: AI provider configuration panel — configure provider kind, base URL, API key, model, max input characters, and custom system prompt per project.
@@ -176,19 +223,19 @@ The compiled Markdown outputs follow this structural convention:
 - **Feature**: AI content tabs — generated reports open in dedicated tabs with HTML/Markdown preview, copy-to-clipboard, and tab management (close, close all).
 - **Feature**: AI cancel support — cancel in-flight AI requests from the UI with backend CancellationToken integration.
 - **Feature**: Toast notification system — non-blocking success/error/info toasts replace `alert()` for AI operations.
-- **Feature**: API key security — keys are scrubbed from localStorage auto-save drafts, redacted in Rust Debug output and error messages, with a reload banner提醒 users to re-enter.
-- **Fix**: `AiErrorCode` serialization mismatch — custom Serialize/Deserialize impls ensure tag strings match TypeScript's string-union type on the wire (critical for error switch-case handling).
-- **Fix**: `cancel_in_flight()` race condition — token is now taken (not borrowed) from the global slot, preventing stale-token false positives on repeated cancel calls.
-- **Fix**: Settings panel draft state sync — `useEffect` resets draft fields when `project.ai_config` changes (e.g., opening a different project file).
-- **Fix**: `handleGenerate` double-click guard — added `if (aiBusy) return;` to prevent concurrent AI requests from React batching delays.
-- **Fix**: QA target dropdown no longer navigates away from Home tab — uses `selectQaOnly()` instead of `selectQa()`.
-- **Fix**: `max_input_chars` minimum floor raised from 0 to 1 to prevent instant InputTooLarge failures.
-- **Fix**: `recordScrubIfNeeded` now checks the original project's API key presence instead of the sanitized draft, eliminating false "key missing" banners for providers without keys.
-- **Fix**: Content tabs WYSIWYG — display now applies `processContent()` (compactMode, removeWhitespace, mergeLines) to match what gets copied to clipboard.
-- **Fix**: Cancellation tests no longer share global `OnceLock` state — `cancel_in_flight()` take() pattern eliminates parallel test flakiness.
-- **Chore**: Removed dead `clear_cancel()` function and `PreviewPanel.tsx` (replaced by `PreviewBody.tsx`).
+- **Feature**: API key security — keys are scrubbed from localStorage auto-save drafts, redacted in Rust Debug output and error messages, with a reload banner reminding users to re-enter.
+- **Fix**: `AiErrorCode` serialization mismatch — custom Serialize/Deserialize impls ensure tag strings match TypeScript's string-union type on the wire.
+- **Fix**: `cancel_in_flight()` race condition — token is now taken (not borrowed) from the global slot.
+- **Fix**: Settings panel draft state sync — `useEffect` resets draft fields when `project.ai_config` changes.
+- **Fix**: `handleGenerate` double-click guard — prevents concurrent AI requests.
+- **Fix**: QA target dropdown no longer navigates away from Home tab — uses `selectQaOnly()`.
+- **Fix**: `max_input_chars` minimum floor raised from 0 to 1.
+- **Fix**: `recordScrubIfNeeded` checks original project's API key, not sanitized draft.
+- **Fix**: Content tabs WYSIWYG — display applies `processContent()` to match clipboard output.
+- **Fix**: Cancellation tests no longer share global `OnceLock` state.
+- **Chore**: Removed dead `clear_cancel()` function and `PreviewPanel.tsx`.
 - **Chore**: Fixed `.gitignore` typo (`upstrems` → `upstreams`).
-- **Tech**: Added `genai` 0.6.5, `tokio`, `tokio-util` Rust dependencies for LLM provider abstraction.
+- **Tech**: Added `genai` 0.6.5, `tokio`, `tokio-util` Rust dependencies.
 
 ### v0.5.6 (2026-06-16)
 - **Security**: Narrowed filesystem permission scope from `**` (entire filesystem) to `$HOME/$DESKTOP/$DOCUMENT/$DOWNLOAD`.
