@@ -59,7 +59,7 @@ export function ContentTabs() {
                 dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(String(marked.parse(activeTab.markdown, { breaks: true }))) }} />
             ) : (
               <pre className="whitespace-pre-wrap break-words bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-mono text-gray-700 dark:text-gray-200 leading-relaxed">
-                {activeTab.markdown}
+                {processContent(activeTab.markdown)}
               </pre>
             )}
           </div>

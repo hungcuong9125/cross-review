@@ -105,28 +105,35 @@ src-tauri/
   src/
     main.rs          # Tauri app entrypoint
     lib.rs           # Module declarations
-    models.rs        # Data model definitions (Project, QaReport, Component...)
+    models.rs        # Data model definitions (Project, QaReport, Component, AI types...)
     validation.rs    # Data validation checks
     export.rs        # Markdown compile & merge logic
     slug.rs          # Unique file slug generator
     zip_export.rs    # ZIP packaging helper
     commands.rs      # IPC command registrations
+    ai.rs            # AI provider integration (genai client, rewrite, cancel)
   tauri.conf.json    # Tauri packaging and bundle configurations
 
 src/
-  App.tsx                # Main view & resizable sidebar logic
+  App.tsx                # Main view, resizable sidebar, auto-save & keyboard shortcuts
   main.tsx               # React entrypoint
   index.css              # Custom styling and markdown preview classes
   state/
-    projectStore.ts      # Zustand state management
+    projectStore.ts      # Zustand state management (tabs, AI config, content tabs)
   lib/
-    api.ts               # Rust command invocations
+    api.ts               # Rust command invocations (project + AI IPC)
     i18n.ts              # English/Vietnamese language dictionaries
+    sanitize.ts          # API key scrubbing for localStorage
+  hooks/
+    useToast.ts          # Toast notification system
   components/
     Sidebar.tsx          # Resource lists, active states & quick actions
     EditorPanel.tsx      # Source, opening, and closing content editors
-    PreviewPanel.tsx     # Live HTML/Markdown preview & stats footer
-    Toolbar.tsx          # File I/O operations and exports
+    PreviewBody.tsx      # Live HTML/Markdown preview & stats
+    ContentTabs.tsx      # Tab bar for preview + AI-generated reports
+    SettingsPanel.tsx    # Settings (preview format, AI provider config, language)
+    ToastHost.tsx        # Toast notification renderer
+    Toolbar.tsx          # File I/O operations, tab routing & exports
 ```
 
 ## Keyboard Shortcuts
@@ -161,6 +168,27 @@ The compiled Markdown outputs follow this structural convention:
 ```
 
 ## Changelog
+
+### v0.6.0 (2026-06-17)
+- **Feature**: AI-Powered Report Consolidation — integrates LLM providers (OpenAI, Anthropic, Gemini, Deepseek, Groq, Cohere, xAI, Ollama, and any OpenAI-compatible endpoint) to automatically rewrite and deduplicate multiple QA reports into a single consolidated report.
+- **Feature**: AI provider configuration panel — configure provider kind, base URL, API key, model, max input characters, and custom system prompt per project.
+- **Feature**: AI connection testing — test provider connectivity and discover available models before saving.
+- **Feature**: AI content tabs — generated reports open in dedicated tabs with HTML/Markdown preview, copy-to-clipboard, and tab management (close, close all).
+- **Feature**: AI cancel support — cancel in-flight AI requests from the UI with backend CancellationToken integration.
+- **Feature**: Toast notification system — non-blocking success/error/info toasts replace `alert()` for AI operations.
+- **Feature**: API key security — keys are scrubbed from localStorage auto-save drafts, redacted in Rust Debug output and error messages, with a reload banner提醒 users to re-enter.
+- **Fix**: `AiErrorCode` serialization mismatch — custom Serialize/Deserialize impls ensure tag strings match TypeScript's string-union type on the wire (critical for error switch-case handling).
+- **Fix**: `cancel_in_flight()` race condition — token is now taken (not borrowed) from the global slot, preventing stale-token false positives on repeated cancel calls.
+- **Fix**: Settings panel draft state sync — `useEffect` resets draft fields when `project.ai_config` changes (e.g., opening a different project file).
+- **Fix**: `handleGenerate` double-click guard — added `if (aiBusy) return;` to prevent concurrent AI requests from React batching delays.
+- **Fix**: QA target dropdown no longer navigates away from Home tab — uses `selectQaOnly()` instead of `selectQa()`.
+- **Fix**: `max_input_chars` minimum floor raised from 0 to 1 to prevent instant InputTooLarge failures.
+- **Fix**: `recordScrubIfNeeded` now checks the original project's API key presence instead of the sanitized draft, eliminating false "key missing" banners for providers without keys.
+- **Fix**: Content tabs WYSIWYG — display now applies `processContent()` (compactMode, removeWhitespace, mergeLines) to match what gets copied to clipboard.
+- **Fix**: Cancellation tests no longer share global `OnceLock` state — `cancel_in_flight()` take() pattern eliminates parallel test flakiness.
+- **Chore**: Removed dead `clear_cancel()` function and `PreviewPanel.tsx` (replaced by `PreviewBody.tsx`).
+- **Chore**: Fixed `.gitignore` typo (`upstrems` → `upstreams`).
+- **Tech**: Added `genai` 0.6.5, `tokio`, `tokio-util` Rust dependencies for LLM provider abstraction.
 
 ### v0.5.6 (2026-06-16)
 - **Security**: Narrowed filesystem permission scope from `**` (entire filesystem) to `$HOME/$DESKTOP/$DOCUMENT/$DOWNLOAD`.
@@ -269,7 +297,7 @@ The compiled Markdown outputs follow this structural convention:
 
 ## Roadmap
 
-- [ ] **AI-Powered Summarization**: Integrate LLM capabilities to automatically rewrite, refine, or summarize source content.
+- [x] **AI-Powered Summarization**: Integrate LLM capabilities to automatically rewrite, refine, or summarize source content.
 - [ ] **Source Comparison Tool**: Add a comparison layout to highlight differences and analyze modifications between selected sources.
 
 ## License

@@ -21,24 +21,20 @@ export function sanitizeForStorage(project: Project): Project {
  * Set or clear the persistent `review-weaver-api-key-scrubbed` flag
  * so the reload banner can fire after a page refresh / app restart.
  *
- * Call AFTER `sanitizeForStorage()` has been applied to the draft.
+ * Call with the ORIGINAL project (before sanitization) — the function
+ * checks whether the original had a non-empty key that will be stripped.
  */
-export function recordScrubIfNeeded(scrubbedDraft: Project): void {
+export function recordScrubIfNeeded(original: Project): void {
   try {
-    const cfg = scrubbedDraft.ai_config;
+    const cfg = original.ai_config;
     // Ollama doesn't require an API key — don't show the "key missing" banner for it.
     if (cfg && cfg.kind === "ollama") {
       localStorage.removeItem(KEY_SCRUB_FLAG);
       return;
     }
-    const hasNonSensitiveFields = !!cfg && (
-      cfg.base_url.trim() !== "" ||
-      cfg.model.trim() !== "" ||
-      cfg.system_prompt.trim() !== "" ||
-      (cfg.max_input_chars !== undefined && cfg.max_input_chars !== 50000)
-    );
-    const keyWasStripped = !!cfg && cfg.api_key === "";
-    if (hasNonSensitiveFields && keyWasStripped) {
+    // Only set the flag if the user actually had a key configured
+    const keyWasPresent = !!cfg && cfg.api_key.trim() !== "";
+    if (keyWasPresent) {
       localStorage.setItem(KEY_SCRUB_FLAG, "true");
     } else {
       localStorage.removeItem(KEY_SCRUB_FLAG);

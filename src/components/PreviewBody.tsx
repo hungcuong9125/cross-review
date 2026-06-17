@@ -14,7 +14,6 @@ export function PreviewBody() {
     removeWhitespace,
     mergeLines,
     selectedQaId,
-    selectQa,
     selectQaOnly,
     previewFormat,
   } = useProjectStore();
@@ -81,7 +80,7 @@ export function PreviewBody() {
           </label>
           <select
             value={selectedQaId ?? ""}
-            onChange={(e) => selectQa(e.target.value)}
+            onChange={(e) => selectQaOnly(e.target.value)}
             className="flex-1 min-w-0 h-[34px] px-3 py-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md text-sm focus:ring-1 focus:ring-blue-500 focus:border-transparent"
           >
             {project.qa_reports.filter((q) => q.active !== false).map((qa) => (

@@ -23,19 +23,10 @@ fn register_cancel(token: CancellationToken) {
     }
 }
 
-#[allow(dead_code)]
-fn clear_cancel() {
-    if let Some(slot) = CURRENT_CANCEL_TOKEN.get() {
-        if let Ok(mut guard) = slot.lock() {
-            guard.take();
-        }
-    }
-}
-
 pub fn cancel_in_flight() -> bool {
     if let Some(slot) = CURRENT_CANCEL_TOKEN.get() {
-        if let Ok(guard) = slot.lock() {
-            if let Some(token) = guard.as_ref() {
+        if let Ok(mut guard) = slot.lock() {
+            if let Some(token) = guard.take() {
                 token.cancel();
                 return true;
             }
@@ -582,9 +573,8 @@ mod tests {
         assert!(cancel_in_flight(), "cancel_in_flight should return true after register");
         assert!(token.is_cancelled(), "Token should be cancelled");
 
-        // After clearing, should return false again
-        clear_cancel();
-        assert!(!cancel_in_flight(), "cancel_in_flight should return false after clear");
+        // After cancel_in_flight took the token, slot is empty — should return false
+        assert!(!cancel_in_flight(), "cancel_in_flight should return false after token was taken");
     }
 
     #[test]
@@ -594,16 +584,19 @@ mod tests {
         register_cancel(token.clone());
         cancel_in_flight();
         assert!(token.is_cancelled());
-        clear_cancel();
     }
 
     #[test]
-    fn test_cancellation_clear_after_register() {
-        let token = CancellationToken::new();
-        register_cancel(token.clone());
-        clear_cancel();
-        assert!(!token.is_cancelled()); // Clearing doesn't cancel
-        cancel_in_flight(); // Should not panic - slot is empty
+    fn test_cancellation_register_replaces_previous() {
+        let token1 = CancellationToken::new();
+        let token2 = CancellationToken::new();
+        register_cancel(token1.clone());
+        register_cancel(token2.clone());
+        // token1 should have been cancelled by register_cancel replacement
+        assert!(token1.is_cancelled(), "Previous token should be cancelled on replace");
+        // cancel_in_flight should cancel token2
+        assert!(cancel_in_flight());
+        assert!(token2.is_cancelled(), "Current token should be cancelled");
     }
 
     #[test]

@@ -112,6 +112,7 @@ export function SettingsPanel() {
   };
 
   const handleGenerate = async () => {
+    if (aiBusy) return;
     const cfg = project.ai_config;
     if (!cfg || !cfg.model) {
       info(t("toast.aiNotConfigured", language));
@@ -176,7 +177,6 @@ export function SettingsPanel() {
 
   const handleApiKeyChange = (val: string) => {
     setDraftApiKey(val);
-    if (val) clearApiKeyScrubbed();
   };
 
   return (
@@ -283,7 +283,7 @@ export function SettingsPanel() {
             {/* Max chars */}
             <div>
               <label className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">{t("settings.aiProvider.maxChars", language)}</label>
-              <input type="number" value={draftMaxChars} onChange={(e) => { const v = parseInt(e.target.value); setDraftMaxChars(Number.isNaN(v) ? 50000 : Math.max(0, v)); }}
+              <input type="number" value={draftMaxChars} onChange={(e) => { const v = parseInt(e.target.value); setDraftMaxChars(Number.isNaN(v) ? 50000 : Math.max(1, v)); }}
                 className="w-full h-7 text-xs px-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent" />
             </div>
 

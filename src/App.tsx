@@ -83,7 +83,7 @@ function App() {
       try {
         const safe = sanitizeForStorage(project);
         localStorage.setItem("review-weaver-draft", JSON.stringify(safe));
-        recordScrubIfNeeded(safe);
+        recordScrubIfNeeded(project);
       } catch (err) {
         console.warn("Auto-save failed (localStorage quota exceeded):", err);
       }

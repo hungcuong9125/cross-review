@@ -64,8 +64,7 @@ impl std::fmt::Debug for AiProviderConfig {
 /// Variant data (chars, max, seconds, message) is embedded into the
 /// `AiErrorPayload.message` field instead.
 #[allow(dead_code)]
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[derive(Debug, Clone)]
 pub enum AiErrorCode {
     NotConfigured,
     NoSources,
@@ -90,6 +89,35 @@ impl Serialize for AiErrorCode {
             AiErrorCode::Cancelled => "cancelled",
         };
         serializer.serialize_str(tag)
+    }
+}
+
+impl<'de> Deserialize<'de> for AiErrorCode {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        match s.as_str() {
+            "not_configured" => Ok(AiErrorCode::NotConfigured),
+            "no_sources" => Ok(AiErrorCode::NoSources),
+            "target_not_found" => Ok(AiErrorCode::TargetNotFound),
+            "input_too_large" => Ok(AiErrorCode::InputTooLarge { chars: 0, max: 0 }),
+            "timeout" => Ok(AiErrorCode::Timeout { seconds: 0 }),
+            "provider" => Ok(AiErrorCode::Provider { message: String::new() }),
+            "empty_response" => Ok(AiErrorCode::EmptyResponse),
+            "cancelled" => Ok(AiErrorCode::Cancelled),
+            other => Err(serde::de::Error::unknown_variant(
+                other,
+                &[
+                    "not_configured",
+                    "no_sources",
+                    "target_not_found",
+                    "input_too_large",
+                    "timeout",
+                    "provider",
+                    "empty_response",
+                    "cancelled",
+                ],
+            )),
+        }
     }
 }
 
