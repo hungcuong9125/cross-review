@@ -12,6 +12,8 @@ export interface AiProviderConfig {
   system_prompt: string;
   max_input_chars: number;
   thinking_effort: string;
+  translate_vietnamese: boolean;
+  remove_chinese: boolean;
 }
 
 export interface AiRewriteResult {
@@ -136,4 +138,23 @@ export async function aiCancelRequest(): Promise<boolean> {
 
 export async function aiDefaultPrompt(): Promise<string> {
   return invoke<string>("ai_default_prompt");
+}
+
+export interface AppSettings {
+  ai_config?: AiProviderConfig;
+  compact_mode: boolean;
+  remove_whitespace: boolean;
+  merge_lines: boolean;
+  preview_format: string;
+  translate_vietnamese: boolean;
+  remove_chinese: boolean;
+  debug_enabled: boolean;
+}
+
+export async function exportSettings(settings: AppSettings, path: string): Promise<void> {
+  return invoke<void>("export_settings_cmd", { settings, path });
+}
+
+export async function importSettings(path: string): Promise<AppSettings> {
+  return invoke<AppSettings>("import_settings_cmd", { path });
 }

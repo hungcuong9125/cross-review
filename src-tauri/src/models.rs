@@ -53,6 +53,12 @@ pub struct AiProviderConfig {
     /// Reasoning effort level: "none", "low", "medium", "high", "max". Empty = none.
     #[serde(default)]
     pub thinking_effort: String,
+    /// When true, prepend Vietnamese instruction to the system prompt.
+    #[serde(default)]
+    pub translate_vietnamese: bool,
+    /// When true, strip CJK characters from AI output.
+    #[serde(default)]
+    pub remove_chinese: bool,
 }
 
 fn default_max_input_chars() -> usize {
@@ -71,6 +77,8 @@ impl std::fmt::Debug for AiProviderConfig {
             .field("system_prompt", &self.system_prompt)
             .field("max_input_chars", &self.max_input_chars)
             .field("thinking_effort", &self.thinking_effort)
+            .field("translate_vietnamese", &self.translate_vietnamese)
+            .field("remove_chinese", &self.remove_chinese)
             .finish()
     }
 }
@@ -256,4 +264,29 @@ pub struct DebugLog {
     pub response_text: String,
     pub duration_ms: u64,
     pub success: bool,
+}
+
+/// Application-level settings for import/export (AI config + UI toggles).
+#[derive(Clone, Serialize, Deserialize)]
+pub struct AppSettings {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ai_config: Option<AiProviderConfig>,
+    #[serde(default)]
+    pub compact_mode: bool,
+    #[serde(default)]
+    pub remove_whitespace: bool,
+    #[serde(default)]
+    pub merge_lines: bool,
+    #[serde(default = "default_preview_format")]
+    pub preview_format: String,
+    #[serde(default)]
+    pub translate_vietnamese: bool,
+    #[serde(default)]
+    pub remove_chinese: bool,
+    #[serde(default)]
+    pub debug_enabled: bool,
+}
+
+fn default_preview_format() -> String {
+    "html".to_string()
 }

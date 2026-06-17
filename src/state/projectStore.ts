@@ -33,6 +33,9 @@ interface ProjectState {
   compactMode: boolean;
   removeWhitespace: boolean;
   mergeLines: boolean;
+  translateVietnamese: boolean;
+  removeChinese: boolean;
+  debugEnabled: boolean;
 
   // Content tabs
   contentTabs: ContentTab[];
@@ -91,6 +94,9 @@ interface ProjectState {
   toggleCompactMode: () => void;
   toggleRemoveWhitespace: () => void;
   toggleMergeLines: () => void;
+  toggleTranslateVietnamese: () => void;
+  toggleRemoveChinese: () => void;
+  setDebugEnabled: (b: boolean) => void;
 
   // Theme
   toggleDarkMode: () => void;
@@ -161,6 +167,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   compactMode: false,
   removeWhitespace: false,
   mergeLines: false,
+  translateVietnamese: false,
+  removeChinese: false,
+  debugEnabled: false,
   contentTabs: [DEFAULT_PREVIEW_TAB],
   activeContentTabId: "preview",
   previewFormat: "html",
@@ -545,6 +554,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   toggleCompactMode: () => set((state) => ({ compactMode: !state.compactMode })),
   toggleRemoveWhitespace: () => set((state) => ({ removeWhitespace: !state.removeWhitespace })),
   toggleMergeLines: () => set((state) => ({ mergeLines: !state.mergeLines })),
+  toggleTranslateVietnamese: () => set((state) => ({ translateVietnamese: !state.translateVietnamese })),
+  toggleRemoveChinese: () => set((state) => ({ removeChinese: !state.removeChinese })),
+  setDebugEnabled: (b) => set({ debugEnabled: b }),
 
   setActiveContentTab: (id) => set({ activeContentTabId: id }),
 

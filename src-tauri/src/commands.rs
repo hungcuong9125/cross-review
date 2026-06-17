@@ -4,7 +4,8 @@ use std::path::Path;
 use crate::ai;
 use crate::export::{generate_exports, generate_preview};
 use crate::models::{
-    AiErrorPayload, AiProviderConfig, AiRewriteResult, DebugLog, ExportFile, Project, ValidationReport,
+    AiErrorPayload, AiProviderConfig, AiRewriteResult, AppSettings, DebugLog, ExportFile, Project,
+    ValidationReport,
 };
 use crate::validation::validate_project;
 use crate::zip_export::export_to_zip;
@@ -143,4 +144,21 @@ pub async fn ai_cancel_request() -> Result<bool, String> {
 #[tauri::command]
 pub fn ai_default_prompt() -> String {
     ai::default_rewrite_prompt().to_string()
+}
+
+#[tauri::command]
+pub fn export_settings_cmd(settings: AppSettings, path: String) -> Result<(), String> {
+    let json = serde_json::to_string_pretty(&settings)
+        .map_err(|e| format!("Serialization error: {}", e))?;
+    fs::write(&path, json).map_err(|e| format!("Cannot write settings file: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn import_settings_cmd(path: String) -> Result<AppSettings, String> {
+    let content =
+        fs::read_to_string(&path).map_err(|e| format!("Cannot read settings file: {}", e))?;
+    let settings: AppSettings =
+        serde_json::from_str(&content).map_err(|e| format!("Invalid settings file: {}", e))?;
+    Ok(settings)
 }

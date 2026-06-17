@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useProjectStore } from "../state/projectStore";
-import { aiTestProvider, aiTestProviderDebug, aiListModels, aiRewriteExport, aiCancelRequest, aiDefaultPrompt, type AiProviderKind, type AiErrorPayload, type DebugLog } from "../lib/api";
+import { aiTestProvider, aiTestProviderDebug, aiListModels, aiRewriteExport, aiCancelRequest, aiDefaultPrompt, exportSettings, importSettings, type AiProviderKind, type AiErrorPayload, type DebugLog, type AppSettings } from "../lib/api";
 import { t } from "../lib/i18n";
 import { useToast } from "../hooks/useToast";
 import { isApiKeyScrubbed, clearApiKeyScrubbed } from "../lib/sanitize";
@@ -27,6 +27,7 @@ export function SettingsPanel() {
     aiBusy, setAiBusy,
     appendAiTab, appendDebugTab,
     setActiveMainTab,
+    debugEnabled, setDebugEnabled,
   } = useProjectStore();
 
   const { success, error: toastError, info } = useToast();
@@ -44,7 +45,8 @@ export function SettingsPanel() {
   const [models, setModels] = useState<string[]>([]);
   const [showKeyBanner, setShowKeyBanner] = useState(isApiKeyScrubbed() && !project.ai_config?.api_key && !!project.ai_config);
   const [defaultPrompt, setDefaultPrompt] = useState("");
-  const [debugEnabled, setDebugEnabled] = useState(false);
+  const [draftTranslateVietnamese, setDraftTranslateVietnamese] = useState(project.ai_config?.translate_vietnamese ?? false);
+  const [draftRemoveChinese, setDraftRemoveChinese] = useState(project.ai_config?.remove_chinese ?? false);
   const [debugLogs, setDebugLogs] = useState<DebugLog[]>([]);
   const [selectedLog, setSelectedLog] = useState<DebugLog | null>(null);
 
@@ -57,6 +59,8 @@ export function SettingsPanel() {
     setDraftMaxChars(project.ai_config?.max_input_chars ?? 500000);
     setDraftSystemPrompt(project.ai_config?.system_prompt ?? "");
     setDraftThinkingEffort(project.ai_config?.thinking_effort ?? "");
+    setDraftTranslateVietnamese(project.ai_config?.translate_vietnamese ?? false);
+    setDraftRemoveChinese(project.ai_config?.remove_chinese ?? false);
     setShowKeyBanner(isApiKeyScrubbed() && !project.ai_config?.api_key && !!project.ai_config);
   }, [project.ai_config]);
 
@@ -71,7 +75,9 @@ export function SettingsPanel() {
     || draftModel !== (project.ai_config?.model ?? "")
     || draftMaxChars !== (project.ai_config?.max_input_chars ?? 500000)
     || draftSystemPrompt !== (project.ai_config?.system_prompt ?? "")
-    || draftThinkingEffort !== (project.ai_config?.thinking_effort ?? "");
+    || draftThinkingEffort !== (project.ai_config?.thinking_effort ?? "")
+    || draftTranslateVietnamese !== (project.ai_config?.translate_vietnamese ?? false)
+    || draftRemoveChinese !== (project.ai_config?.remove_chinese ?? false);
 
   const handleSave = () => {
     const newConfig = {
@@ -82,6 +88,8 @@ export function SettingsPanel() {
       max_input_chars: draftMaxChars,
       system_prompt: draftSystemPrompt,
       thinking_effort: draftThinkingEffort,
+      translate_vietnamese: draftTranslateVietnamese,
+      remove_chinese: draftRemoveChinese,
     };
     useProjectStore.setState((state) => ({
       project: { ...state.project, ai_config: newConfig },
@@ -101,6 +109,8 @@ export function SettingsPanel() {
       max_input_chars: draftMaxChars,
       system_prompt: draftSystemPrompt,
       thinking_effort: draftThinkingEffort,
+      translate_vietnamese: draftTranslateVietnamese,
+      remove_chinese: draftRemoveChinese,
     };
     try {
       if (debugEnabled) {
@@ -140,6 +150,8 @@ export function SettingsPanel() {
       max_input_chars: draftMaxChars,
       system_prompt: "",
       thinking_effort: "",
+      translate_vietnamese: false,
+      remove_chinese: false,
     }).then((result) => {
       if (cancelled) return;
       setModels(result);
@@ -228,6 +240,69 @@ export function SettingsPanel() {
     }
   };
 
+  const handleExportSettings = async () => {
+    const state = useProjectStore.getState();
+    const settings: AppSettings = {
+      ai_config: state.project.ai_config,
+      compact_mode: state.compactMode,
+      remove_whitespace: state.removeWhitespace,
+      merge_lines: state.mergeLines,
+      preview_format: state.previewFormat,
+      translate_vietnamese: state.translateVietnamese,
+      remove_chinese: state.removeChinese,
+      debug_enabled: state.debugEnabled,
+    };
+    try {
+      const { save } = await import("@tauri-apps/plugin-dialog");
+      const path = await save({
+        defaultPath: "review-weaver-settings.json",
+        filters: [{ name: "JSON", extensions: ["json"] }],
+      });
+      if (path) {
+        await exportSettings(settings, path);
+        success(language === "vi" ? "Đã xuất cài đặt" : "Settings exported");
+      }
+    } catch (err) { toastError(`Export failed: ${err}`); }
+  };
+
+  const handleImportSettings = async () => {
+    try {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const path = await open({
+        multiple: false,
+        filters: [{ name: "JSON", extensions: ["json"] }],
+      });
+      if (path) {
+        const settings = await importSettings(path as string);
+        useProjectStore.setState((state) => ({
+          project: settings.ai_config
+            ? { ...state.project, ai_config: settings.ai_config }
+            : state.project,
+          compactMode: settings.compact_mode,
+          removeWhitespace: settings.remove_whitespace,
+          mergeLines: settings.merge_lines,
+          previewFormat: settings.preview_format as "html" | "markdown",
+          translateVietnamese: settings.translate_vietnamese,
+          removeChinese: settings.remove_chinese,
+          debugEnabled: settings.debug_enabled,
+        }));
+        // Sync draft state
+        if (settings.ai_config) {
+          setDraftKind(settings.ai_config.kind);
+          setDraftBaseUrl(settings.ai_config.base_url);
+          setDraftApiKey(settings.ai_config.api_key);
+          setDraftModel(settings.ai_config.model);
+          setDraftMaxChars(settings.ai_config.max_input_chars);
+          setDraftSystemPrompt(settings.ai_config.system_prompt);
+          setDraftThinkingEffort(settings.ai_config.thinking_effort);
+          setDraftTranslateVietnamese(settings.ai_config.translate_vietnamese);
+          setDraftRemoveChinese(settings.ai_config.remove_chinese);
+        }
+        success(language === "vi" ? "Đã nhập cài đặt" : "Settings imported");
+      }
+    } catch (err) { toastError(`Import failed: ${err}`); }
+  };
+
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700">
       <div className="flex-1 overflow-y-auto p-3 space-y-4">
@@ -244,26 +319,40 @@ export function SettingsPanel() {
               {t("settings.previewFormat.markdown", language)}
             </button>
           </div>
-          <label className="flex items-center gap-1.5 mt-4 cursor-pointer">
-            <input type="checkbox" checked={compactMode} onChange={toggleCompactMode} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
-            <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.compactMode", language)}</span>
-          </label>
-          <label className="flex items-center gap-1.5 mt-1 cursor-pointer">
-            <input type="checkbox" checked={project.exclude_self !== false} onChange={toggleExcludeSelf} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
-            <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.excludeSelf", language)}</span>
-          </label>
-          <label className="flex items-center gap-1.5 mt-1 cursor-pointer">
-            <input type="checkbox" checked={removeWhitespace} onChange={toggleRemoveWhitespace} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
-            <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.removeWhitespace", language)}</span>
-          </label>
-          <label className="flex items-center gap-1.5 mt-1 cursor-pointer">
-            <input type="checkbox" checked={mergeLines} onChange={toggleMergeLines} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
-            <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.mergeLines", language)}</span>
-          </label>
-          <label className="flex items-center gap-1.5 mt-1 cursor-pointer">
-            <input type="checkbox" checked={debugEnabled} onChange={() => setDebugEnabled(!debugEnabled)} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
-            <span className="text-xs text-gray-600 dark:text-gray-400">{language === "vi" ? "Bật debug" : "Enable debug"}</span>
-          </label>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-3">
+            {/* Row 1 */}
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" checked={project.exclude_self !== false} onChange={toggleExcludeSelf} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
+              <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.excludeSelf", language)}</span>
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" checked={debugEnabled} onChange={() => setDebugEnabled(!debugEnabled)} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
+              <span className="text-xs text-gray-600 dark:text-gray-400">{language === "vi" ? "Bật debug" : "Enable debug"}</span>
+            </label>
+            {/* Row 2 */}
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" checked={compactMode} onChange={toggleCompactMode} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
+              <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.compactMode", language)}</span>
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" checked={draftRemoveChinese} onChange={() => setDraftRemoveChinese(!draftRemoveChinese)} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
+              <span className="text-xs text-gray-600 dark:text-gray-400">{language === "vi" ? "Xoá từ tiếng Trung" : "Remove Chinese"}</span>
+            </label>
+            {/* Row 3 */}
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" checked={removeWhitespace} onChange={toggleRemoveWhitespace} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
+              <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.removeWhitespace", language)}</span>
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" checked={draftTranslateVietnamese} onChange={() => setDraftTranslateVietnamese(!draftTranslateVietnamese)} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
+              <span className="text-xs text-gray-600 dark:text-gray-400">{language === "vi" ? "Dịch tiếng Việt" : "Translate Vietnamese"}</span>
+            </label>
+            {/* Row 4 */}
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" checked={mergeLines} onChange={toggleMergeLines} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
+              <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.mergeLines", language)}</span>
+            </label>
+          </div>
         </div>
 
         <hr className="border-gray-200 dark:border-gray-700" />
@@ -364,9 +453,19 @@ export function SettingsPanel() {
               <textarea value={draftSystemPrompt} onChange={(e) => setDraftSystemPrompt(e.target.value)}
                 rows={6} placeholder={defaultPrompt || "Custom system prompt..."}
                 className="w-full text-xs px-2 py-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent resize-none" />
-              <button onClick={() => setDraftSystemPrompt("")} className="text-[10px] text-blue-500 hover:underline mt-0.5">
-                {t("settings.aiPrompt.reset", language)}
-              </button>
+              <div className="flex items-center justify-between mt-0.5">
+                <button onClick={() => setDraftSystemPrompt("")} className="text-[10px] text-blue-500 hover:underline">
+                  {t("settings.aiPrompt.reset", language)}
+                </button>
+                <div className="flex items-center gap-4">
+                  <button onClick={handleImportSettings} className="text-[10px] text-blue-500 hover:underline">
+                    {language === "vi" ? "Nhập cài đặt" : "Import settings"}
+                  </button>
+                  <button onClick={handleExportSettings} className="text-[10px] text-blue-500 hover:underline">
+                    {language === "vi" ? "Xuất cài đặt" : "Export settings"}
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Test + Save buttons */}

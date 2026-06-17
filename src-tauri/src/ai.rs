@@ -65,6 +65,34 @@ pub fn scrub_api_key(s: &str, api_key: &str) -> String {
     s.replace(api_key, "<REDACTED>")
 }
 
+// --- Strip CJK characters from text ---
+/// Removes CJK Unified Ideographs (Chinese characters) and CJK-specific punctuation.
+/// Keeps Latin, Vietnamese diacritics, whitespace, markdown syntax, and fullwidth ASCII forms.
+pub fn strip_chinese(text: &str) -> String {
+    text.chars()
+        .filter(|c| {
+            let cp = *c as u32;
+            // CJK Unified Ideographs: U+4E00..U+9FFF
+            // CJK Unified Ideographs Extension A: U+3400..U+4DBF
+            // CJK Compatibility Ideographs: U+F900..U+FAFF
+            // CJK Symbols and Punctuation: U+3000..U+303F (、。，：；etc.)
+            let is_cjk = (0x4E00..=0x9FFF).contains(&cp)
+                || (0x3400..=0x4DBF).contains(&cp)
+                || (0xF900..=0xFAFF).contains(&cp)
+                || (0x3000..=0x303F).contains(&cp);
+            !is_cjk
+        })
+        .collect()
+}
+
+/// Prepend Vietnamese translation instruction to system prompt.
+fn prepend_vietnamese_instruction(prompt: &str) -> String {
+    format!(
+        "CRITICAL: You MUST respond entirely in Vietnamese language. Translate all output to Vietnamese. Do NOT use any other language.\n\n{}",
+        prompt
+    )
+}
+
 // --- Adapter mapping ---
 fn to_adapter(kind: AiProviderKind) -> AdapterKind {
     match kind {
@@ -163,11 +191,14 @@ fn estimate_total_chars(sources: &[&QaReport], cfg: &AiProviderConfig) -> usize 
 }
 
 fn build_chat_request(cfg: &AiProviderConfig, sources: &[&QaReport]) -> ChatRequest {
-    let system = if cfg.system_prompt.trim().is_empty() {
+    let mut system = if cfg.system_prompt.trim().is_empty() {
         default_rewrite_prompt().to_string()
     } else {
         cfg.system_prompt.clone()
     };
+    if cfg.translate_vietnamese {
+        system = prepend_vietnamese_instruction(&system);
+    }
     let mut body = String::with_capacity(estimate_chars(sources));
     for (i, qa) in sources.iter().enumerate() {
         if i > 0 {
@@ -306,7 +337,14 @@ pub async fn rewrite_for_target(
         &cfg.api_key,
     )
     .await;
-    result.map(|markdown| RewriteOutput { markdown, input_chars: chars })
+    result.map(|markdown| {
+        let markdown = if cfg.remove_chinese {
+            strip_chinese(&markdown)
+        } else {
+            markdown
+        };
+        RewriteOutput { markdown, input_chars: chars }
+    })
 }
 
 pub async fn rewrite_all(
@@ -351,7 +389,14 @@ pub async fn rewrite_all(
         &cfg.api_key,
     )
     .await;
-    result.map(|markdown| RewriteOutput { markdown, input_chars: chars })
+    result.map(|markdown| {
+        let markdown = if cfg.remove_chinese {
+            strip_chinese(&markdown)
+        } else {
+            markdown
+        };
+        RewriteOutput { markdown, input_chars: chars }
+    })
 }
 
 pub async fn test_provider(cfg: &AiProviderConfig) -> Result<(), AiErrorPayload> {
@@ -556,6 +601,8 @@ mod tests {
             system_prompt: String::new(),
             max_input_chars: 50_000,
             thinking_effort: String::new(),
+            translate_vietnamese: false,
+            remove_chinese: false,
         };
         let debug_str = format!("{:?}", cfg);
         assert!(
@@ -583,6 +630,8 @@ mod tests {
             system_prompt: String::new(),
             max_input_chars: 50_000,
             thinking_effort: String::new(),
+            translate_vietnamese: false,
+            remove_chinese: false,
         };
         let debug_str = format!("{:?}", cfg);
         assert!(
@@ -635,6 +684,8 @@ mod tests {
             system_prompt: "ABCDEFGHIJ".into(), // 10 chars
             max_input_chars: 100_000,
             thinking_effort: String::new(),
+            translate_vietnamese: false,
+            remove_chinese: false,
         };
         // source chars: name(1) + content(5) + 16 = 22, + system_prompt(10) + 64 = 96
         let total = estimate_total_chars(&source_refs, &cfg);
@@ -736,6 +787,8 @@ mod tests {
             system_prompt: String::new(),
             max_input_chars: 1, // impossibly low — always triggers InputTooLarge
             thinking_effort: String::new(),
+            translate_vietnamese: false,
+            remove_chinese: false,
         };
         let total = estimate_total_chars(&source_refs, &cfg);
         assert!(total > cfg.max_input_chars, "estimate_total_chars should exceed max_input_chars limit");
@@ -743,6 +796,44 @@ mod tests {
         // Verify the error code shape — InputTooLarge is returned when chars > max
         // (without calling the provider, which is enforced by the early return in rewrite_*)
         assert!(total > 1, "total chars should exceed the tiny limit");
+    }
+
+    #[test]
+    fn test_strip_chinese_removes_cjk_characters() {
+        let input = "Hello 你好世界 World 测试";
+        let result = strip_chinese(input);
+        assert_eq!(result, "Hello  World ");
+    }
+
+    #[test]
+    fn test_strip_chinese_preserves_vietnamese() {
+        let input = "Báo cáo 你好 findings with accent: áàảãạ";
+        let result = strip_chinese(input);
+        assert_eq!(result, "Báo cáo  findings with accent: áàảãạ");
+    }
+
+    #[test]
+    fn test_strip_chinese_removes_cjk_punctuation() {
+        // CJK symbols (U+3000-303F) are removed, fullwidth ASCII (U+FF00+) are kept
+        let input = "Hello、world。你好！test【bracket】";
+        let result = strip_chinese(input);
+        assert_eq!(result, "Helloworld！testbracket");
+    }
+
+    #[test]
+    fn test_strip_chinese_no_cjk_passthrough() {
+        let input = "Normal English text with no Chinese.";
+        let result = strip_chinese(input);
+        assert_eq!(result, input);
+    }
+
+    #[test]
+    fn test_prepend_vietnamese_instruction() {
+        let prompt = "You are a QA lead.";
+        let result = prepend_vietnamese_instruction(prompt);
+        assert!(result.starts_with("CRITICAL"));
+        assert!(result.contains("Vietnamese"));
+        assert!(result.contains("You are a QA lead."));
     }
 
     #[test]
@@ -759,6 +850,8 @@ mod tests {
             system_prompt: String::new(),
             max_input_chars: 50_000,
             thinking_effort: String::new(),
+            translate_vietnamese: false,
+            remove_chinese: false,
         };
         let result = build_client(&cfg);
         assert!(result.is_ok(), "build_client should succeed with custom base_url");
@@ -772,6 +865,8 @@ mod tests {
             system_prompt: String::new(),
             max_input_chars: 50_000,
             thinking_effort: String::new(),
+            translate_vietnamese: false,
+            remove_chinese: false,
         };
         let result_no_url = build_client(&cfg_no_url);
         assert!(result_no_url.is_err(), "OpenaiCompatible should fail without base_url");
@@ -836,6 +931,8 @@ mod integration {
                 system_prompt: String::new(),
                 max_input_chars: 200_000,
                 thinking_effort: String::new(),
+                translate_vietnamese: false,
+                remove_chinese: false,
             }),
         };
 
