@@ -9,6 +9,11 @@ import { t } from "../lib/i18n";
 
 // SVG icons for tabs
 const TabIcons = {
+  home: (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1" />
+    </svg>
+  ),
   reports: (
     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -31,6 +36,7 @@ export function Toolbar() {
     project, setProject, newProject, setProjectTitle,
     darkMode, toggleDarkMode, validation, language,
     activeMainTab, setActiveMainTab,
+    contentTabs, activeContentTabId,
   } = useProjectStore();
 
   const canExport = validation?.valid ?? false;
@@ -132,7 +138,10 @@ export function Toolbar() {
     }
   };
 
-  const mainTabs: { key: MainTab; label: string; icon: React.ReactNode }[] = [
+  const showAiBadge = contentTabs.length > 1 && activeContentTabId === "preview";
+
+  const mainTabs: { key: MainTab; label: string; icon: React.ReactNode; badge?: boolean }[] = [
+    { key: "home", label: t("tab.home", language), icon: TabIcons.home, badge: showAiBadge },
     { key: "reports", label: t("sidebar.reports", language), icon: TabIcons.reports },
     { key: "opening", label: t("editor.opening", language), icon: TabIcons.opening },
     { key: "closing", label: t("editor.closing", language), icon: TabIcons.closing },
@@ -168,6 +177,9 @@ export function Toolbar() {
                 <span className={isActive ? "text-blue-500 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}>
                   {tab.icon}
                 </span>
+                {tab.badge && (
+                  <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-blue-500" title="AI tabs available" />
+                )}
                 {tab.label}
               </button>
             );

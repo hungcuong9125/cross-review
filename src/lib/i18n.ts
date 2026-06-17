@@ -88,6 +88,63 @@ export const translations = {
   'editor.sourceContentLabel': { vi: 'Nội dung nguồn...', en: 'Source content...' },
   'editor.sourceContentPlaceholder': { vi: 'Nội dung nguồn...', en: 'Source content...' },
   'editor.clearTooltip': { vi: 'Xóa nội dung', en: 'Clear content' },
+
+  // Home tab
+  'tab.home': { vi: 'Trang chủ', en: 'Home' },
+
+  // Settings — Preview
+  'settings.previewFormat': { vi: 'Định dạng xem trước', en: 'Preview format' },
+  'settings.previewFormat.html': { vi: 'HTML', en: 'HTML' },
+  'settings.previewFormat.markdown': { vi: 'Markdown', en: 'Markdown' },
+  'settings.compactMode': { vi: 'Chế độ gọn', en: 'Compact mode' },
+
+  // Settings — AI provider
+  'settings.aiProvider': { vi: 'AI Provider', en: 'AI provider' },
+  'settings.aiProvider.kind': { vi: 'Loại', en: 'Kind' },
+  'settings.aiProvider.baseUrl': { vi: 'Base URL', en: 'Base URL' },
+  'settings.aiProvider.apiKey': { vi: 'API key', en: 'API key' },
+  'settings.aiProvider.model': { vi: 'Model', en: 'Model' },
+  'settings.aiProvider.maxChars': { vi: 'Giới hạn ký tự đầu vào', en: 'Max input characters' },
+  'settings.aiProvider.test': { vi: 'Kiểm tra kết nối', en: 'Test connection' },
+  'settings.aiProvider.save': { vi: 'Lưu cấu hình', en: 'Save' },
+  'settings.aiProvider.saved': { vi: 'Đã lưu cấu hình AI', en: 'AI provider saved' },
+  'settings.aiProvider.testOk': { vi: 'Kết nối thành công', en: 'Connection OK' },
+  'settings.aiProvider.detectModels': { vi: 'Phát hiện model', en: 'Detect models' },
+  'settings.aiProvider.dirty': { vi: 'Có thay đổi chưa lưu', en: 'Unsaved changes' },
+
+  // Settings — Prompt
+  'settings.aiPrompt': { vi: 'Prompt cho AI', en: 'Rewrite prompt' },
+  'settings.aiPrompt.reset': { vi: 'Khôi phục mặc định', en: 'Reset to default' },
+
+  // Generate / cancel
+  'action.generateReport': { vi: 'Tạo báo cáo tổng hợp', en: 'Generate consolidated report' },
+  'action.generating': { vi: 'Đang tạo...', en: 'Generating...' },
+  'action.cancel': { vi: 'Huỷ', en: 'Cancel' },
+
+  // Content tabs
+  'tab.closeAi': { vi: 'Đóng tab AI', en: 'Close AI tab' },
+  'tab.closeAllAi': { vi: 'Đóng tất cả tab AI', en: 'Close all AI tabs' },
+  'tab.preview': { vi: 'Xem trước', en: 'Preview' },
+
+  // Toasts
+  'toast.aiNotConfigured': { vi: 'Hãy cấu hình AI trong Settings trước.', en: 'Configure an AI provider in Settings first.' },
+  'toast.needTwoSources': { vi: 'Cần ít nhất 2 nguồn hoạt động.', en: 'Add at least 2 active sources.' },
+  'toast.copied': { vi: 'Đã copy!', en: 'Copied!' },
+  'toast.aiTimeout': { vi: 'AI phản hồi quá lâu.', en: 'AI request timed out.' },
+  'toast.aiCancelled': { vi: 'Đã huỷ yêu cầu AI.', en: 'AI request cancelled.' },
+  'toast.aiInputTooLarge': { vi: 'Nội dung quá lớn, tăng giới hạn trong Settings.', en: 'Input too large — raise the limit in Settings.' },
+  'toast.aiSaved': { vi: 'Đã lưu cấu hình AI.', en: 'AI provider saved.' },
+
+  // AI tabs
+  'tabs.rewrite': { vi: 'Tạo lại', en: 'Rewrite' },
+
+  // Toasts — AI errors
+  'toast.ai.networkError': { vi: 'Không thể kết nối AI.', en: 'AI provider unreachable.' },
+  'toast.ai.authError': { vi: 'Xác thực thất bại.', en: 'Authentication failed.' },
+
+  // AI provider — API key scrub notice
+  'settings.aiProvider.keyMissing': { vi: 'API key không được lưu trong bản nháp tự động. Nhập lại, hoặc mở file dự án để khôi phục.', en: 'API key is not stored in auto-saved drafts for security. Re-enter it, or open the project file from disk to restore it.' },
+  'settings.aiProvider.keyMissingDismiss': { vi: 'Ẩn cho phiên này', en: 'Dismiss for session' },
 } as const;
 
 export type TranslationKey = keyof typeof translations;

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Project, QaReport, Component, ValidationReport } from "../lib/api";
+import type { Project, QaReport, Component, ValidationReport, AiProviderConfig } from "../lib/api";
 import { validateProject } from "../lib/api";
 import { t, type Language } from "../lib/i18n";
 
@@ -9,7 +9,11 @@ function generateId(): string {
 
 let validationGeneration = 0;
 
-export type MainTab = "reports" | "opening" | "closing";
+export type MainTab = "home" | "reports" | "opening" | "closing";
+
+export type ContentTab =
+  | { id: "preview"; kind: "preview"; title: string }
+  | { id: string; kind: "ai"; title: string; markdown: string };
 
 export type ActiveItem =
   | { type: "report"; qaId: string }
@@ -26,6 +30,26 @@ interface ProjectState {
   compactMode: boolean;
   removeWhitespace: boolean;
   mergeLines: boolean;
+
+  // AI config
+  aiConfigDraft: AiProviderConfig | null;
+  setAiConfigDraft: (cfg: AiProviderConfig | null) => void;
+
+  // Content tabs
+  contentTabs: ContentTab[];
+  activeContentTabId: string;
+  setActiveContentTab: (id: string) => void;
+  appendAiTab: (markdown: string, title: string) => string;
+  closeContentTab: (id: string) => void;
+  closeAllAiTabs: () => void;
+
+  // Preview format
+  previewFormat: "html" | "markdown";
+  setPreviewFormat: (f: "html" | "markdown") => void;
+
+  // AI busy flag
+  aiBusy: boolean;
+  setAiBusy: (b: boolean) => void;
 
   // Project actions
   setProject: (project: Project) => void;
@@ -124,7 +148,7 @@ function migrateProject(project: Project): Project {
 export const useProjectStore = create<ProjectState>((set, get) => ({
   project: { ...DEFAULT_PROJECT },
   selectedQaId: null,
-  activeMainTab: "reports",
+  activeMainTab: "home",
   activeItem: null,
   validation: null,
   darkMode: window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false,
@@ -132,6 +156,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   compactMode: false,
   removeWhitespace: false,
   mergeLines: false,
+  aiConfigDraft: null,
+  contentTabs: [{ id: "preview", kind: "preview" as const, title: "Preview" }],
+  activeContentTabId: "preview",
+  previewFormat: "html",
+  aiBusy: false,
 
   setProject: (project) => {
     const migrated = migrateProject(project);
@@ -139,8 +168,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({
       project: migrated,
       selectedQaId: firstQa?.id ?? null,
-      activeMainTab: "reports",
+      activeMainTab: "home",
       activeItem: firstQa ? { type: "report", qaId: firstQa.id } : null,
+      contentTabs: [{ id: "preview", kind: "preview" as const, title: "Preview" }],
+      activeContentTabId: "preview",
     });
     get().refreshValidation();
   },
@@ -149,8 +180,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({
       project: { ...DEFAULT_PROJECT, components: [...DEFAULT_PROJECT.components], qa_reports: [], exclude_self: true },
       selectedQaId: null,
-      activeMainTab: "reports",
+      activeMainTab: "home",
       activeItem: null,
+      contentTabs: [{ id: "preview", kind: "preview" as const, title: "Preview" }],
+      activeContentTabId: "preview",
     });
     get().refreshValidation();
   },
@@ -496,6 +529,35 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   toggleCompactMode: () => set((state) => ({ compactMode: !state.compactMode })),
   toggleRemoveWhitespace: () => set((state) => ({ removeWhitespace: !state.removeWhitespace })),
   toggleMergeLines: () => set((state) => ({ mergeLines: !state.mergeLines })),
+
+  setAiConfigDraft: (cfg) => set({ aiConfigDraft: cfg }),
+
+  setActiveContentTab: (id) => set({ activeContentTabId: id }),
+
+  appendAiTab: (markdown, title) => {
+    const id = `ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    set((state) => ({
+      contentTabs: [...state.contentTabs, { id, kind: "ai" as const, title, markdown }],
+      activeContentTabId: id,
+    }));
+    return id;
+  },
+
+  closeContentTab: (id) => {
+    if (id === "preview") return;
+    set((state) => {
+      const tabs = state.contentTabs.filter((t) => t.id !== id);
+      const activeId = state.activeContentTabId === id ? "preview" : state.activeContentTabId;
+      return { contentTabs: tabs, activeContentTabId: activeId };
+    });
+  },
+
+  closeAllAiTabs: () => {
+    set({ contentTabs: [{ id: "preview", kind: "preview" as const, title: "Preview" }], activeContentTabId: "preview" });
+  },
+
+  setPreviewFormat: (f) => set({ previewFormat: f }),
+  setAiBusy: (b) => set({ aiBusy: b }),
 
   toggleDarkMode: () => {
     set((state) => {

@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { EditorPanel } from "./components/EditorPanel";
-import { PreviewPanel } from "./components/PreviewPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
+import { ContentTabs } from "./components/ContentTabs";
+import { ToastHost } from "./components/ToastHost";
 import { Toolbar } from "./components/Toolbar";
 import { useProjectStore } from "./state/projectStore";
 import {
@@ -10,10 +11,11 @@ import {
   openProject,
   exportAllMarkdown,
 } from "./lib/api";
+import { sanitizeForStorage, recordScrubIfNeeded } from "./lib/sanitize";
 import { t } from "./lib/i18n";
 
 function App() {
-  const { project, setProject, newProject, darkMode, validation, language } =
+  const { project, setProject, newProject, darkMode, validation, language, activeMainTab } =
     useProjectStore();
 
   const [rightSidebarWidth, setRightSidebarWidth] = useState(400);
@@ -79,7 +81,9 @@ function App() {
     if (!draftLoaded.current) return;
     const timer = setTimeout(() => {
       try {
-        localStorage.setItem("review-weaver-draft", JSON.stringify(project));
+        const safe = sanitizeForStorage(project);
+        localStorage.setItem("review-weaver-draft", JSON.stringify(safe));
+        recordScrubIfNeeded(safe);
       } catch (err) {
         console.warn("Auto-save failed (localStorage quota exceeded):", err);
       }
@@ -195,9 +199,13 @@ function App() {
           <Sidebar />
         </div>
 
-        {/* Center editor */}
+        {/* Center content */}
         <div className="flex-1 min-w-0 overflow-hidden">
-          <EditorPanel />
+          {activeMainTab === "home" ? (
+            <ContentTabs />
+          ) : (
+            <EditorPanel />
+          )}
         </div>
 
         {/* Resizer */}
@@ -206,17 +214,15 @@ function App() {
           className="w-1 cursor-col-resize hover:bg-blue-500 dark:hover:bg-blue-600 bg-gray-200 dark:bg-gray-700 transition-colors flex-shrink-0"
         />
 
-        {/* Right preview panel */}
+        {/* Right settings panel */}
         <div
           style={{ width: `${rightSidebarWidth}px` }}
           className="flex-shrink-0 flex flex-col overflow-hidden border-l border-gray-200 dark:border-gray-700"
         >
-          <div className="flex-1 overflow-hidden">
-            <PreviewPanel />
-          </div>
           <SettingsPanel />
         </div>
       </div>
+      <ToastHost />
     </div>
   );
 }
