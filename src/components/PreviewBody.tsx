@@ -15,6 +15,7 @@ export function PreviewBody() {
     mergeLines,
     selectedQaId,
     selectQa,
+    selectQaOnly,
     previewFormat,
   } = useProjectStore();
 
@@ -26,14 +27,14 @@ export function PreviewBody() {
     const activeQas = project.qa_reports.filter((q) => q.active !== false);
     if (activeQas.length > 0) {
       if (!selectedQaId || !activeQas.find((q) => q.id === selectedQaId)) {
-        selectQa(activeQas[0].id);
+        selectQaOnly(activeQas[0].id);
       }
     } else {
       if (selectedQaId) {
-        selectQa(null);
+        selectQaOnly(null);
       }
     }
-  }, [project.qa_reports, selectedQaId, selectQa]);
+  }, [project.qa_reports, selectedQaId, selectQaOnly]);
 
   // Generate preview when target or project changes
   const refreshPreview = useCallback(async () => {
@@ -159,7 +160,7 @@ export function PreviewBody() {
               <div
                 className="markdown-preview prose dark:prose-invert max-w-none bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 text-sm"
                 dangerouslySetInnerHTML={{
-                  __html: DOMPurify.sanitize(marked.parse(displayContent, { breaks: true }) as string),
+                  __html: DOMPurify.sanitize(String(marked.parse(displayContent, { breaks: true }))),
                 }}
               />
             ) : (

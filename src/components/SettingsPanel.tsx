@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useProjectStore } from "../state/projectStore";
 import { aiTestProvider, aiListModels, aiRewriteExport, aiCancelRequest, type AiProviderKind, type AiErrorPayload } from "../lib/api";
 import { t } from "../lib/i18n";
@@ -36,6 +36,17 @@ export function SettingsPanel() {
   const [models, setModels] = useState<string[]>([]);
   const [showKeyBanner, setShowKeyBanner] = useState(isApiKeyScrubbed() && !project.ai_config?.api_key && !!project.ai_config);
 
+  // Sync draft state when project.ai_config changes (e.g. opening a different project file)
+  useEffect(() => {
+    setDraftKind(project.ai_config?.kind ?? "ollama");
+    setDraftBaseUrl(project.ai_config?.base_url ?? "");
+    setDraftApiKey(project.ai_config?.api_key ?? "");
+    setDraftModel(project.ai_config?.model ?? "");
+    setDraftMaxChars(project.ai_config?.max_input_chars ?? 50000);
+    setDraftSystemPrompt(project.ai_config?.system_prompt ?? "");
+    setShowKeyBanner(isApiKeyScrubbed() && !project.ai_config?.api_key && !!project.ai_config);
+  }, [project.ai_config]);
+
   const isDirty = draftKind !== (project.ai_config?.kind ?? "ollama")
     || draftBaseUrl !== (project.ai_config?.base_url ?? "")
     || draftApiKey !== (project.ai_config?.api_key ?? "")
@@ -44,7 +55,7 @@ export function SettingsPanel() {
     || draftSystemPrompt !== (project.ai_config?.system_prompt ?? "");
 
   const handleSave = () => {
-    project.ai_config = {
+    const newConfig = {
       kind: draftKind,
       base_url: draftBaseUrl,
       api_key: draftApiKey,
@@ -52,6 +63,9 @@ export function SettingsPanel() {
       max_input_chars: draftMaxChars,
       system_prompt: draftSystemPrompt,
     };
+    useProjectStore.setState((state) => ({
+      project: { ...state.project, ai_config: newConfig },
+    }));
     clearApiKeyScrubbed();
     setShowKeyBanner(false);
     success(t("toast.aiSaved", language));
@@ -71,9 +85,9 @@ export function SettingsPanel() {
       setTestResult("ok");
       success(t("settings.aiProvider.testOk", language));
     } catch (err) {
-      const e = err as AiErrorPayload;
-      setTestResult(e.message);
-      toastError(e.message);
+      const msg = typeof err === "string" ? err : (err as AiErrorPayload).message ?? String(err);
+      setTestResult(msg);
+      toastError(msg);
     }
   };
 
@@ -92,8 +106,8 @@ export function SettingsPanel() {
         setDraftModel(result[0]);
       }
     } catch (err) {
-      const e = err as AiErrorPayload;
-      toastError(e.message);
+      const msg = typeof err === "string" ? err : (err as AiErrorPayload).message ?? String(err);
+      toastError(msg);
     }
   };
 
@@ -115,6 +129,7 @@ export function SettingsPanel() {
       const title = `AI ${now.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit" })} ${now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
       appendAiTab(result.markdown, title);
     } catch (err) {
+      if (typeof err === "string") { toastError(err); return; }
       const e = err as AiErrorPayload;
       switch (e.code) {
         case "input_too_large":
@@ -126,8 +141,19 @@ export function SettingsPanel() {
         case "cancelled":
           // silent
           break;
+        case "not_configured":
+          info(t("toast.aiNotConfigured", language));
+          break;
+        case "no_sources":
+          info(t("toast.needTwoSources", language));
+          break;
+        case "empty_response":
+          toastError(e.message);
+          break;
+        case "target_not_found":
+          toastError(e.message);
+          break;
         case "provider":
-          // Classify provider error into localized toast or fallback to raw message
           if (/401|403|auth|unauthorized/i.test(e.message)) {
             toastError(t("toast.ai.authError", language));
           } else if (/network|connect|refused|unreachable|timeout|dns|resolve/i.test(e.message)) {
@@ -257,7 +283,7 @@ export function SettingsPanel() {
             {/* Max chars */}
             <div>
               <label className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">{t("settings.aiProvider.maxChars", language)}</label>
-              <input type="number" value={draftMaxChars} onChange={(e) => setDraftMaxChars(parseInt(e.target.value) || 0)}
+              <input type="number" value={draftMaxChars} onChange={(e) => { const v = parseInt(e.target.value); setDraftMaxChars(Number.isNaN(v) ? 50000 : Math.max(0, v)); }}
                 className="w-full h-7 text-xs px-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent" />
             </div>
 

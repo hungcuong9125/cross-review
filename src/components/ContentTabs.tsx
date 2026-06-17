@@ -11,15 +11,14 @@ export function ContentTabs() {
     processContent, previewFormat,
   } = useProjectStore();
 
-  const activeTab = contentTabs.find((t) => t.id === activeContentTabId);
+  const activeTab = contentTabs.find((tab) => tab.id === activeContentTabId);
 
   const handleCopy = async () => {
-    if (!activeTab) return;
-    const content = activeTab.kind === "ai" ? activeTab.markdown : "";
+    if (!activeTab || activeTab.kind !== "ai") return;
     try {
-      await navigator.clipboard.writeText(processContent(content));
+      await navigator.clipboard.writeText(processContent(activeTab.markdown));
     } catch {
-      // fallback
+      // clipboard API may be unavailable in non-HTTPS contexts
     }
   };
 
@@ -57,7 +56,7 @@ export function ContentTabs() {
           <div className="h-full overflow-y-auto p-4">
             {previewFormat === "html" ? (
               <div className="markdown-preview prose dark:prose-invert max-w-none bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 text-sm"
-                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(activeTab.markdown, { breaks: true }) as string) }} />
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(String(marked.parse(activeTab.markdown, { breaks: true }))) }} />
             ) : (
               <pre className="whitespace-pre-wrap break-words bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-mono text-gray-700 dark:text-gray-200 leading-relaxed">
                 {activeTab.markdown}
@@ -67,12 +66,14 @@ export function ContentTabs() {
         ) : null}
       </div>
 
-      {/* Action bar footer */}
-      <div className="p-2 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center gap-3 flex-shrink-0">
-        <button onClick={handleCopy} className="px-2.5 py-1 text-xs font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors">
-          {t("preview.copy", language)}
-        </button>
-      </div>
+      {/* Action bar footer — only for AI tabs */}
+      {activeTab?.kind === "ai" && (
+        <div className="p-2 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center gap-3 flex-shrink-0">
+          <button onClick={handleCopy} className="px-2.5 py-1 text-xs font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors">
+            {t("preview.copy", language)}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

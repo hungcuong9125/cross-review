@@ -58,8 +58,14 @@ impl std::fmt::Debug for AiProviderConfig {
 }
 
 /// Result of a single rewrite call. Frontend switches on code.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "code", rename_all = "snake_case")]
+///
+/// Custom Serialize outputs just the tag string (e.g. `"not_configured"`) so
+/// the TypeScript `AiErrorCode` string-union type matches on the wire.
+/// Variant data (chars, max, seconds, message) is embedded into the
+/// `AiErrorPayload.message` field instead.
+#[allow(dead_code)]
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum AiErrorCode {
     NotConfigured,
     NoSources,
@@ -69,6 +75,22 @@ pub enum AiErrorCode {
     Provider { message: String },
     EmptyResponse,
     Cancelled,
+}
+
+impl Serialize for AiErrorCode {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let tag = match self {
+            AiErrorCode::NotConfigured => "not_configured",
+            AiErrorCode::NoSources => "no_sources",
+            AiErrorCode::TargetNotFound => "target_not_found",
+            AiErrorCode::InputTooLarge { .. } => "input_too_large",
+            AiErrorCode::Timeout { .. } => "timeout",
+            AiErrorCode::Provider { .. } => "provider",
+            AiErrorCode::EmptyResponse => "empty_response",
+            AiErrorCode::Cancelled => "cancelled",
+        };
+        serializer.serialize_str(tag)
+    }
 }
 
 /// Wire-format error. Frontend sees this.

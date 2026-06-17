@@ -15,15 +15,15 @@ static CURRENT_CANCEL_TOKEN: OnceLock<Mutex<Option<CancellationToken>>> = OnceLo
 
 fn register_cancel(token: CancellationToken) {
     let slot = CURRENT_CANCEL_TOKEN.get_or_init(|| Mutex::new(None));
-    let mut guard = slot.lock().expect("CURRENT_CANCEL_TOKEN mutex poisoned");
-    if guard.is_some() {
+    if let Ok(mut guard) = slot.lock() {
         if let Some(prev) = guard.take() {
             prev.cancel();
         }
+        *guard = Some(token);
     }
-    *guard = Some(token);
 }
 
+#[allow(dead_code)]
 fn clear_cancel() {
     if let Some(slot) = CURRENT_CANCEL_TOKEN.get() {
         if let Ok(mut guard) = slot.lock() {
@@ -234,11 +234,17 @@ async fn exec(
     fut.await
 }
 
+/// Result of a rewrite call: the markdown output and the actual input char count.
+pub struct RewriteOutput {
+    pub markdown: String,
+    pub input_chars: usize,
+}
+
 pub async fn rewrite_for_target(
     project: &Project,
     target_qa_id: &str,
     cancel: CancellationToken,
-) -> Result<String, AiErrorPayload> {
+) -> Result<RewriteOutput, AiErrorPayload> {
     let cfg = project.ai_config.as_ref().ok_or(AiErrorPayload {
         code: AiErrorCode::NotConfigured,
         message: "AI is not configured. Open Settings to add a provider.".to_string(),
@@ -273,6 +279,7 @@ pub async fn rewrite_for_target(
     }
     let request = build_chat_request(cfg, &sources);
     let client = build_client(cfg)?;
+    let input_chars = estimate_total_chars(&sources, cfg);
     register_cancel(cancel.clone());
     let result = exec(
         client,
@@ -283,14 +290,16 @@ pub async fn rewrite_for_target(
         &cfg.api_key,
     )
     .await;
-    clear_cancel();
-    result
+    // Don't call clear_cancel() here — a concurrent request may have
+    // registered its own token after ours. register_cancel() handles
+    // replacement; the slot always holds the most recent token.
+    result.map(|markdown| RewriteOutput { markdown, input_chars })
 }
 
 pub async fn rewrite_all(
     project: &Project,
     cancel: CancellationToken,
-) -> Result<String, AiErrorPayload> {
+) -> Result<RewriteOutput, AiErrorPayload> {
     let cfg = project.ai_config.as_ref().ok_or(AiErrorPayload {
         code: AiErrorCode::NotConfigured,
         message: "AI is not configured. Open Settings to add a provider.".to_string(),
@@ -317,6 +326,7 @@ pub async fn rewrite_all(
     }
     let request = build_chat_request(cfg, &sources);
     let client = build_client(cfg)?;
+    let input_chars = estimate_total_chars(&sources, cfg);
     register_cancel(cancel.clone());
     let result = exec(
         client,
@@ -327,8 +337,8 @@ pub async fn rewrite_all(
         &cfg.api_key,
     )
     .await;
-    clear_cancel();
-    result
+    // Don't call clear_cancel() — same reasoning as rewrite_for_target.
+    result.map(|markdown| RewriteOutput { markdown, input_chars })
 }
 
 pub async fn test_provider(cfg: &AiProviderConfig) -> Result<(), AiErrorPayload> {
@@ -337,7 +347,9 @@ pub async fn test_provider(cfg: &AiProviderConfig) -> Result<(), AiErrorPayload>
         .with_system("Reply with the single word: ok")
         .append_message(ChatMessage::user("ping"));
     let cancel = CancellationToken::new();
-    // Don't register test's cancel token globally - test should run to completion
+    // Don't register test's cancel token globally - test should run to completion.
+    // Also don't call clear_cancel() here — a concurrent rewrite may have a
+    // registered token that we must not wipe.
     let result = exec(
         client,
         &cfg.model,
@@ -347,7 +359,6 @@ pub async fn test_provider(cfg: &AiProviderConfig) -> Result<(), AiErrorPayload>
         &cfg.api_key,
     )
     .await;
-    clear_cancel();
     let _ = result?;
     Ok(())
 }
@@ -364,75 +375,74 @@ pub async fn list_models(cfg: &AiProviderConfig) -> Result<Vec<String>, AiErrorP
     // The exact API may vary. If all_model_names doesn't exist, build a
     // minimal chat request and extract model info from the response.
     // Fallback: return a hardcoded list based on provider kind.
-    match cfg.kind {
-        AiProviderKind::Ollama => {
-            // For Ollama, genai 0.6.5 should support listing models
-            let adapter = to_adapter(cfg.kind);
-            let provider_config = ProviderConfig {
-                endpoint: if cfg.base_url.trim().is_empty() {
-                    None
-                } else {
-                    Some(Endpoint::from_owned(cfg.base_url.trim().to_string()))
-                },
-                auth: if cfg.api_key.is_empty() {
-                    None
-                } else {
-                    Some(AuthData::from_single(cfg.api_key.clone()))
-                },
-            };
-            match client.all_model_names(adapter, provider_config).await {
-                Ok(names) => Ok(names),
-                Err(_) => Ok(vec![
-                    "llama3.2".to_string(),
-                    "mistral".to_string(),
-                    "gemma3".to_string(),
-                ]),
-            }
-        }
-        _ => {
-            // For cloud providers, return a reasonable default list
-            Ok(match cfg.kind {
-                AiProviderKind::Openai | AiProviderKind::OpenaiCompatible => {
-                    vec![
-                        "gpt-4o".to_string(),
-                        "gpt-4o-mini".to_string(),
-                        "gpt-4-turbo".to_string(),
-                        "gpt-3.5-turbo".to_string(),
-                    ]
-                }
-                AiProviderKind::Anthropic => {
-                    vec![
-                        "claude-3-5-sonnet-latest".to_string(),
-                        "claude-3-opus-latest".to_string(),
-                        "claude-3-haiku-latest".to_string(),
-                    ]
-                }
-                AiProviderKind::Gemini => {
-                    vec![
-                        "gemini-2.5-flash".to_string(),
-                        "gemini-2.5-pro".to_string(),
-                        "gemini-1.5-flash".to_string(),
-                    ]
-                }
-                AiProviderKind::Deepseek => {
-                    vec!["deepseek-chat".to_string(), "deepseek-coder".to_string()]
-                }
-                AiProviderKind::Groq => {
-                    vec![
-                        "llama-3.3-70b-versatile".to_string(),
-                        "mixtral-8x7b-32768".to_string(),
-                    ]
-                }
-                AiProviderKind::Cohere => {
-                    vec!["command-r-plus".to_string(), "command-r".to_string()]
-                }
-                AiProviderKind::Xai => {
-                    vec!["grok-2".to_string(), "grok-2-mini".to_string()]
-                }
-                _ => vec![],
-            })
+    let adapter = to_adapter(cfg.kind);
+    let provider_config = ProviderConfig {
+        endpoint: if cfg.base_url.trim().is_empty() {
+            None
+        } else {
+            Some(Endpoint::from_owned(cfg.base_url.trim().to_string()))
+        },
+        auth: if cfg.api_key.is_empty() {
+            None
+        } else {
+            Some(AuthData::from_single(cfg.api_key.clone()))
+        },
+    };
+
+    // Try dynamic discovery for all providers via genai's all_model_names.
+    if let Ok(names) = client.all_model_names(adapter, provider_config).await {
+        if !names.is_empty() {
+            return Ok(names);
         }
     }
+
+    // Fallback to hardcoded lists when the API call fails or returns empty.
+    Ok(match cfg.kind {
+        AiProviderKind::Ollama => {
+            vec![
+                "llama3.2".to_string(),
+                "mistral".to_string(),
+                "gemma3".to_string(),
+            ]
+        }
+        AiProviderKind::Openai | AiProviderKind::OpenaiCompatible => {
+            vec![
+                "gpt-4o".to_string(),
+                "gpt-4o-mini".to_string(),
+                "gpt-4-turbo".to_string(),
+                "gpt-3.5-turbo".to_string(),
+            ]
+        }
+        AiProviderKind::Anthropic => {
+            vec![
+                "claude-3-5-sonnet-latest".to_string(),
+                "claude-3-opus-latest".to_string(),
+                "claude-3-haiku-latest".to_string(),
+            ]
+        }
+        AiProviderKind::Gemini => {
+            vec![
+                "gemini-2.5-flash".to_string(),
+                "gemini-2.5-pro".to_string(),
+                "gemini-1.5-flash".to_string(),
+            ]
+        }
+        AiProviderKind::Deepseek => {
+            vec!["deepseek-chat".to_string(), "deepseek-coder".to_string()]
+        }
+        AiProviderKind::Groq => {
+            vec![
+                "llama-3.3-70b-versatile".to_string(),
+                "mixtral-8x7b-32768".to_string(),
+            ]
+        }
+        AiProviderKind::Cohere => {
+            vec!["command-r-plus".to_string(), "command-r".to_string()]
+        }
+        AiProviderKind::Xai => {
+            vec!["grok-2".to_string(), "grok-2-mini".to_string()]
+        }
+    })
 }
 
 // --- Tests ---
@@ -728,8 +738,8 @@ mod integration {
         let result = rewrite_for_target(&project, "qa1", cancel).await;
 
         match result {
-            Ok(markdown) => {
-                assert!(!markdown.is_empty(), "AI rewrite should return non-empty markdown");
+            Ok(output) => {
+                assert!(!output.markdown.is_empty(), "AI rewrite should return non-empty markdown");
             }
             Err(e) => {
                 // If Ollama isn't running or the model isn't pulled, treat this as a

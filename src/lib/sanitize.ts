@@ -26,8 +26,12 @@ export function sanitizeForStorage(project: Project): Project {
 export function recordScrubIfNeeded(scrubbedDraft: Project): void {
   try {
     const cfg = scrubbedDraft.ai_config;
+    // Ollama doesn't require an API key — don't show the "key missing" banner for it.
+    if (cfg && cfg.kind === "ollama") {
+      localStorage.removeItem(KEY_SCRUB_FLAG);
+      return;
+    }
     const hasNonSensitiveFields = !!cfg && (
-      cfg.kind !== "ollama" ||
       cfg.base_url.trim() !== "" ||
       cfg.model.trim() !== "" ||
       cfg.system_prompt.trim() !== "" ||

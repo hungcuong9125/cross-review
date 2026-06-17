@@ -97,18 +97,12 @@ pub async fn ai_rewrite_preview(
         .as_ref()
         .map(|c| format!("{:?}", c.kind).to_lowercase())
         .unwrap_or_else(|| "ollama".to_string());
-    let input_chars: usize = project
-        .qa_reports
-        .iter()
-        .filter(|q| q.active)
-        .map(|q| q.name.chars().count() + q.content.chars().count())
-        .sum();
-    let markdown = ai::rewrite_for_target(&project, &target_qa_id, cancel).await?;
+    let output = ai::rewrite_for_target(&project, &target_qa_id, cancel).await?;
     Ok(AiRewriteResult {
-        markdown,
+        markdown: output.markdown,
         model_used: model,
         provider,
-        input_chars,
+        input_chars: output.input_chars,
     })
 }
 
@@ -127,18 +121,12 @@ pub async fn ai_rewrite_export(
         .as_ref()
         .map(|c| format!("{:?}", c.kind).to_lowercase())
         .unwrap_or_else(|| "ollama".to_string());
-    let input_chars: usize = project
-        .qa_reports
-        .iter()
-        .filter(|q| q.active)
-        .map(|q| q.name.chars().count() + q.content.chars().count())
-        .sum();
-    let markdown = ai::rewrite_all(&project, cancel).await?;
+    let output = ai::rewrite_all(&project, cancel).await?;
     Ok(AiRewriteResult {
-        markdown,
+        markdown: output.markdown,
         model_used: model,
         provider,
-        input_chars,
+        input_chars: output.input_chars,
     })
 }
 

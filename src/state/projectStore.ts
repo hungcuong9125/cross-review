@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Project, QaReport, Component, ValidationReport, AiProviderConfig } from "../lib/api";
+import type { Project, QaReport, Component, ValidationReport } from "../lib/api";
 import { validateProject } from "../lib/api";
 import { t, type Language } from "../lib/i18n";
 
@@ -8,6 +8,8 @@ function generateId(): string {
 }
 
 let validationGeneration = 0;
+
+const DEFAULT_PREVIEW_TAB = { id: "preview" as const, kind: "preview" as const, title: "Preview" };
 
 export type MainTab = "home" | "reports" | "opening" | "closing";
 
@@ -30,10 +32,6 @@ interface ProjectState {
   compactMode: boolean;
   removeWhitespace: boolean;
   mergeLines: boolean;
-
-  // AI config
-  aiConfigDraft: AiProviderConfig | null;
-  setAiConfigDraft: (cfg: AiProviderConfig | null) => void;
 
   // Content tabs
   contentTabs: ContentTab[];
@@ -79,6 +77,7 @@ interface ProjectState {
 
   // Selection
   selectQa: (id: string | null) => void;
+  selectQaOnly: (id: string | null) => void;
   selectComponent: (id: string) => void;
   setActiveMainTab: (tab: MainTab) => void;
 
@@ -156,8 +155,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   compactMode: false,
   removeWhitespace: false,
   mergeLines: false,
-  aiConfigDraft: null,
-  contentTabs: [{ id: "preview", kind: "preview" as const, title: "Preview" }],
+  contentTabs: [DEFAULT_PREVIEW_TAB],
   activeContentTabId: "preview",
   previewFormat: "html",
   aiBusy: false,
@@ -170,7 +168,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       selectedQaId: firstQa?.id ?? null,
       activeMainTab: "home",
       activeItem: firstQa ? { type: "report", qaId: firstQa.id } : null,
-      contentTabs: [{ id: "preview", kind: "preview" as const, title: "Preview" }],
+      contentTabs: [DEFAULT_PREVIEW_TAB],
       activeContentTabId: "preview",
     });
     get().refreshValidation();
@@ -182,7 +180,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       selectedQaId: null,
       activeMainTab: "home",
       activeItem: null,
-      contentTabs: [{ id: "preview", kind: "preview" as const, title: "Preview" }],
+      contentTabs: [DEFAULT_PREVIEW_TAB],
       activeContentTabId: "preview",
     });
     get().refreshValidation();
@@ -425,6 +423,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     activeMainTab: "reports",
     activeItem: id ? { type: "report", qaId: id } : null,
   }),
+  /** Like selectQa but does NOT change activeMainTab — for PreviewBody auto-select. */
+  selectQaOnly: (id) => set({
+    selectedQaId: id,
+    activeItem: id ? { type: "report", qaId: id } : null,
+  }),
 
   selectComponent: (id) => {
     const comp = get().project.components.find(c => c.id === id);
@@ -530,8 +533,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   toggleRemoveWhitespace: () => set((state) => ({ removeWhitespace: !state.removeWhitespace })),
   toggleMergeLines: () => set((state) => ({ mergeLines: !state.mergeLines })),
 
-  setAiConfigDraft: (cfg) => set({ aiConfigDraft: cfg }),
-
   setActiveContentTab: (id) => set({ activeContentTabId: id }),
 
   appendAiTab: (markdown, title) => {
@@ -553,7 +554,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 
   closeAllAiTabs: () => {
-    set({ contentTabs: [{ id: "preview", kind: "preview" as const, title: "Preview" }], activeContentTabId: "preview" });
+    set({ contentTabs: [DEFAULT_PREVIEW_TAB], activeContentTabId: "preview" });
   },
 
   setPreviewFormat: (f) => set({ previewFormat: f }),
