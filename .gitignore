@@ -35,5 +35,5 @@ sample-export/
 .claude/
 
 # Project documentation (Harness local files)
-docs/
-
+# docs/
+upstrems/*
