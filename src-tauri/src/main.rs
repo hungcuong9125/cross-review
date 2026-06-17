@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod ai;
 mod commands;
 mod export;
 mod models;
@@ -18,6 +19,11 @@ fn main() {
             commands::export_all_zip,
             commands::save_project,
             commands::open_project,
+            commands::ai_test_provider,
+            commands::ai_rewrite_preview,
+            commands::ai_rewrite_export,
+            commands::ai_list_models,
+            commands::ai_cancel_request,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

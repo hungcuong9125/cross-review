@@ -1,10 +1,14 @@
 use std::fs;
 use std::path::Path;
 
+use crate::ai;
 use crate::export::{generate_exports, generate_preview};
-use crate::models::{ExportFile, Project, ValidationReport};
+use crate::models::{
+    AiErrorPayload, AiProviderConfig, AiRewriteResult, ExportFile, Project, ValidationReport,
+};
 use crate::validation::validate_project;
 use crate::zip_export::export_to_zip;
+use tokio_util::sync::CancellationToken;
 
 #[tauri::command]
 pub fn validate_project_cmd(project: Project) -> Result<ValidationReport, String> {
@@ -65,4 +69,80 @@ pub fn open_project(path: String) -> Result<Project, String> {
     let project: Project =
         serde_json::from_str(&content).map_err(|e| format!("Invalid project file: {}", e))?;
     Ok(project)
+}
+
+#[tauri::command]
+pub async fn ai_test_provider(config: AiProviderConfig) -> Result<(), AiErrorPayload> {
+    ai::test_provider(&config).await
+}
+
+#[tauri::command]
+pub async fn ai_list_models(config: AiProviderConfig) -> Result<Vec<String>, AiErrorPayload> {
+    ai::list_models(&config).await
+}
+
+#[tauri::command]
+pub async fn ai_rewrite_preview(
+    project: Project,
+    target_qa_id: String,
+) -> Result<AiRewriteResult, AiErrorPayload> {
+    let cancel = CancellationToken::new();
+    let model = project
+        .ai_config
+        .as_ref()
+        .map(|c| c.model.clone())
+        .unwrap_or_default();
+    let provider = project
+        .ai_config
+        .as_ref()
+        .map(|c| format!("{:?}", c.kind).to_lowercase())
+        .unwrap_or_else(|| "ollama".to_string());
+    let input_chars: usize = project
+        .qa_reports
+        .iter()
+        .filter(|q| q.active)
+        .map(|q| q.name.chars().count() + q.content.chars().count())
+        .sum();
+    let markdown = ai::rewrite_for_target(&project, &target_qa_id, cancel).await?;
+    Ok(AiRewriteResult {
+        markdown,
+        model_used: model,
+        provider,
+        input_chars,
+    })
+}
+
+#[tauri::command]
+pub async fn ai_rewrite_export(
+    project: Project,
+) -> Result<AiRewriteResult, AiErrorPayload> {
+    let cancel = CancellationToken::new();
+    let model = project
+        .ai_config
+        .as_ref()
+        .map(|c| c.model.clone())
+        .unwrap_or_default();
+    let provider = project
+        .ai_config
+        .as_ref()
+        .map(|c| format!("{:?}", c.kind).to_lowercase())
+        .unwrap_or_else(|| "ollama".to_string());
+    let input_chars: usize = project
+        .qa_reports
+        .iter()
+        .filter(|q| q.active)
+        .map(|q| q.name.chars().count() + q.content.chars().count())
+        .sum();
+    let markdown = ai::rewrite_all(&project, cancel).await?;
+    Ok(AiRewriteResult {
+        markdown,
+        model_used: model,
+        provider,
+        input_chars,
+    })
+}
+
+#[tauri::command]
+pub async fn ai_cancel_request() -> Result<bool, String> {
+    Ok(ai::cancel_in_flight())
 }

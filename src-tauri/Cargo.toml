@@ -23,6 +23,9 @@ thiserror = "2"
 zip = "2"
 uuid = { version = "1", features = ["v4"] }
 unicode-normalization = "0.1"
+genai = "=0.6.5"
+tokio = "1"
+tokio-util = "0.7"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

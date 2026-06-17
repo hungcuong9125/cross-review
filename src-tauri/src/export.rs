@@ -185,6 +185,7 @@ mod tests {
             exclude_self: true,
             opening_text: None,
             closing_text: None,
+            ai_config: None,
         }
     }
 

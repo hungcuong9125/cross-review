@@ -1,5 +1,94 @@
 use serde::{Deserialize, Serialize};
 
+// --- AI provider domain types ---
+
+/// Identifies which provider adapter to use.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum AiProviderKind {
+    Ollama,
+    Openai,
+    Anthropic,
+    Gemini,
+    Deepseek,
+    Groq,
+    Cohere,
+    Xai,
+    OpenaiCompatible,
+}
+
+fn default_kind() -> AiProviderKind {
+    AiProviderKind::Ollama
+}
+
+/// One AI provider configuration (v1: exactly one per project).
+#[derive(Clone, Serialize, Deserialize)]
+pub struct AiProviderConfig {
+    #[serde(default = "default_kind")]
+    pub kind: AiProviderKind,
+    #[serde(default)]
+    pub base_url: String,
+    #[serde(default)]
+    pub api_key: String,
+    #[serde(default)]
+    pub model: String,
+    #[serde(default)]
+    pub system_prompt: String,
+    #[serde(default = "default_max_input_chars")]
+    pub max_input_chars: usize,
+}
+
+fn default_max_input_chars() -> usize {
+    50_000
+}
+
+/// Manual Debug impl that redacts api_key - NEVER derive Debug on this struct.
+impl std::fmt::Debug for AiProviderConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let key_set = !self.api_key.is_empty();
+        f.debug_struct("AiProviderConfig")
+            .field("kind", &self.kind)
+            .field("base_url", &self.base_url)
+            .field("api_key", &format_args!("<REDACTED set={}>", key_set))
+            .field("model", &self.model)
+            .field("system_prompt", &self.system_prompt)
+            .field("max_input_chars", &self.max_input_chars)
+            .finish()
+    }
+}
+
+/// Result of a single rewrite call. Frontend switches on code.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "code", rename_all = "snake_case")]
+pub enum AiErrorCode {
+    NotConfigured,
+    NoSources,
+    TargetNotFound,
+    InputTooLarge { chars: usize, max: usize },
+    Timeout { seconds: u64 },
+    Provider { message: String },
+    EmptyResponse,
+    Cancelled,
+}
+
+/// Wire-format error. Frontend sees this.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AiErrorPayload {
+    pub code: AiErrorCode,
+    pub message: String,
+}
+
+/// Result of a rewrite call.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AiRewriteResult {
+    pub markdown: String,
+    pub model_used: String,
+    pub provider: String,
+    pub input_chars: usize,
+}
+
+// --- End AI provider domain types ---
+
 /// Position of a component in the exported markdown.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -42,6 +131,8 @@ pub struct Project {
     pub opening_text: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub closing_text: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ai_config: Option<AiProviderConfig>,
 }
 
 /// A single QA team's report.
@@ -81,6 +172,7 @@ impl Default for Project {
             exclude_self: true,
             opening_text: None,
             closing_text: None,
+            ai_config: None,
         }
     }
 }
