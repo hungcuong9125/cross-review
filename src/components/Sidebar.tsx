@@ -82,9 +82,11 @@ export function Sidebar() {
   } = useProjectStore();
 
   const { success, error: toastError, info } = useToast();
+  const validation = useProjectStore((s) => s.validation);
 
   const handleExportMd = async () => {
     if (project.qa_reports.length === 0) { info(t("dialog.noReport", language)); return; }
+    if (validation && !validation.valid) { info(t("dialog.validationFail", language)); return; }
     try {
       const { open } = await import("@tauri-apps/plugin-dialog");
       const dir = await open({ directory: true, multiple: false });
@@ -97,6 +99,7 @@ export function Sidebar() {
 
   const handleExportZip = async () => {
     if (project.qa_reports.length === 0) { info(t("dialog.noReport", language)); return; }
+    if (validation && !validation.valid) { info(t("dialog.validationFail", language)); return; }
     try {
       const { save } = await import("@tauri-apps/plugin-dialog");
       const defaultName = project.title

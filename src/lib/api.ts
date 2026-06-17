@@ -21,6 +21,7 @@ export interface AiRewriteResult {
   model_used: string;
   provider: string;
   input_chars: number;
+  debug_log?: DebugLog;
 }
 
 export type AiErrorCode =

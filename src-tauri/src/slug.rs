@@ -28,38 +28,10 @@ pub fn to_slug(name: &str) -> String {
 }
 
 /// Returns a local timestamp string `YYYYMMDD-HHmmss`.
+/// Uses the system's local timezone.
 fn local_timestamp() -> String {
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
-    // Convert to approximate local time (UTC+7 for Vietnam, or use offset)
-    // Simple approach: use UTC and format
-    let secs = now % 60;
-    let mins = (now / 60) % 60;
-    let hours = (now / 3600) % 24;
-    let days_total = now / 86400;
-
-    // Days since epoch to Y-M-D (simplified leap year calculation)
-    let mut y = 1970i64;
-    let mut remaining = days_total as i64;
-    loop {
-        let days_in_year = if y % 4 == 0 && (y % 100 != 0 || y % 400 == 0) { 366 } else { 365 };
-        if remaining < days_in_year { break; }
-        remaining -= days_in_year;
-        y += 1;
-    }
-    let is_leap = y % 4 == 0 && (y % 100 != 0 || y % 400 == 0);
-    let days_in_month = [31, if is_leap { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    let mut m = 0usize;
-    while m < 12 && remaining >= days_in_month[m] {
-        remaining -= days_in_month[m];
-        m += 1;
-    }
-    format!(
-        "{:04}{:02}{:02}-{:02}{:02}{:02}",
-        y, m + 1, remaining + 1, hours, mins, secs
-    )
+    let now = chrono::Local::now();
+    now.format("%Y%m%d-%H%M%S").to_string()
 }
 
 /// Generates a unique filename for a QA target.

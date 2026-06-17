@@ -1,6 +1,6 @@
 [package]
 name = "review-weaver"
-version = "0.6.0"
+version = "0.6.5"
 edition = "2021"
 description = "Cross-review markdown report generator for QA teams"
 license = "MIT"
@@ -24,6 +24,7 @@ zip = "2"
 uuid = { version = "1", features = ["v4"] }
 unicode-normalization = "0.1"
 genai = "=0.6.5"
+chrono = "0.4"
 tokio = "1"
 tokio-util = "0.7"
 

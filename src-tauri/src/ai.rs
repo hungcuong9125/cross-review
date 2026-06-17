@@ -10,7 +10,6 @@ use genai::chat::{ChatMessage, ChatOptions, ChatRequest};
 use genai::resolver::{AuthData, Endpoint, ProviderConfig, ServiceTargetResolver};
 use genai::Client;
 
-// --- Cancellation ---
 static CURRENT_CANCEL_TOKEN: OnceLock<Mutex<Option<CancellationToken>>> = OnceLock::new();
 
 fn register_cancel(token: CancellationToken) {
@@ -34,8 +33,6 @@ pub fn cancel_in_flight() -> bool {
     }
     false
 }
-
-// --- Default prompt ---
 pub fn default_rewrite_prompt() -> &'static str {
     "You are a senior QA lead. You will receive several QA team reports about the \
      same target, written independently. Your job is to produce ONE consolidated \
@@ -57,7 +54,6 @@ pub fn default_rewrite_prompt() -> &'static str {
         preamble, no postscript."
 }
 
-// --- Scrub API key from strings ---
 pub fn scrub_api_key(s: &str, api_key: &str) -> String {
     if api_key.is_empty() {
         return s.to_string();
@@ -65,9 +61,7 @@ pub fn scrub_api_key(s: &str, api_key: &str) -> String {
     s.replace(api_key, "<REDACTED>")
 }
 
-// --- Strip CJK characters from text ---
-/// Removes CJK Unified Ideographs (Chinese characters) and CJK-specific punctuation.
-/// Keeps Latin, Vietnamese diacritics, whitespace, markdown syntax, and fullwidth ASCII forms.
+/// Removes CJK Unified Ideographs and CJK punctuation. Keeps Latin, Vietnamese, markdown.
 pub fn strip_chinese(text: &str) -> String {
     text.chars()
         .filter(|c| {
@@ -85,7 +79,6 @@ pub fn strip_chinese(text: &str) -> String {
         .collect()
 }
 
-/// Prepend Vietnamese translation instruction to system prompt.
 fn prepend_vietnamese_instruction(prompt: &str) -> String {
     format!(
         "CRITICAL: You MUST respond entirely in Vietnamese language. Translate all output to Vietnamese. Do NOT use any other language.\n\n{}",
@@ -93,7 +86,6 @@ fn prepend_vietnamese_instruction(prompt: &str) -> String {
     )
 }
 
-// --- Adapter mapping ---
 fn to_adapter(kind: AiProviderKind) -> AdapterKind {
     match kind {
         AiProviderKind::Ollama => AdapterKind::Ollama,
@@ -107,7 +99,6 @@ fn to_adapter(kind: AiProviderKind) -> AdapterKind {
     }
 }
 
-// --- Build genai Client ---
 fn build_client(cfg: &AiProviderConfig) -> Result<Client, AiErrorPayload> {
     if matches!(cfg.kind, AiProviderKind::OpenaiCompatible) && cfg.base_url.trim().is_empty() {
         return Err(AiErrorPayload {
@@ -117,9 +108,7 @@ fn build_client(cfg: &AiProviderConfig) -> Result<Client, AiErrorPayload> {
             message: "OpenaiCompatible requires a base_url".to_string(),
         });
     }
-    // Ensure trailing slash so genai's Url::join("chat/completions") resolves correctly.
-    // Without a trailing slash, "https://host/v1".join("chat/completions") → "https://host/chat/completions"
-    // With a trailing slash,    "https://host/v1/".join("chat/completions") → "https://host/v1/chat/completions"
+    // Trailing slash ensures Url::join("chat/completions") resolves correctly.
     let user_base_url = {
         let trimmed = cfg.base_url.trim();
         if trimmed.is_empty() {
@@ -162,7 +151,6 @@ fn build_client(cfg: &AiProviderConfig) -> Result<Client, AiErrorPayload> {
         .build())
 }
 
-// --- Source selection (mirrors export.rs) ---
 fn select_sources<'a>(project: &'a Project, target: Option<&'a QaReport>) -> Vec<&'a QaReport> {
     project
         .qa_reports
@@ -280,12 +268,53 @@ async fn exec(
     fut.await
 }
 
-/// Result of a rewrite call: the markdown output and the actual input char count.
+/// Result of a rewrite call: the markdown output, input char count, and optional debug log.
 pub struct RewriteOutput {
     pub markdown: String,
     pub input_chars: usize,
+    pub debug_log: Option<DebugLog>,
 }
 
+/// Capture debug info from a ChatRequest before sending.
+fn capture_request_debug(request: &ChatRequest, cfg: &AiProviderConfig) -> String {
+    use genai::chat::ChatRole;
+    let debug_request = serde_json::json!({
+        "system": request.system.as_deref().unwrap_or(""),
+        "messages": request.messages.iter().map(|m| {
+            serde_json::json!({
+                "role": match m.role {
+                    ChatRole::User => "user",
+                    ChatRole::Assistant => "assistant",
+                    ChatRole::System => "system",
+                    ChatRole::Tool => "tool",
+                },
+                "content": m.content.first_text().unwrap_or(""),
+            })
+        }).collect::<Vec<_>>(),
+        "model": cfg.model,
+        "thinking_effort": cfg.thinking_effort,
+    });
+    serde_json::to_string_pretty(&debug_request).unwrap_or_default()
+}
+
+fn make_debug_log(cfg: &AiProviderConfig, request_summary: String, response_text: String, duration_ms: u64, success: bool) -> DebugLog {
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    DebugLog {
+        timestamp: format!("{}", ts),
+        provider: cfg.kind.as_str().to_string(),
+        model: cfg.model.clone(),
+        thinking_effort: cfg.thinking_effort.clone(),
+        request_messages: request_summary,
+        response_text,
+        duration_ms,
+        success,
+    }
+}
+
+#[allow(dead_code)]
 pub async fn rewrite_for_target(
     project: &Project,
     target_qa_id: &str,
@@ -324,8 +353,10 @@ pub async fn rewrite_for_target(
         });
     }
     let request = build_chat_request(cfg, &sources);
+    let request_summary = capture_request_debug(&request, cfg);
     let client = build_client(cfg)?;
     let chat_options = build_chat_options(cfg);
+    let start = std::time::Instant::now();
     register_cancel(cancel.clone());
     let result = exec(
         client,
@@ -337,13 +368,15 @@ pub async fn rewrite_for_target(
         &cfg.api_key,
     )
     .await;
+    let duration_ms = start.elapsed().as_millis() as u64;
     result.map(|markdown| {
         let markdown = if cfg.remove_chinese {
             strip_chinese(&markdown)
         } else {
             markdown
         };
-        RewriteOutput { markdown, input_chars: chars }
+        let debug_log = make_debug_log(cfg, request_summary, markdown.chars().take(5000).collect(), duration_ms, true);
+        RewriteOutput { markdown, input_chars: chars, debug_log: Some(debug_log) }
     })
 }
 
@@ -376,8 +409,10 @@ pub async fn rewrite_all(
         });
     }
     let request = build_chat_request(cfg, &sources);
+    let request_summary = capture_request_debug(&request, cfg);
     let client = build_client(cfg)?;
     let chat_options = build_chat_options(cfg);
+    let start = std::time::Instant::now();
     register_cancel(cancel.clone());
     let result = exec(
         client,
@@ -389,13 +424,15 @@ pub async fn rewrite_all(
         &cfg.api_key,
     )
     .await;
+    let duration_ms = start.elapsed().as_millis() as u64;
     result.map(|markdown| {
         let markdown = if cfg.remove_chinese {
             strip_chinese(&markdown)
         } else {
             markdown
         };
-        RewriteOutput { markdown, input_chars: chars }
+        let debug_log = make_debug_log(cfg, request_summary, markdown.chars().take(5000).collect(), duration_ms, true);
+        RewriteOutput { markdown, input_chars: chars, debug_log: Some(debug_log) }
     })
 }
 
@@ -485,17 +522,7 @@ pub async fn test_provider_debug(cfg: &AiProviderConfig) -> Result<DebugLog, AiE
 }
 
 pub async fn list_models(cfg: &AiProviderConfig) -> Result<Vec<String>, AiErrorPayload> {
-    // IMPORTANT: Client::all_model_names does NOT go through ServiceTargetResolver.
-    // We must build ProviderConfig explicitly or custom base_url/api_key are ignored.
-    // Note: genai 0.6.5 may not have ProviderConfig - if compilation fails,
-    // use the ServiceTarget approach instead. The key insight is that
-    // all_model_names (or equivalent) must receive the endpoint/auth explicitly.
     let client = build_client(cfg)?;
-
-    // For genai 0.6.5, try to use the adapter's model listing capability.
-    // The exact API may vary. If all_model_names doesn't exist, build a
-    // minimal chat request and extract model info from the response.
-    // Fallback: return a hardcoded list based on provider kind.
     let adapter = to_adapter(cfg.kind);
     let provider_config = ProviderConfig {
         endpoint: if cfg.base_url.trim().is_empty() {
@@ -510,14 +537,12 @@ pub async fn list_models(cfg: &AiProviderConfig) -> Result<Vec<String>, AiErrorP
         },
     };
 
-    // Try dynamic discovery for all providers via genai's all_model_names.
     if let Ok(names) = client.all_model_names(adapter, provider_config).await {
         if !names.is_empty() {
             return Ok(names);
         }
     }
 
-    // Fallback to hardcoded lists when the API call fails or returns empty.
     Ok(match cfg.kind {
         AiProviderKind::Ollama => {
             vec![
@@ -586,7 +611,6 @@ pub async fn list_models(cfg: &AiProviderConfig) -> Result<Vec<String>, AiErrorP
     })
 }
 
-// --- Tests ---
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -873,30 +897,15 @@ mod tests {
     }
 }
 
-/// Integration tests gated on `REVIEW_WEAVER_RUN_AI_TESTS=1`.
-///
-/// These tests require a running LLM endpoint (e.g., `ollama serve` with
-/// `llama3.2:1b` pulled). They are skipped by default so `cargo test` stays
-/// hermetic on CI. To run them:
-///
-/// ```bash
-/// REVIEW_WEAVER_RUN_AI_TESTS=1 cargo test --manifest-path src-tauri/Cargo.toml --lib
-/// ```
+/// Integration tests — set REVIEW_WEAVER_RUN_AI_TESTS=1 to enable.
 #[cfg(test)]
 mod integration {
     use super::*;
     use crate::models::{Project, QaReport};
     use tokio_util::sync::CancellationToken;
 
-    /// End-to-end rewrite against a local Ollama instance.
-    ///
-    /// Requires:
-    /// - `ollama serve` running on `http://localhost:11434/`
-    /// - `llama3.2:1b` model pulled (`ollama pull llama3.2:1b`)
-    /// - `REVIEW_WEAVER_RUN_AI_TESTS=1` env var set
     #[tokio::test]
     async fn test_ai_rewrite_preview_ollama_e2e() {
-        // Gate: skip unless the env var is explicitly set
         if std::env::var("REVIEW_WEAVER_RUN_AI_TESTS").unwrap_or_default() != "1" {
             eprintln!("SKIP: set REVIEW_WEAVER_RUN_AI_TESTS=1 to run AI integration tests");
             return;
@@ -944,11 +953,6 @@ mod integration {
                 assert!(!output.markdown.is_empty(), "AI rewrite should return non-empty markdown");
             }
             Err(e) => {
-                // If Ollama isn't running or the model isn't pulled, treat this as a
-                // pre-condition skip, not a code failure. The test only asserts correctness
-                // when the environment is properly configured.
-                // Match on AiErrorCode variant — substring heuristics are too fragile
-                // (genai 0.6.5 error messages vary by platform and HTTP client).
                 match &e.code {
                     AiErrorCode::Provider { .. }
                     | AiErrorCode::Timeout { .. }

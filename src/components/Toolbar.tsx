@@ -89,7 +89,7 @@ export function Toolbar() {
     }
   };
 
-  const showAiBadge = contentTabs.length > 1 && activeContentTabId === "preview";
+  const showAiBadge = contentTabs.some((t) => t.kind === "ai") && activeContentTabId === "preview";
   const debugTabCount = contentTabs.filter((t) => t.kind === "debug").length;
 
   const mainTabs: { key: MainTab; label: string; icon: React.ReactNode; badge?: boolean; count?: number }[] = [
@@ -133,12 +133,12 @@ export function Toolbar() {
                 {tab.badge && (
                   <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-blue-500" title="AI tabs available" />
                 )}
+                {tab.label}
                 {tab.count !== undefined && tab.count > 0 && (
                   <span className="ml-0.5 px-1 py-0.5 text-[8px] font-bold bg-orange-500 text-white rounded-full leading-none" title="Debug logs">
                     {tab.count}
                   </span>
                 )}
-                {tab.label}
               </button>
             );
           })}

@@ -14,7 +14,7 @@ export function ContentTabs() {
     closeContentTab, closeAllAiTabs, language,
     processContent, previewFormat, project,
     previewMarkdown, validation,
-    activeMainTab,
+    activeMainTab, aiBusy,
   } = useProjectStore();
   const { success, error: toastError, info } = useToast();
   const [copied, setCopied] = useState(false);
@@ -24,7 +24,7 @@ export function ContentTabs() {
   // Get the content to copy depending on which tab type is active
   const getCopyContent = () => {
     // Debug view: copy the active debug tab's log
-    const debugTab = contentTabs.find((t) => t.id === activeContentTabId && t.kind === "debug");
+    const debugTab = contentTabs.find((tab) => tab.id === activeContentTabId && tab.kind === "debug");
     if (debugTab && debugTab.kind === "debug") {
       const log = debugTab.log;
       return [
@@ -103,19 +103,35 @@ export function ContentTabs() {
   if (isDebugView) {
     if (!activeDebugTab) {
       return (
-        <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
+        <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900 relative">
           <div className="flex items-center border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 h-[37px]" />
           <div className="flex-1 flex items-center justify-center">
-            <p className="text-sm text-gray-400 dark:text-gray-500">
-              {language === "vi" ? "Bật Debug và chạy Generate để xem log" : "Enable Debug and run Generate to see logs"}
-            </p>
+            {aiBusy ? (
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-8 h-8 border-3 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm text-orange-500 font-medium">{language === "vi" ? "Đang gửi yêu cầu AI..." : "Sending AI request..."}</p>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 dark:text-gray-500">
+                {language === "vi" ? "Bật Debug và chạy Generate để xem log" : "Enable Debug and run Generate to see logs"}
+              </p>
+            )}
           </div>
         </div>
       );
     }
     const log = activeDebugTab.log;
     return (
-      <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
+      <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900 relative">
+        {/* Loading overlay when generating */}
+        {aiBusy && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-50/80 dark:bg-gray-900/80">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-8 h-8 border-3 border-orange-400 border-t-transparent rounded-full animate-spin" />
+              <p className="text-sm text-orange-500 font-medium">{language === "vi" ? "Đang gửi yêu cầu AI..." : "Sending AI request..."}</p>
+            </div>
+          </div>
+        )}
         {/* Tab bar — only show debug tabs */}
         <div className="flex items-center border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 overflow-x-auto">
           {debugTabs.map((tab) => {
@@ -195,10 +211,19 @@ export function ContentTabs() {
 
   // Normal view (Preview + AI tabs)
   return (
-    <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900 relative">
+      {/* Loading overlay when generating */}
+      {aiBusy && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-50/80 dark:bg-gray-900/80">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-3 border-blue-400 border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm text-blue-500 font-medium">{language === "vi" ? "Đang tạo báo cáo..." : "Generating report..."}</p>
+          </div>
+        </div>
+      )}
       {/* Tab bar */}
       <div className="flex items-center border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 overflow-x-auto">
-        {contentTabs.filter((t) => t.kind !== "debug").map((tab) => {
+        {contentTabs.filter((ct) => ct.kind !== "debug").map((tab) => {
           const isActive = tab.id === activeContentTabId;
           return (
             <div key={tab.id} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors cursor-pointer whitespace-nowrap ${isActive ? "border-blue-500 text-blue-600 dark:text-blue-400" : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"}`}
@@ -212,7 +237,7 @@ export function ContentTabs() {
             </div>
           );
         })}
-        {contentTabs.filter((t) => t.kind !== "debug").length > 1 && (
+        {contentTabs.filter((ct) => ct.kind !== "debug").length > 1 && (
           <button onClick={closeAllAiTabs}
             className="ml-2 px-2 py-1 text-[10px] text-gray-400 hover:text-red-500 transition-colors whitespace-nowrap">
             {t("tab.closeAllAi", language)}

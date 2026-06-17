@@ -61,6 +61,7 @@ export function SettingsPanel() {
     setDraftThinkingEffort(project.ai_config?.thinking_effort ?? "");
     setDraftTranslateVietnamese(project.ai_config?.translate_vietnamese ?? false);
     setDraftRemoveChinese(project.ai_config?.remove_chinese ?? false);
+    setShowApiKey(false);
     setShowKeyBanner(isApiKeyScrubbed() && !project.ai_config?.api_key && !!project.ai_config);
   }, [project.ai_config]);
 
@@ -175,17 +176,12 @@ export function SettingsPanel() {
     }
     setAiBusy(true);
     try {
-      // Run debug test first if debug is enabled
-      if (debugEnabled) {
-        try {
-          const debugLog = await aiTestProviderDebug(cfg);
-          appendDebugTab(debugLog);
-          setActiveMainTab("home");
-        } catch {
-          // Debug test failed, continue with main generate
-        }
-      }
       const result = await aiRewriteExport(useProjectStore.getState().project);
+      // If debug enabled, create debug tab with actual request/response
+      if (debugEnabled && result.debug_log) {
+        appendDebugTab(result.debug_log);
+        setActiveMainTab("debug");
+      }
       const now = new Date();
       const title = `AI ${now.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit" })} ${now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
       appendAiTab(result.markdown, title);
@@ -248,8 +244,8 @@ export function SettingsPanel() {
       remove_whitespace: state.removeWhitespace,
       merge_lines: state.mergeLines,
       preview_format: state.previewFormat,
-      translate_vietnamese: state.translateVietnamese,
-      remove_chinese: state.removeChinese,
+      translate_vietnamese: state.project.ai_config?.translate_vietnamese ?? false,
+      remove_chinese: state.project.ai_config?.remove_chinese ?? false,
       debug_enabled: state.debugEnabled,
     };
     try {
@@ -282,8 +278,6 @@ export function SettingsPanel() {
           removeWhitespace: settings.remove_whitespace,
           mergeLines: settings.merge_lines,
           previewFormat: settings.preview_format as "html" | "markdown",
-          translateVietnamese: settings.translate_vietnamese,
-          removeChinese: settings.remove_chinese,
           debugEnabled: settings.debug_enabled,
         }));
         // Sync draft state
@@ -429,7 +423,7 @@ export function SettingsPanel() {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">
-                  {language === "vi" ? "Mức độ suy nghĩ" : "Thinking Effort"}
+                  {language === "vi" ? "Chế độ suy nghĩ" : "Thinking Mode"}
                 </label>
                 <select value={draftThinkingEffort} onChange={(e) => setDraftThinkingEffort(e.target.value)}
                   className="w-full h-7 text-xs px-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded">
@@ -446,6 +440,13 @@ export function SettingsPanel() {
                   className="w-full h-7 text-xs px-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent" />
               </div>
             </div>
+            {draftThinkingEffort && (
+              <p className="text-[10px] text-red-500 dark:text-red-400 -mt-1">
+                {language === "vi"
+                  ? "⚠ Không phải model nào cũng hỗ trợ Thinking Mode, nếu chọn sai sẽ bị bỏ qua"
+                  : "⚠ Some models lack Thinking Mode, invalid settings will be ignored silently"}
+              </p>
+            )}
 
             {/* System prompt */}
             <div>

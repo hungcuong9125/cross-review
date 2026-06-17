@@ -169,6 +169,23 @@ The compiled Markdown outputs follow this structural convention:
 
 ## Changelog
 
+### v0.6.5 (2026-06-18)
+- **Fixed**: Debug mode now captures actual request/response from real rewrite — replaced fake "ping" test with real `ChatRequest` serialization and response capture via `capture_request_debug()` and `make_debug_log()`.
+- **Fixed**: Loading spinner now shows in ContentTabs (both debug and normal view) when `aiBusy` is true, instead of only in the SettingsPanel button.
+- **Fixed**: Debug badge moved to right of "Debug" label text in toolbar.
+- **Fixed**: `closeAllAiTabs` now preserves debug tabs (only closes AI tabs).
+- **Fixed**: Export buttons in Sidebar now check validation state before exporting.
+- **Fixed**: `showAiBadge` now checks for AI-kind tabs specifically (`contentTabs.some(t => t.kind === "ai")`) instead of `contentTabs.length > 1`.
+- **Fixed**: `processContent` merge mode — improved fenced code block detection with proper opening/closing fence matching (same char, ≥ length, no info string).
+- **Fixed**: Export settings reads `translate_vietnamese`/`remove_chinese` from `ai_config` instead of store state.
+- **Fixed**: API key visibility (`showApiKey`) resets when switching projects.
+- **Changed**: Renamed "Thinking Effort" to "Thinking Mode" with compatibility warning when enabled.
+- **Changed**: Replaced manual timestamp calculation in `slug.rs` with `chrono::Local::now()` for proper local timezone support.
+- **Removed**: Dead `ai_rewrite_preview` command (unused since v0.6.3).
+- **Removed**: Unused `removeEmptyQa` from store, `translateVietnamese`/`removeChinese` store fields (kept as draft state in SettingsPanel only).
+- **Chore**: Added `chrono` 0.4 Rust dependency. Cleaned up excessive doc comments across Rust modules.
+- **Version**: Bumped to 0.6.5 (package.json, tauri.conf.json, Cargo.toml).
+
 ### v0.6.4 (2026-06-18)
 - **Feature**: Remove Chinese characters — `strip_chinese()` removes CJK ideographs and CJK punctuation from AI output (toggle: "Remove Chinese").
 - **Feature**: Translate Vietnamese — prepends Vietnamese instruction to system prompt so LLM responds in Vietnamese (toggle: "Translate Vietnamese").

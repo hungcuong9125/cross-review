@@ -1,8 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-// --- AI provider domain types ---
-
-/// Identifies which provider adapter to use.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum AiProviderKind {
@@ -35,7 +32,6 @@ fn default_kind() -> AiProviderKind {
     AiProviderKind::Ollama
 }
 
-/// One AI provider configuration (v1: exactly one per project).
 #[derive(Clone, Serialize, Deserialize)]
 pub struct AiProviderConfig {
     #[serde(default = "default_kind")]
@@ -65,7 +61,6 @@ fn default_max_input_chars() -> usize {
     500_000
 }
 
-/// Manual Debug impl that redacts api_key - NEVER derive Debug on this struct.
 impl std::fmt::Debug for AiProviderConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let key_set = !self.api_key.is_empty();
@@ -83,12 +78,6 @@ impl std::fmt::Debug for AiProviderConfig {
     }
 }
 
-/// Result of a single rewrite call. Frontend switches on code.
-///
-/// Custom Serialize outputs just the tag string (e.g. `"not_configured"`) so
-/// the TypeScript `AiErrorCode` string-union type matches on the wire.
-/// Variant data (chars, max, seconds, message) is embedded into the
-/// `AiErrorPayload.message` field instead.
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum AiErrorCode {
@@ -147,25 +136,22 @@ impl<'de> Deserialize<'de> for AiErrorCode {
     }
 }
 
-/// Wire-format error. Frontend sees this.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AiErrorPayload {
     pub code: AiErrorCode,
     pub message: String,
 }
 
-/// Result of a rewrite call.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AiRewriteResult {
     pub markdown: String,
     pub model_used: String,
     pub provider: String,
     pub input_chars: usize,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub debug_log: Option<DebugLog>,
 }
 
-// --- End AI provider domain types ---
-
-/// Position of a component in the exported markdown.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum ComponentPosition {
@@ -177,7 +163,6 @@ fn default_true() -> bool {
     true
 }
 
-/// A reusable component (section) that can be inserted at the opening or closing.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Component {
     pub id: String,
@@ -192,7 +177,6 @@ pub struct Component {
     pub active: bool,
 }
 
-/// Represents a complete Review Weaver project.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Project {
     #[serde(default)]
@@ -211,7 +195,6 @@ pub struct Project {
     pub ai_config: Option<AiProviderConfig>,
 }
 
-/// A single QA team's report.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QaReport {
     pub id: String,
@@ -223,7 +206,6 @@ pub struct QaReport {
     pub active: bool,
 }
 
-/// A generated export file ready to be written to disk.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportFile {
     pub target_qa_id: String,
@@ -231,7 +213,6 @@ pub struct ExportFile {
     pub markdown: String,
 }
 
-/// Validation result with errors and warnings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidationReport {
     pub valid: bool,
@@ -253,8 +234,7 @@ impl Default for Project {
     }
 }
 
-/// Captured debug information from an AI provider call.
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DebugLog {
     pub timestamp: String,
     pub provider: String,
@@ -266,7 +246,6 @@ pub struct DebugLog {
     pub success: bool,
 }
 
-/// Application-level settings for import/export (AI config + UI toggles).
 #[derive(Clone, Serialize, Deserialize)]
 pub struct AppSettings {
     #[serde(default, skip_serializing_if = "Option::is_none")]

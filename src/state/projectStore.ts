@@ -33,8 +33,6 @@ interface ProjectState {
   compactMode: boolean;
   removeWhitespace: boolean;
   mergeLines: boolean;
-  translateVietnamese: boolean;
-  removeChinese: boolean;
   debugEnabled: boolean;
 
   // Content tabs
@@ -65,7 +63,6 @@ interface ProjectState {
   duplicateQa: (id: string) => void;
   updateQaName: (id: string, name: string) => void;
   updateQaContent: (id: string, content: string) => void;
-  removeEmptyQa: () => void;
   removeAllQa: () => void;
 
   // Component actions
@@ -94,8 +91,6 @@ interface ProjectState {
   toggleCompactMode: () => void;
   toggleRemoveWhitespace: () => void;
   toggleMergeLines: () => void;
-  toggleTranslateVietnamese: () => void;
-  toggleRemoveChinese: () => void;
   setDebugEnabled: (b: boolean) => void;
 
   // Theme
@@ -167,8 +162,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   compactMode: false,
   removeWhitespace: false,
   mergeLines: false,
-  translateVietnamese: false,
-  removeChinese: false,
   debugEnabled: false,
   contentTabs: [DEFAULT_PREVIEW_TAB],
   activeContentTabId: "preview",
@@ -295,31 +288,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         ),
       },
     }));
-    get().refreshValidation();
-  },
-
-  removeEmptyQa: () => {
-    set((state) => {
-      const reports = state.project.qa_reports.filter(
-        (q) => q.name.trim() !== "" || q.content.trim() !== ""
-      );
-      const newSelected =
-        reports.find((q) => q.id === state.selectedQaId)?.id ??
-        reports[0]?.id ??
-        null;
-      // Preserve component selection when removing empty QAs
-      const newActiveItem =
-        state.activeItem?.type === "component"
-          ? state.activeItem
-          : newSelected
-            ? { type: "report" as const, qaId: newSelected }
-            : state.activeItem;
-      return {
-        project: { ...state.project, qa_reports: reports },
-        selectedQaId: newSelected,
-        activeItem: newActiveItem,
-      };
-    });
     get().refreshValidation();
   },
 
@@ -554,8 +522,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   toggleCompactMode: () => set((state) => ({ compactMode: !state.compactMode })),
   toggleRemoveWhitespace: () => set((state) => ({ removeWhitespace: !state.removeWhitespace })),
   toggleMergeLines: () => set((state) => ({ mergeLines: !state.mergeLines })),
-  toggleTranslateVietnamese: () => set((state) => ({ translateVietnamese: !state.translateVietnamese })),
-  toggleRemoveChinese: () => set((state) => ({ removeChinese: !state.removeChinese })),
   setDebugEnabled: (b) => set({ debugEnabled: b }),
 
   setActiveContentTab: (id) => set({ activeContentTabId: id }),
@@ -589,7 +555,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 
   closeAllAiTabs: () => {
-    set({ contentTabs: [DEFAULT_PREVIEW_TAB], activeContentTabId: "preview" });
+    set((state) => {
+      const remaining = state.contentTabs.filter((t) => t.kind === "preview" || t.kind === "debug");
+      const activeId = state.activeContentTabId.startsWith("ai-") ? "preview" : state.activeContentTabId;
+      return { contentTabs: remaining.length > 0 ? remaining : [DEFAULT_PREVIEW_TAB], activeContentTabId: activeId };
+    });
   },
 
   setPreviewFormat: (f) => set({ previewFormat: f }),
@@ -619,11 +589,28 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     if (state.mergeLines) {
       let lines = processed.split("\n");
       let inCodeBlock = false;
+      let fenceChar = "";
+      let fenceLen = 0;
       lines = lines.map((line) => {
         const trimmed = line.trim();
-        // Track fenced code blocks — don't transform content inside them
-        if (trimmed.startsWith("```") || trimmed.startsWith("~~~")) {
-          inCodeBlock = !inCodeBlock;
+        // Track fenced code blocks — don't transform content inside them.
+        // A closing fence must use the same character and have ≥ the opening length.
+        const fenceMatch = trimmed.match(/^(`{3,}|~{3,})(\s*\S*)?$/);
+        if (fenceMatch) {
+          const chars = fenceMatch[1][0]; // ` or ~
+          const len = fenceMatch[1].length;
+          const info = (fenceMatch[2] || "").trim();
+          if (!inCodeBlock) {
+            // Opening fence: must have no info or info string starts the block
+            inCodeBlock = true;
+            fenceChar = chars;
+            fenceLen = len;
+          } else if (chars === fenceChar && len >= fenceLen && info === "") {
+            // Closing fence: same char, ≥ length, no info string
+            inCodeBlock = false;
+            fenceChar = "";
+            fenceLen = 0;
+          }
           return line;
         }
         if (inCodeBlock) return line;
