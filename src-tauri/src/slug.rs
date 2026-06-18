@@ -27,8 +27,15 @@ pub fn to_slug(name: &str) -> String {
     result.trim_matches('-').to_string()
 }
 
+/// Returns a local timestamp string `YYYYMMDD-HHmmss`.
+/// Uses the system's local timezone.
+fn local_timestamp() -> String {
+    let now = chrono::Local::now();
+    now.format("%Y%m%d-%H%M%S").to_string()
+}
+
 /// Generates a unique filename for a QA target.
-/// Format: `review-for-{slug}.md`
+/// Format: `review-for-{slug}-{timestamp}.md`
 /// If the slug already exists in the used list, appends `-2`, `-3`, etc.
 pub fn generate_filename(target_name: &str, used_filenames: &[String]) -> String {
     let slug = to_slug(target_name);
@@ -38,14 +45,15 @@ pub fn generate_filename(target_name: &str, used_filenames: &[String]) -> String
         slug
     };
 
-    let candidate = format!("review-for-{}.md", base);
+    let ts = local_timestamp();
+    let candidate = format!("review-for-{}-{}.md", base, ts);
     if !used_filenames.contains(&candidate) {
         return candidate;
     }
 
-    // Find next available suffix
+    // Same-second collision: append numeric suffix
     for i in 2..=1000 {
-        let candidate = format!("review-for-{}-{}.md", base, i);
+        let candidate = format!("review-for-{}-{}-{}.md", base, ts, i);
         if !used_filenames.contains(&candidate) {
             return candidate;
         }
@@ -79,34 +87,41 @@ mod tests {
     #[test]
     fn test_generate_filename_basic() {
         let used = vec![];
-        assert_eq!(generate_filename("QA 1", &used), "review-for-qa-1.md");
+        let name = generate_filename("QA 1", &used);
+        assert!(name.starts_with("review-for-qa-1-"), "expected timestamp prefix, got: {name}");
+        assert!(name.ends_with(".md"), "expected .md suffix, got: {name}");
     }
 
     #[test]
     fn test_generate_filename_dedup() {
-        let used = vec!["review-for-team-a.md".to_string()];
-        assert_eq!(
-            generate_filename("Team A", &used),
-            "review-for-team-a-2.md"
+        let ts = local_timestamp();
+        let used = vec![format!("review-for-team-a-{}.md", ts)];
+        let name = generate_filename("Team A", &used);
+        assert!(
+            name == format!("review-for-team-a-{}-2.md", ts),
+            "expected numeric dedup, got: {name}"
         );
     }
 
     #[test]
     fn test_generate_filename_multiple_dedup() {
+        let ts = local_timestamp();
         let used = vec![
-            "review-for-team-a.md".to_string(),
-            "review-for-team-a-2.md".to_string(),
+            format!("review-for-team-a-{}.md", ts),
+            format!("review-for-team-a-{}-2.md", ts),
         ];
-        assert_eq!(
-            generate_filename("Team A", &used),
-            "review-for-team-a-3.md"
+        let name = generate_filename("Team A", &used);
+        assert!(
+            name == format!("review-for-team-a-{}-3.md", ts),
+            "expected numeric dedup 3, got: {name}"
         );
     }
 
     #[test]
     fn test_generate_filename_empty_name() {
         let used = vec![];
-        assert_eq!(generate_filename("", &used), "review-for-unnamed.md");
+        let name = generate_filename("", &used);
+        assert!(name.starts_with("review-for-unnamed-"), "expected timestamp prefix, got: {name}");
     }
 
     #[test]
@@ -115,5 +130,12 @@ mod tests {
         assert!(slug.contains("đội"), "Vietnamese diacritics should be preserved, got: {}", slug);
         assert!(slug.contains("số"), "Vietnamese diacritics should be preserved, got: {}", slug);
         assert!(generate_filename("Đội QA số 1", &[]).starts_with("review-for-"));
+    }
+
+    #[test]
+    fn test_timestamp_format() {
+        let ts = local_timestamp();
+        assert_eq!(ts.len(), 15, "expected YYYYMMDD-HHmmss (15 chars), got: {ts}");
+        assert!(ts.contains('-'), "expected hyphen separator, got: {ts}");
     }
 }

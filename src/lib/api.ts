@@ -1,5 +1,41 @@
 import { invoke } from "@tauri-apps/api/core";
 
+export type AiProviderKind =
+  | "ollama" | "openai" | "anthropic" | "gemini"
+  | "deepseek" | "mimo" | "opencodego" | "openaicompatible";
+
+export interface AiProviderConfig {
+  kind: AiProviderKind;
+  base_url: string;
+  api_key: string;
+  model: string;
+  system_prompt: string;
+  max_input_chars: number;
+  thinking_effort: string;
+  translate_vietnamese: boolean;
+  remove_chinese: boolean;
+  prompt_level: string;
+}
+
+export interface AiRewriteResult {
+  markdown: string;
+  model_used: string;
+  provider: string;
+  input_chars: number;
+  debug_log?: DebugLog;
+}
+
+export type AiErrorCode =
+  | "not_configured" | "no_sources" | "target_not_found"
+  | "input_too_large" | "timeout" | "provider"
+  | "empty_response" | "cancelled";
+
+export interface AiErrorPayload {
+  code: AiErrorCode;
+  message: string;
+  debug_log?: DebugLog;
+}
+
 export interface QaReport {
   id: string;
   name: string;
@@ -21,6 +57,7 @@ export interface Project {
   components: Component[];
   qa_reports: QaReport[];
   exclude_self?: boolean;
+  ai_config?: AiProviderConfig;
 }
 
 export interface ExportFile {
@@ -69,4 +106,58 @@ export async function saveProject(
 
 export async function openProject(path: string): Promise<Project> {
   return invoke<Project>("open_project", { path });
+}
+
+export async function aiTestProvider(config: AiProviderConfig): Promise<void> {
+  return invoke<void>("ai_test_provider", { config });
+}
+
+export interface DebugLog {
+  timestamp: string;
+  provider: string;
+  model: string;
+  thinking_effort: string;
+  request_messages: string;
+  response_text: string;
+  duration_ms: number;
+  success: boolean;
+}
+
+export async function aiTestProviderDebug(config: AiProviderConfig): Promise<DebugLog> {
+  return invoke<DebugLog>("ai_test_provider_debug", { config });
+}
+
+export async function aiRewriteExport(project: Project): Promise<AiRewriteResult> {
+  return invoke<AiRewriteResult>("ai_rewrite_export", { project });
+}
+
+export async function aiListModels(config: AiProviderConfig): Promise<string[]> {
+  return invoke<string[]>("ai_list_models", { config });
+}
+
+export async function aiCancelRequest(): Promise<boolean> {
+  return invoke<boolean>("ai_cancel_request");
+}
+
+export async function aiDefaultPrompt(): Promise<string> {
+  return invoke<string>("ai_default_prompt");
+}
+
+export interface AppSettings {
+  ai_config?: AiProviderConfig;
+  compact_mode: boolean;
+  remove_whitespace: boolean;
+  merge_lines: boolean;
+  preview_format: string;
+  translate_vietnamese?: boolean;
+  remove_chinese?: boolean;
+  debug_enabled: boolean;
+}
+
+export async function exportSettings(settings: AppSettings, path: string): Promise<void> {
+  return invoke<void>("export_settings_cmd", { settings, path });
+}
+
+export async function importSettings(path: string): Promise<AppSettings> {
+  return invoke<AppSettings>("import_settings_cmd", { path });
 }

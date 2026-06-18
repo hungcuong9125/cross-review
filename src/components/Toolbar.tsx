@@ -2,13 +2,16 @@ import { useProjectStore, type MainTab } from "../state/projectStore";
 import {
   saveProject,
   openProject,
-  exportAllMarkdown,
-  exportAllZip,
 } from "../lib/api";
 import { t } from "../lib/i18n";
 
 // SVG icons for tabs
 const TabIcons = {
+  home: (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1" />
+    </svg>
+  ),
   reports: (
     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -24,16 +27,20 @@ const TabIcons = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
     </svg>
   ),
+  debug: (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
 };
 
 export function Toolbar() {
   const {
     project, setProject, newProject, setProjectTitle,
-    darkMode, toggleDarkMode, validation, language,
+    darkMode, toggleDarkMode, language, setLanguage,
     activeMainTab, setActiveMainTab,
+    contentTabs, activeContentTabId,
   } = useProjectStore();
-
-  const canExport = validation?.valid ?? false;
 
   const handleNew = () => {
     if (confirm(t("dialog.confirmNew", language))) {
@@ -82,60 +89,15 @@ export function Toolbar() {
     }
   };
 
-  const handleExportAll = async () => {
-    if (!canExport) {
-      alert(t("dialog.validationFail", language));
-      return;
-    }
-    if (project.qa_reports.length === 0) {
-      alert(t("dialog.noReport", language));
-      return;
-    }
-    try {
-      const { open } = await import("@tauri-apps/plugin-dialog");
-      const dir = await open({ directory: true, multiple: false });
-      if (dir) {
-        const paths = await exportAllMarkdown(project, dir as string);
-        alert(`${t("dialog.exportSuccess", language)}: ${paths.length} files`);
-      }
-    } catch (err) {
-      console.error("Export error:", err);
-      alert(`${t("dialog.exportFail", language)}: ${err}`);
-    }
-  };
+  const showAiBadge = contentTabs.some((t) => t.kind === "ai") && activeContentTabId === "preview";
+  const debugTabCount = contentTabs.filter((t) => t.kind === "debug").length;
 
-  const handleExportZip = async () => {
-    if (!canExport) {
-      alert(t("dialog.validationFail", language));
-      return;
-    }
-    if (project.qa_reports.length === 0) {
-      alert(t("dialog.noReport", language));
-      return;
-    }
-    try {
-      const { save } = await import("@tauri-apps/plugin-dialog");
-      const defaultName = project.title
-        ? `${project.title.toLowerCase().replace(/[^a-z0-9._-]/g, "-").replace(/-{2,}/g, "-")}-reviews.zip`
-        : "review-weaver-export.zip";
-      const path = await save({
-        defaultPath: defaultName,
-        filters: [{ name: "ZIP Archive", extensions: ["zip"] }],
-      });
-      if (path) {
-        const result = await exportAllZip(project, path);
-        alert(`${t("dialog.exportSuccess", language)}: ${result}`);
-      }
-    } catch (err) {
-      console.error("Zip export error:", err);
-      alert(`${t("dialog.exportFail", language)}: ${err}`);
-    }
-  };
-
-  const mainTabs: { key: MainTab; label: string; icon: React.ReactNode }[] = [
+  const mainTabs: { key: MainTab; label: string; icon: React.ReactNode; badge?: boolean; count?: number }[] = [
+    { key: "home", label: t("tab.home", language), icon: TabIcons.home, badge: showAiBadge },
     { key: "reports", label: t("sidebar.reports", language), icon: TabIcons.reports },
     { key: "opening", label: t("editor.opening", language), icon: TabIcons.opening },
     { key: "closing", label: t("editor.closing", language), icon: TabIcons.closing },
+    { key: "debug", label: language === "vi" ? "Debug" : "Debug", icon: TabIcons.debug, count: debugTabCount },
   ];
 
   return (
@@ -168,7 +130,15 @@ export function Toolbar() {
                 <span className={isActive ? "text-blue-500 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}>
                   {tab.icon}
                 </span>
+                {tab.badge && (
+                  <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-blue-500" title="AI tabs available" />
+                )}
                 {tab.label}
+                {tab.count !== undefined && tab.count > 0 && (
+                  <span className="ml-0.5 px-1 py-0.5 text-[8px] font-bold bg-orange-500 text-white rounded-full leading-none" title="Debug logs">
+                    {tab.count}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -187,20 +157,10 @@ export function Toolbar() {
           {t("toolbar.save", language)}
         </ToolbarButton>
         <div className="w-px h-4 bg-gray-200 dark:bg-gray-600 mx-0.5" />
-        <ToolbarButton
-          onClick={handleExportAll}
-          disabled={!canExport}
-          title="Ctrl/Cmd + E"
-        >
-          {t("toolbar.exportMd", language)}
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={handleExportZip}
-          disabled={!canExport}
-          title={t("tooltip.exportZip", language)}
-        >
-          {t("toolbar.exportZip", language)}
-        </ToolbarButton>
+        <div className="flex gap-0.5">
+          <button onClick={() => setLanguage("vi")} className={`px-2 py-1 text-[10px] font-semibold rounded-l transition-colors ${language === "vi" ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600"}`}>VI</button>
+          <button onClick={() => setLanguage("en")} className={`px-2 py-1 text-[10px] font-semibold rounded-r transition-colors ${language === "en" ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600"}`}>EN</button>
+        </div>
         <div className="w-px h-4 bg-gray-200 dark:bg-gray-600 mx-0.5" />
         <button
           onClick={toggleDarkMode}

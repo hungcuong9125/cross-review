@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Project, QaReport, Component, ValidationReport } from "../lib/api";
+import type { Project, QaReport, Component, ValidationReport, DebugLog } from "../lib/api";
 import { validateProject } from "../lib/api";
 import { t, type Language } from "../lib/i18n";
 
@@ -9,7 +9,14 @@ function generateId(): string {
 
 let validationGeneration = 0;
 
-export type MainTab = "reports" | "opening" | "closing";
+const DEFAULT_PREVIEW_TAB = { id: "preview" as const, kind: "preview" as const, title: "Preview" };
+
+export type MainTab = "home" | "reports" | "opening" | "closing" | "debug";
+
+export type ContentTab =
+  | { id: "preview"; kind: "preview"; title: string }
+  | { id: string; kind: "ai"; title: string; markdown: string }
+  | { id: string; kind: "debug"; title: string; log: DebugLog };
 
 export type ActiveItem =
   | { type: "report"; qaId: string }
@@ -26,6 +33,24 @@ interface ProjectState {
   compactMode: boolean;
   removeWhitespace: boolean;
   mergeLines: boolean;
+  debugEnabled: boolean;
+
+  // Content tabs
+  contentTabs: ContentTab[];
+  activeContentTabId: string;
+  setActiveContentTab: (id: string) => void;
+  appendAiTab: (markdown: string, title: string) => string;
+  appendDebugTab: (log: DebugLog) => string;
+  closeContentTab: (id: string) => void;
+  closeAllAiTabs: () => void;
+
+  // Preview format
+  previewFormat: "html" | "markdown";
+  setPreviewFormat: (f: "html" | "markdown") => void;
+
+  // AI busy flag
+  aiBusy: boolean;
+  setAiBusy: (b: boolean) => void;
 
   // Project actions
   setProject: (project: Project) => void;
@@ -38,7 +63,6 @@ interface ProjectState {
   duplicateQa: (id: string) => void;
   updateQaName: (id: string, name: string) => void;
   updateQaContent: (id: string, content: string) => void;
-  removeEmptyQa: () => void;
   removeAllQa: () => void;
 
   // Component actions
@@ -55,6 +79,7 @@ interface ProjectState {
 
   // Selection
   selectQa: (id: string | null) => void;
+  selectQaOnly: (id: string | null) => void;
   selectComponent: (id: string) => void;
   setActiveMainTab: (tab: MainTab) => void;
 
@@ -66,12 +91,17 @@ interface ProjectState {
   toggleCompactMode: () => void;
   toggleRemoveWhitespace: () => void;
   toggleMergeLines: () => void;
+  setDebugEnabled: (b: boolean) => void;
 
   // Theme
   toggleDarkMode: () => void;
 
   // Content processing
   processContent: (content: string) => string;
+
+  // Preview markdown (for copy in footer)
+  previewMarkdown: string;
+  setPreviewMarkdown: (md: string) => void;
 }
 
 const DEFAULT_PROJECT: Project = {
@@ -124,7 +154,7 @@ function migrateProject(project: Project): Project {
 export const useProjectStore = create<ProjectState>((set, get) => ({
   project: { ...DEFAULT_PROJECT },
   selectedQaId: null,
-  activeMainTab: "reports",
+  activeMainTab: "home",
   activeItem: null,
   validation: null,
   darkMode: window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false,
@@ -132,6 +162,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   compactMode: false,
   removeWhitespace: false,
   mergeLines: false,
+  debugEnabled: false,
+  contentTabs: [DEFAULT_PREVIEW_TAB],
+  activeContentTabId: "preview",
+  previewFormat: "html",
+  aiBusy: false,
+  previewMarkdown: "",
 
   setProject: (project) => {
     const migrated = migrateProject(project);
@@ -139,8 +175,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({
       project: migrated,
       selectedQaId: firstQa?.id ?? null,
-      activeMainTab: "reports",
+      activeMainTab: "home",
       activeItem: firstQa ? { type: "report", qaId: firstQa.id } : null,
+      contentTabs: [DEFAULT_PREVIEW_TAB],
+      activeContentTabId: "preview",
+      previewMarkdown: "",
+      aiBusy: false,
+      validation: null,
     });
     get().refreshValidation();
   },
@@ -149,8 +190,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({
       project: { ...DEFAULT_PROJECT, components: [...DEFAULT_PROJECT.components], qa_reports: [], exclude_self: true },
       selectedQaId: null,
-      activeMainTab: "reports",
+      activeMainTab: "home",
       activeItem: null,
+      contentTabs: [DEFAULT_PREVIEW_TAB],
+      activeContentTabId: "preview",
+      previewMarkdown: "",
+      aiBusy: false,
+      validation: null,
     });
     get().refreshValidation();
   },
@@ -242,31 +288,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         ),
       },
     }));
-    get().refreshValidation();
-  },
-
-  removeEmptyQa: () => {
-    set((state) => {
-      const reports = state.project.qa_reports.filter(
-        (q) => q.name.trim() !== "" || q.content.trim() !== ""
-      );
-      const newSelected =
-        reports.find((q) => q.id === state.selectedQaId)?.id ??
-        reports[0]?.id ??
-        null;
-      // Preserve component selection when removing empty QAs
-      const newActiveItem =
-        state.activeItem?.type === "component"
-          ? state.activeItem
-          : newSelected
-            ? { type: "report" as const, qaId: newSelected }
-            : state.activeItem;
-      return {
-        project: { ...state.project, qa_reports: reports },
-        selectedQaId: newSelected,
-        activeItem: newActiveItem,
-      };
-    });
     get().refreshValidation();
   },
 
@@ -392,6 +413,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     activeMainTab: "reports",
     activeItem: id ? { type: "report", qaId: id } : null,
   }),
+  /** Like selectQa but does NOT change activeMainTab — for PreviewBody auto-select. */
+  selectQaOnly: (id) => set({
+    selectedQaId: id,
+    activeItem: id ? { type: "report", qaId: id } : null,
+  }),
 
   selectComponent: (id) => {
     const comp = get().project.components.find(c => c.id === id);
@@ -408,7 +434,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       project: {
         ...state.project,
         qa_reports: state.project.qa_reports.map((q) =>
-          q.id === id ? { ...q, active: q.active === false } : q
+          q.id === id ? { ...q, active: !q.active } : q
         ),
       },
     }));
@@ -420,7 +446,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       project: {
         ...state.project,
         components: state.project.components.map((c) =>
-          c.id === id ? { ...c, active: c.active === false } : c
+          c.id === id ? { ...c, active: !c.active } : c
         ),
       },
     }));
@@ -496,6 +522,78 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   toggleCompactMode: () => set((state) => ({ compactMode: !state.compactMode })),
   toggleRemoveWhitespace: () => set((state) => ({ removeWhitespace: !state.removeWhitespace })),
   toggleMergeLines: () => set((state) => ({ mergeLines: !state.mergeLines })),
+  setDebugEnabled: (b) => set({ debugEnabled: b }),
+
+  setActiveContentTab: (id) => set({ activeContentTabId: id }),
+
+  appendAiTab: (markdown, title) => {
+    const id = `ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    set((state) => ({
+      contentTabs: [...state.contentTabs, { id, kind: "ai" as const, title, markdown }],
+      activeContentTabId: id,
+    }));
+    return id;
+  },
+
+  appendDebugTab: (log) => {
+    const id = `debug-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const title = `Debug ${log.provider}/${log.model}`;
+    set((state) => ({
+      contentTabs: [...state.contentTabs, { id, kind: "debug" as const, title, log }],
+      activeContentTabId: id,
+    }));
+    return id;
+  },
+
+  closeContentTab: (id) => {
+    if (id === "preview") return;
+    set((state) => {
+      const idx = state.contentTabs.findIndex((t) => t.id === id);
+      const tabs = state.contentTabs.filter((t) => t.id !== id);
+      let activeId = state.activeContentTabId;
+      if (state.activeContentTabId === id) {
+        if (idx > 0) {
+          activeId = state.contentTabs[idx - 1].id;
+        } else if (idx < state.contentTabs.length - 1) {
+          activeId = state.contentTabs[idx + 1].id;
+        } else {
+          activeId = "preview";
+        }
+      }
+      // If closing the last debug tab while on debug main tab, fall back to home
+      const closingKind = state.contentTabs[idx]?.kind;
+      const debugTabsLeft = tabs.filter((t) => t.kind === "debug").length;
+      const activeMainTab =
+        state.activeMainTab === "debug" && closingKind === "debug" && debugTabsLeft === 0
+          ? "home"
+          : state.activeMainTab;
+      return { contentTabs: tabs, activeContentTabId: activeId, activeMainTab };
+    });
+  },
+
+  closeAllAiTabs: () => {
+    set((state) => {
+      const remaining = state.contentTabs.filter((t) => t.kind === "preview" || t.kind === "debug");
+      const activeTab = state.contentTabs.find((t) => t.id === state.activeContentTabId);
+      const activeId = activeTab?.kind === "ai" ? "preview" : state.activeContentTabId;
+      // If user was on debug main tab, they were viewing a debug tab.
+      // After close-all-AI, only preview tabs remain → leave them on debug view.
+      const activeMainTab =
+        state.activeMainTab === "debug" && remaining.some((t) => t.kind === "debug")
+          ? "debug"
+          : state.activeMainTab === "debug"
+            ? "home"
+            : state.activeMainTab;
+      return {
+        contentTabs: remaining.length > 0 ? remaining : [DEFAULT_PREVIEW_TAB],
+        activeContentTabId: activeId,
+        activeMainTab,
+      };
+    });
+  },
+
+  setPreviewFormat: (f) => set({ previewFormat: f }),
+  setAiBusy: (b) => set({ aiBusy: b }),
 
   toggleDarkMode: () => {
     set((state) => {
@@ -504,6 +602,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       return { darkMode: newMode };
     });
   },
+
+  setPreviewMarkdown: (md) => set({ previewMarkdown: md }),
 
   processContent: (content: string) => {
     const state = get();
@@ -519,11 +619,28 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     if (state.mergeLines) {
       let lines = processed.split("\n");
       let inCodeBlock = false;
+      let fenceChar = "";
+      let fenceLen = 0;
       lines = lines.map((line) => {
         const trimmed = line.trim();
-        // Track fenced code blocks — don't transform content inside them
-        if (trimmed.startsWith("```") || trimmed.startsWith("~~~")) {
-          inCodeBlock = !inCodeBlock;
+        // Track fenced code blocks — don't transform content inside them.
+        // A closing fence must use the same character and have ≥ the opening length.
+        const fenceMatch = trimmed.match(/^(`{3,}|~{3,})(\s*\S*)?$/);
+        if (fenceMatch) {
+          const chars = fenceMatch[1][0]; // ` or ~
+          const len = fenceMatch[1].length;
+          const info = (fenceMatch[2] || "").trim();
+          if (!inCodeBlock) {
+            // Opening fence: must have no info or info string starts the block
+            inCodeBlock = true;
+            fenceChar = chars;
+            fenceLen = len;
+          } else if (chars === fenceChar && len >= fenceLen && info === "") {
+            // Closing fence: same char, ≥ length, no info string
+            inCodeBlock = false;
+            fenceChar = "";
+            fenceLen = 0;
+          }
           return line;
         }
         if (inCodeBlock) return line;
@@ -531,20 +648,23 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         if (trimmed === "---" || trimmed === "___" || trimmed === "***") {
           return "";
         }
-        if (trimmed.startsWith("#")) {
+        if (/^#{1,6}\s/.test(trimmed)) {
           return trimmed.replace(/^#+\s*/, "");
         }
         return line;
       });
 
-      // Preserve paragraph breaks (empty lines) as " | " before merging
-      // First pass: collapse consecutive empty lines into a single marker
+      // Preserve paragraph breaks (empty lines) as " | " before merging.
+      // Strip leading/trailing empty lines first to avoid orphan | separators.
+      while (lines.length > 0 && lines[0].trim() === "") lines.shift();
+      while (lines.length > 0 && lines[lines.length - 1].trim() === "") lines.pop();
+
       let joined = "";
       let prevEmpty = false;
       for (const line of lines) {
         const isEmpty = line.trim() === "";
         if (isEmpty) {
-          if (!prevEmpty) {
+          if (!prevEmpty && joined) {
             joined += "\n\n"; // paragraph break marker
           }
           prevEmpty = true;

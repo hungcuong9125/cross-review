@@ -1,6 +1,167 @@
 use serde::{Deserialize, Serialize};
 
-/// Position of a component in the exported markdown.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum AiProviderKind {
+    Ollama,
+    Openai,
+    Anthropic,
+    Gemini,
+    Deepseek,
+    Mimo,
+    Opencodego,
+    OpenaiCompatible,
+}
+
+impl AiProviderKind {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Ollama => "ollama",
+            Self::Openai => "openai",
+            Self::Anthropic => "anthropic",
+            Self::Gemini => "gemini",
+            Self::Deepseek => "deepseek",
+            Self::Mimo => "mimo",
+            Self::Opencodego => "opencodego",
+            Self::OpenaiCompatible => "openaicompatible",
+        }
+    }
+}
+
+fn default_kind() -> AiProviderKind {
+    AiProviderKind::Ollama
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct AiProviderConfig {
+    #[serde(default = "default_kind")]
+    pub kind: AiProviderKind,
+    #[serde(default)]
+    pub base_url: String,
+    #[serde(default)]
+    pub api_key: String,
+    #[serde(default)]
+    pub model: String,
+    #[serde(default)]
+    pub system_prompt: String,
+    #[serde(default = "default_max_input_chars")]
+    pub max_input_chars: usize,
+    /// Reasoning effort level: "none", "low", "medium", "high", "max". Empty = none.
+    #[serde(default)]
+    pub thinking_effort: String,
+    /// When true, prepend Vietnamese instruction to the system prompt.
+    #[serde(default)]
+    pub translate_vietnamese: bool,
+    /// When true, strip CJK characters from AI output.
+    #[serde(default)]
+    pub remove_chinese: bool,
+    /// Prompt level: "1"=Source-Preserved Summary, "2"=Unified Final Report,
+    /// "3"=QA Review Handoff, "4"=Custom Prompt. Default "2".
+    #[serde(default = "default_prompt_level")]
+    pub prompt_level: String,
+}
+
+fn default_prompt_level() -> String {
+    "2".to_string()
+}
+
+fn default_max_input_chars() -> usize {
+    2_000_000
+}
+
+impl std::fmt::Debug for AiProviderConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let key_set = !self.api_key.is_empty();
+        f.debug_struct("AiProviderConfig")
+            .field("kind", &self.kind)
+            .field("base_url", &self.base_url)
+            .field("api_key", &format_args!("<REDACTED set={}>", key_set))
+            .field("model", &self.model)
+            .field("system_prompt", &self.system_prompt)
+            .field("max_input_chars", &self.max_input_chars)
+            .field("thinking_effort", &self.thinking_effort)
+            .field("translate_vietnamese", &self.translate_vietnamese)
+            .field("remove_chinese", &self.remove_chinese)
+            .field("prompt_level", &self.prompt_level)
+            .finish()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AiErrorCode {
+    NotConfigured,
+    NoSources,
+    TargetNotFound,
+    InputTooLarge { chars: usize, max: usize },
+    Timeout { seconds: u64 },
+    Provider { message: String },
+    EmptyResponse,
+    Cancelled,
+}
+
+impl Serialize for AiErrorCode {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let tag = match self {
+            AiErrorCode::NotConfigured => "not_configured",
+            AiErrorCode::NoSources => "no_sources",
+            AiErrorCode::TargetNotFound => "target_not_found",
+            AiErrorCode::InputTooLarge { .. } => "input_too_large",
+            AiErrorCode::Timeout { .. } => "timeout",
+            AiErrorCode::Provider { .. } => "provider",
+            AiErrorCode::EmptyResponse => "empty_response",
+            AiErrorCode::Cancelled => "cancelled",
+        };
+        serializer.serialize_str(tag)
+    }
+}
+
+impl<'de> Deserialize<'de> for AiErrorCode {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        match s.as_str() {
+            "not_configured" => Ok(AiErrorCode::NotConfigured),
+            "no_sources" => Ok(AiErrorCode::NoSources),
+            "target_not_found" => Ok(AiErrorCode::TargetNotFound),
+            "input_too_large" => Ok(AiErrorCode::InputTooLarge { chars: 0, max: 0 }),
+            "timeout" => Ok(AiErrorCode::Timeout { seconds: 0 }),
+            "provider" => Ok(AiErrorCode::Provider { message: String::new() }),
+            "empty_response" => Ok(AiErrorCode::EmptyResponse),
+            "cancelled" => Ok(AiErrorCode::Cancelled),
+            other => Err(serde::de::Error::unknown_variant(
+                other,
+                &[
+                    "not_configured",
+                    "no_sources",
+                    "target_not_found",
+                    "input_too_large",
+                    "timeout",
+                    "provider",
+                    "empty_response",
+                    "cancelled",
+                ],
+            )),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AiErrorPayload {
+    pub code: AiErrorCode,
+    pub message: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub debug_log: Option<DebugLog>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AiRewriteResult {
+    pub markdown: String,
+    pub model_used: String,
+    pub provider: String,
+    pub input_chars: usize,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub debug_log: Option<DebugLog>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum ComponentPosition {
@@ -12,7 +173,6 @@ fn default_true() -> bool {
     true
 }
 
-/// A reusable component (section) that can be inserted at the opening or closing.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Component {
     pub id: String,
@@ -27,7 +187,6 @@ pub struct Component {
     pub active: bool,
 }
 
-/// Represents a complete Review Weaver project.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Project {
     #[serde(default)]
@@ -42,9 +201,10 @@ pub struct Project {
     pub opening_text: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub closing_text: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ai_config: Option<AiProviderConfig>,
 }
 
-/// A single QA team's report.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QaReport {
     pub id: String,
@@ -56,7 +216,6 @@ pub struct QaReport {
     pub active: bool,
 }
 
-/// A generated export file ready to be written to disk.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportFile {
     pub target_qa_id: String,
@@ -64,7 +223,6 @@ pub struct ExportFile {
     pub markdown: String,
 }
 
-/// Validation result with errors and warnings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidationReport {
     pub valid: bool,
@@ -81,6 +239,43 @@ impl Default for Project {
             exclude_self: true,
             opening_text: None,
             closing_text: None,
+            ai_config: None,
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DebugLog {
+    pub timestamp: String,
+    pub provider: String,
+    pub model: String,
+    pub thinking_effort: String,
+    pub request_messages: String,
+    pub response_text: String,
+    pub duration_ms: u64,
+    pub success: bool,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct AppSettings {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ai_config: Option<AiProviderConfig>,
+    #[serde(default)]
+    pub compact_mode: bool,
+    #[serde(default)]
+    pub remove_whitespace: bool,
+    #[serde(default)]
+    pub merge_lines: bool,
+    #[serde(default = "default_preview_format")]
+    pub preview_format: String,
+    #[serde(default)]
+    pub translate_vietnamese: bool,
+    #[serde(default)]
+    pub remove_chinese: bool,
+    #[serde(default)]
+    pub debug_enabled: bool,
+}
+
+fn default_preview_format() -> String {
+    "html".to_string()
 }

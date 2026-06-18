@@ -14,14 +14,8 @@ pub enum ExportError {
     IoError(String),
 }
 
-/// Generates export files for all QA teams.
-///
-/// For each QA target, creates a markdown file containing:
-/// 1. Opening components (sorted by order)
-/// 2. Reports from all OTHER QA teams (not the target), numbered sequentially
-/// 3. Closing components (sorted by order)
-///
-/// Returns exactly N files for N QA teams.
+/// Generates one export file per active QA report. Each file includes the
+/// opening components, all OTHER active reports, and the closing components.
 pub fn generate_exports(project: &Project) -> Result<Vec<ExportFile>, ExportError> {
     let validation = validate_project(project);
     if !validation.valid {
@@ -35,14 +29,12 @@ pub fn generate_exports(project: &Project) -> Result<Vec<ExportFile>, ExportErro
         if !target.active {
             continue;
         }
-        // Collect other reports (exclude the target QA if exclude_self is active, and only active ones)
         let other_reports: Vec<&crate::models::QaReport> = project
             .qa_reports
             .iter()
             .filter(|qa| (!project.exclude_self || qa.id != target.id) && qa.active)
             .collect();
 
-        // Generate filename
         let filename = generate_filename(&target.name, &used_filenames);
         used_filenames.push(filename.clone());
 
@@ -58,7 +50,6 @@ pub fn generate_exports(project: &Project) -> Result<Vec<ExportFile>, ExportErro
     Ok(exports)
 }
 
-/// Generates a preview export for a single QA target.
 pub fn generate_preview(
     project: &Project,
     target_qa_id: &str,
@@ -85,7 +76,6 @@ pub fn generate_preview(
     })
 }
 
-/// Collects components at the given position, sorted by order.
 fn get_components(project: &Project, position: ComponentPosition) -> Vec<&crate::models::Component> {
     let mut comps: Vec<&crate::models::Component> = project
         .components
@@ -96,7 +86,6 @@ fn get_components(project: &Project, position: ComponentPosition) -> Vec<&crate:
     comps
 }
 
-/// Builds the final markdown string from project parts.
 fn build_markdown(
     project: &Project,
     other_reports: &[&crate::models::QaReport],
@@ -185,6 +174,7 @@ mod tests {
             exclude_self: true,
             opening_text: None,
             closing_text: None,
+            ai_config: None,
         }
     }
 
@@ -277,12 +267,14 @@ mod tests {
         unique_filenames.dedup();
         assert_eq!(filenames.len(), unique_filenames.len());
 
-        // First should be review-for-team-growth.md
-        assert_eq!(exports[0].filename, "review-for-team-growth.md");
-        // Second should have -2 suffix
-        assert_eq!(exports[1].filename, "review-for-team-growth-2.md");
-        // Third should have -3 suffix
-        assert_eq!(exports[2].filename, "review-for-team-growth-3.md");
+        // First should be review-for-team-growth-{timestamp}.md
+        assert!(exports[0].filename.starts_with("review-for-team-growth-"), "got: {}", exports[0].filename);
+        assert!(exports[0].filename.ends_with(".md"));
+        // Second and third should have numeric dedup suffixes
+        assert!(exports[1].filename.starts_with("review-for-team-growth-"), "got: {}", exports[1].filename);
+        assert!(exports[1].filename.ends_with(".md"));
+        assert!(exports[2].filename.starts_with("review-for-team-growth-"), "got: {}", exports[2].filename);
+        assert!(exports[2].filename.ends_with(".md"));
     }
 
     // Test 5: Long markdown with code blocks, tables, headings preserved

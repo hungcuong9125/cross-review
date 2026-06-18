@@ -25,6 +25,21 @@ Review Weave solves this by taking everyone's reports and generating customized 
   - Flattens text into a single continuous line for feeding into LLMs (`Export as Single Line`).
 - **Offline & Fast**: Built with Rust and Tauri, meaning it's lightweight, secure, and works entirely offline.
 
+## Prompt Modes
+
+When using AI to generate consolidated reports, you can choose from 4 prompt modes in Settings:
+
+| Mode | Name | Description |
+|------|------|-------------|
+| **Level 1** | Source-Preserved Summary | Keeps each source report as a separate section. Includes a comparison table. Best when you need to see what each team reported individually. |
+| **Level 2** | Unified Final Report | Merges all sources into one deduplicated report with executive summary, findings, recommendations. Best for a single clean output. |
+| **Level 3** | QA Review Handoff | Produces a structured handoff document for the next reviewer. Focuses on claims needing verification, files to inspect, and reproduction scenarios. |
+| **Level 4** | Custom Prompt | Write your own system prompt. The textarea appears when this level is selected. |
+
+**Default:** Level 2 (Unified Final Report).
+
+Level 1–3 prompts are optimized for specific use cases and cannot be edited. Level 4 lets you fully customize the AI behavior.
+
 ## Technology Stack
 
 - **Backend**: Rust (Tauri 2 commands, validation engine, markdown exporter, file packaging)
@@ -105,28 +120,35 @@ src-tauri/
   src/
     main.rs          # Tauri app entrypoint
     lib.rs           # Module declarations
-    models.rs        # Data model definitions (Project, QaReport, Component...)
+    models.rs        # Data model definitions (Project, QaReport, Component, AI types...)
     validation.rs    # Data validation checks
     export.rs        # Markdown compile & merge logic
     slug.rs          # Unique file slug generator
     zip_export.rs    # ZIP packaging helper
     commands.rs      # IPC command registrations
+    ai.rs            # AI provider integration (genai client, rewrite, cancel)
   tauri.conf.json    # Tauri packaging and bundle configurations
 
 src/
-  App.tsx                # Main view & resizable sidebar logic
+  App.tsx                # Main view, resizable sidebar, auto-save & keyboard shortcuts
   main.tsx               # React entrypoint
   index.css              # Custom styling and markdown preview classes
   state/
-    projectStore.ts      # Zustand state management
+    projectStore.ts      # Zustand state management (tabs, AI config, content tabs)
   lib/
-    api.ts               # Rust command invocations
+    api.ts               # Rust command invocations (project + AI IPC)
     i18n.ts              # English/Vietnamese language dictionaries
+    sanitize.ts          # API key scrubbing for localStorage
+  hooks/
+    useToast.ts          # Toast notification system
   components/
     Sidebar.tsx          # Resource lists, active states & quick actions
     EditorPanel.tsx      # Source, opening, and closing content editors
-    PreviewPanel.tsx     # Live HTML/Markdown preview & stats footer
-    Toolbar.tsx          # File I/O operations and exports
+    PreviewBody.tsx      # Live HTML/Markdown preview & stats
+    ContentTabs.tsx      # Tab bar for preview + AI-generated reports
+    SettingsPanel.tsx    # Settings (preview format, AI provider config, language)
+    ToastHost.tsx        # Toast notification renderer
+    Toolbar.tsx          # File I/O operations, tab routing & exports
 ```
 
 ## Keyboard Shortcuts
@@ -161,6 +183,134 @@ The compiled Markdown outputs follow this structural convention:
 ```
 
 ## Changelog
+
+### v0.7.0 (2026-06-19)
+- **Security**: AI response and error messages now scrubbed via `scrub_api_key()` to prevent API key leakage in debug logs
+- **Fixed**: `select_sources()` with `exclude_self=true` and no target now correctly returns empty sources (consistent with target-filtered behavior)
+- **Fixed**: Keyboard shortcut stale-closure bug — handlers moved to refs (`handleSaveRef`, `handleOpenRef`, `handleExportAllRef`) so keyboard events always read the latest project/validation state
+- **Fixed**: AI-generated content in preview tab now applies `processContent()` (whitespace normalization, merge lines) matching clipboard output
+- **Fixed**: `handleCancel` now resets `aiBusy` in `finally` block, preventing stuck busy state on cancel failure
+- **Fixed**: Tab close navigation — closing a non-active tab now activates the adjacent tab instead of always switching to "preview"
+- **Fixed**: `closeAllAiTabs` preserves debug main tab view when debug tabs remain; falls back to "home" otherwise
+- **Fixed**: Settings import now triggers `refreshValidation()`, clears API key scrub flag and reload banner
+- **Fixed**: Settings model auto-fetch debounced (150ms) to reduce API calls on rapid typing
+- **Fixed**: Sidebar file import now triggers `refreshValidation()` after inserting new reports
+- **Fixed**: `processContent` paragraph break handling strips leading/trailing empty lines to avoid orphan `|` separators
+- **Fixed**: Settings transfer list — "Remove Chinese" and "Translate Vietnamese" labels now use `t()` translation function
+- **Changed**: `handleGenerate` uses silent `persistDraft()` instead of `handleSave()` to avoid unnecessary success toast
+- **Changed**: Keyboard shortcut `useEffect` dependency narrowed to only `[language]` (handlers now read from refs)
+- **Changed**: `AppSettings.translate_vietnamese` and `AppSettings.remove_chinese` made optional
+- **Changed**: Removed `translate_vietnamese` and `remove_chinese` from export settings payload (stored in `ai_config`)
+- **Refactored**: Extracted `useExportActions` hook — export logic DRYed across Sidebar and ContentTabs
+- **Refactored**: Unified `rewrite_for_target` and `rewrite_all` into `run_rewrite`; removed `rewrite_for_target` public function
+- **Refactored**: Inlined `estimate_total_chars()` into `run_rewrite`; `build_chat_request()` now takes `system` string directly
+- **Refactored**: SettingsPanel — extracted `saveDraft()` for silent save without toast, reused in `handleGenerate`
+- **Refactored**: `AiErrorCode` now derives `PartialEq, Eq`
+- **Removed**: ~21 unused translation keys (dead code cleanup)
+- **Removed**: Excessive doc comments across Rust and TypeScript modules
+- **Removed**: Unused `exportAllMarkdown` import from App.tsx
+- **Removed**: Unused `info` toast import from Sidebar
+- **Version**: Bumped to 0.7.0.
+
+### v0.6.6 (2026-06-18)
+- **Feature**: 4-level prompt system — dropdown to select prompt mode:
+  - Level 1: Source-Preserved Summary — keeps reports separate with comparison table
+  - Level 2: Unified Final Report — merges into one deduplicated report (default)
+  - Level 3: QA Review Handoff — structured handoff document for next reviewer
+  - Level 4: Custom Prompt — user writes their own prompt (textarea shown)
+- **Changed**: `prompt_level` field added to `AiProviderConfig` (Rust + TypeScript)
+- **Changed**: `build_chat_request()` selects prompt based on `prompt_level` instead of always using default
+- **Changed**: System prompt textarea only visible when Level 4 (Custom Prompt) is selected
+- **Changed**: Renamed "Rewrite prompt" label to "Prompt mode" for clarity
+- **Changed**: Removed "Max input characters" from UI — internal hard cap raised to 2M chars (~500K tokens)
+- **Changed**: Model and Thinking Mode now share the same row (2-column grid layout)
+- **Docs**: Added "Prompt Modes" section in README explaining the 4 prompt levels
+- **Version**: Bumped to 0.6.6.
+
+### v0.6.5 (2026-06-18)
+- **Fixed**: Debug mode now captures actual request/response from real rewrite — replaced fake "ping" test with real `ChatRequest` serialization and response capture via `capture_request_debug()` and `make_debug_log()`.
+- **Fixed**: Loading spinner now shows in ContentTabs (both debug and normal view) when `aiBusy` is true, instead of only in the SettingsPanel button.
+- **Fixed**: Debug badge moved to right of "Debug" label text in toolbar.
+- **Fixed**: `closeAllAiTabs` now preserves debug tabs (only closes AI tabs).
+- **Fixed**: Export buttons in Sidebar now check validation state before exporting.
+- **Fixed**: `showAiBadge` now checks for AI-kind tabs specifically (`contentTabs.some(t => t.kind === "ai")`) instead of `contentTabs.length > 1`.
+- **Fixed**: `processContent` merge mode — improved fenced code block detection with proper opening/closing fence matching (same char, ≥ length, no info string).
+- **Fixed**: Export settings reads `translate_vietnamese`/`remove_chinese` from `ai_config` instead of store state.
+- **Fixed**: API key visibility (`showApiKey`) resets when switching projects.
+- **Changed**: Renamed "Thinking Effort" to "Thinking Mode" with compatibility warning when enabled.
+- **Changed**: Replaced manual timestamp calculation in `slug.rs` with `chrono::Local::now()` for proper local timezone support.
+- **Removed**: Dead `ai_rewrite_preview` command (unused since v0.6.3).
+- **Removed**: Unused `removeEmptyQa` from store, `translateVietnamese`/`removeChinese` store fields (kept as draft state in SettingsPanel only).
+- **Chore**: Added `chrono` 0.4 Rust dependency. Cleaned up excessive doc comments across Rust modules.
+- **Version**: Bumped to 0.6.5 (package.json, tauri.conf.json, Cargo.toml).
+
+### v0.6.4 (2026-06-18)
+- **Feature**: Remove Chinese characters — `strip_chinese()` removes CJK ideographs and CJK punctuation from AI output (toggle: "Remove Chinese").
+- **Feature**: Translate Vietnamese — prepends Vietnamese instruction to system prompt so LLM responds in Vietnamese (toggle: "Translate Vietnamese").
+- **Feature**: Import/Export Settings — save and restore all app settings (AI config, UI toggles) as JSON files.
+- **Feature**: 2-column checkbox layout — reorganized settings toggles: left column (Cross-review, Compact mode, Normalize whitespace, Export as single line), right column (Enable debug, Remove Chinese, Translate Vietnamese).
+- **Feature**: Export/Import settings links in SettingsPanel footer (same line as Reset to default).
+
+### v0.6.3 (2026-06-18)
+- **Feature**: Xiaomi MiMo provider — native genai adapter with default endpoint `https://api.xiaomimimo.com/v1/`.
+- **Feature**: OpenCode Go provider — 16 models, default endpoint `https://opencode.ai/zen/go/v1`.
+- **Feature**: Debug/Log mode — `DebugLog` struct, `ai_test_provider_debug` IPC command, Debug main tab with orange badge, clean debug view (no preview header/stats), scrollable debug logs with detail modal.
+- **Feature**: Thinking Effort dropdown — None/Low/Medium/High/Max, passed to genai `ReasoningEffort` (OpenAI, Anthropic, Gemini supported; others silently ignored).
+- **Feature**: Export filename timestamps — `review-for-{slug}-{YYYYMMDD-HHmmss}.md` with numeric dedup.
+- **Feature**: Auto-fetch models on provider change (replaced Detect Models button).
+- **Change**: Removed Groq, Cohere, xAI providers. Updated model lists (OpenAI gpt-5.x, Anthropic claude-sonnet/opus-4.x, Gemini 3.x, DeepSeek v4).
+- **Change**: OpenAI Compatible — no fallback models, free text input for model name.
+- **Change**: Provider dropdown labels capitalized (OpenAI, Anthropic, Xiaomi MiMo, etc.).
+- **Fix**: MiMo 404 error — added trailing slash normalization in `build_client()` for correct URL path joining.
+- **Fix**: `base_url` and `model` reset when switching provider kind (prevents stale endpoint).
+- **UI**: Export/Import moved to left sidebar footer (2×2 grid with Remove All Sources).
+- **UI**: Sticky "Generate Consolidated Report" button, stats grid 4-column single row.
+- **UI**: Copy Markdown button full-width matching Generate button size.
+
+### v0.6.2 (2026-06-18)
+- **Fix**: `toggleQaActive` — undefined `active` now toggles to `true` (was silently `false`).
+- **Fix**: "Close All AI Tabs" button shows with 1+ AI tabs (was 2+).
+- **Fix**: `processContent` merge mode — regex now requires space after `#` to strip headings.
+- **Fix**: `setProject`/`newProject` — reset `validation`, `previewMarkdown`, `aiBusy` on project switch.
+- **Fix**: `handleCancel` — added try/catch to prevent `aiBusy` stuck state.
+- **Fix**: `parseInt` — added radix 10 parameter.
+- **UX**: ContentTabs export buttons — added validation guard (matches keyboard shortcut).
+- **UX**: ContentTabs export — show toast on success/error.
+- **UX**: Copy button — added clipboard DOM fallback + visual "Copied!" feedback.
+- **Efficiency**: Removed redundant `estimate_total_chars` call in rewrite functions.
+- **Efficiency**: Use `AiProviderKind.as_str()` instead of Debug format in commands.
+- **Dead code**: Removed unused `aiRewritePreview` from `api.ts`.
+
+### v0.6.1 (2026-06-18)
+- **Refactor**: Unified content footer for Preview and AI tabs — Export .md | Export .zip | Copy Markdown | Version.
+- **Feature**: Import supports multiple .md and .zip files with auto-detection.
+- **Feature**: VI/EN language toggle in toolbar (replaced old export buttons).
+- **Feature**: `previewMarkdown` state in store for Preview tab copy support.
+- **Change**: Default `max_input_chars` raised from 50,000 to 500,000.
+- **Change**: Default system prompt shown as placeholder in Rewrite prompt textarea.
+- **UI**: Darker background for Sources/Opening/Closing areas.
+- **UI**: Export/Import buttons moved to SettingsPanel sidebar.
+
+### v0.6.0 (2026-06-17)
+- **Feature**: AI-Powered Report Consolidation — integrates LLM providers (OpenAI, Anthropic, Gemini, Deepseek, Groq, Cohere, xAI, Ollama, and any OpenAI-compatible endpoint) to automatically rewrite and deduplicate multiple QA reports into a single consolidated report.
+- **Feature**: AI provider configuration panel — configure provider kind, base URL, API key, model, max input characters, and custom system prompt per project.
+- **Feature**: AI connection testing — test provider connectivity and discover available models before saving.
+- **Feature**: AI content tabs — generated reports open in dedicated tabs with HTML/Markdown preview, copy-to-clipboard, and tab management (close, close all).
+- **Feature**: AI cancel support — cancel in-flight AI requests from the UI with backend CancellationToken integration.
+- **Feature**: Toast notification system — non-blocking success/error/info toasts replace `alert()` for AI operations.
+- **Feature**: API key security — keys are scrubbed from localStorage auto-save drafts, redacted in Rust Debug output and error messages, with a reload banner reminding users to re-enter.
+- **Fix**: `AiErrorCode` serialization mismatch — custom Serialize/Deserialize impls ensure tag strings match TypeScript's string-union type on the wire.
+- **Fix**: `cancel_in_flight()` race condition — token is now taken (not borrowed) from the global slot.
+- **Fix**: Settings panel draft state sync — `useEffect` resets draft fields when `project.ai_config` changes.
+- **Fix**: `handleGenerate` double-click guard — prevents concurrent AI requests.
+- **Fix**: QA target dropdown no longer navigates away from Home tab — uses `selectQaOnly()`.
+- **Fix**: `max_input_chars` minimum floor raised from 0 to 1.
+- **Fix**: `recordScrubIfNeeded` checks original project's API key, not sanitized draft.
+- **Fix**: Content tabs WYSIWYG — display applies `processContent()` to match clipboard output.
+- **Fix**: Cancellation tests no longer share global `OnceLock` state.
+- **Chore**: Removed dead `clear_cancel()` function and `PreviewPanel.tsx`.
+- **Chore**: Fixed `.gitignore` typo (`upstrems` → `upstreams`).
+- **Tech**: Added `genai` 0.6.5, `tokio`, `tokio-util` Rust dependencies.
 
 ### v0.5.6 (2026-06-16)
 - **Security**: Narrowed filesystem permission scope from `**` (entire filesystem) to `$HOME/$DESKTOP/$DOCUMENT/$DOWNLOAD`.
@@ -269,7 +419,7 @@ The compiled Markdown outputs follow this structural convention:
 
 ## Roadmap
 
-- [ ] **AI-Powered Summarization**: Integrate LLM capabilities to automatically rewrite, refine, or summarize source content.
+- [x] **AI-Powered Summarization**: Integrate LLM capabilities to automatically rewrite, refine, or summarize source content.
 - [ ] **Source Comparison Tool**: Add a comparison layout to highlight differences and analyze modifications between selected sources.
 
 ## License

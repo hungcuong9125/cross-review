@@ -5,9 +5,7 @@ import { useProjectStore } from "../state/projectStore";
 import { generatePreview, type ExportFile } from "../lib/api";
 import { t } from "../lib/i18n";
 
-type ViewMode = "html" | "markdown";
-
-export function PreviewPanel() {
+export function PreviewBody() {
   const {
     project,
     language,
@@ -15,32 +13,28 @@ export function PreviewPanel() {
     compactMode,
     removeWhitespace,
     mergeLines,
-    toggleCompactMode,
-    toggleRemoveWhitespace,
-    toggleMergeLines,
-    toggleExcludeSelf,
     selectedQaId,
-    selectQa,
+    selectQaOnly,
+    previewFormat,
+    setPreviewMarkdown,
   } = useProjectStore();
-  
+
   const [preview, setPreview] = useState<ExportFile | null>(null);
   const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>("html");
 
   // Set initial selected QA target when active list changes
   useEffect(() => {
     const activeQas = project.qa_reports.filter((q) => q.active !== false);
     if (activeQas.length > 0) {
       if (!selectedQaId || !activeQas.find((q) => q.id === selectedQaId)) {
-        selectQa(activeQas[0].id);
+        selectQaOnly(activeQas[0].id);
       }
     } else {
       if (selectedQaId) {
-        selectQa(null);
+        selectQaOnly(null);
       }
     }
-  }, [project.qa_reports, selectedQaId, selectQa]);
+  }, [project.qa_reports, selectedQaId, selectQaOnly]);
 
   // Generate preview when target or project changes
   const refreshPreview = useCallback(async () => {
@@ -59,37 +53,19 @@ export function PreviewPanel() {
     } finally {
       setLoading(false);
     }
-  }, [project, selectedQaId]);
+  }, [project.qa_reports, project.components, project.exclude_self, selectedQaId]);
 
   useEffect(() => {
     refreshPreview();
   }, [refreshPreview]);
 
-  const handleCopy = async () => {
-    if (!preview) return;
-    const content = processContent(preview.markdown);
-    try {
-      await navigator.clipboard.writeText(content);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      const ta = document.createElement("textarea");
-      ta.value = content;
-      ta.style.position = "fixed";
-      ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.select();
-      const ok = document.execCommand("copy");
-      document.body.removeChild(ta);
-      if (ok) {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      }
-    }
-  };
-
   const activeCount = project.qa_reports.filter((q) => q.active !== false).length;
   const displayContent = preview ? processContent(preview.markdown) : "";
+
+  // Sync preview content to store for footer copy
+  useEffect(() => {
+    setPreviewMarkdown(displayContent);
+  }, [displayContent, setPreviewMarkdown]);
   const displayCharCount = displayContent.length;
 
   const filename = preview ? preview.filename : "-";
@@ -99,12 +75,6 @@ export function PreviewPanel() {
     ? project.qa_reports.find((q) => q.id === selectedQaId)?.active === false
     : false;
   const excludedCount = inactiveCount + (selfExcluded && !selectedIsInactive ? 1 : 0);
-  const isCleanMode = removeWhitespace && compactMode;
-  
-  const handleToggleClean = () => {
-    toggleRemoveWhitespace();
-    toggleCompactMode();
-  };
 
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
@@ -116,7 +86,7 @@ export function PreviewPanel() {
           </label>
           <select
             value={selectedQaId ?? ""}
-            onChange={(e) => selectQa(e.target.value)}
+            onChange={(e) => selectQaOnly(e.target.value)}
             className="flex-1 min-w-0 h-[34px] px-3 py-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md text-sm focus:ring-1 focus:ring-blue-500 focus:border-transparent"
           >
             {project.qa_reports.filter((q) => q.active !== false).map((qa) => (
@@ -125,13 +95,6 @@ export function PreviewPanel() {
               </option>
             ))}
           </select>
-          <button
-            onClick={handleCopy}
-            disabled={!preview}
-            className="h-[34px] px-4 inline-flex items-center justify-center bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md text-sm font-medium border border-transparent transition-colors disabled:opacity-50 whitespace-nowrap"
-          >
-            {copied ? `✓ ${t("preview.copied", language)}` : t("preview.copy", language)}
-          </button>
           <button
             onClick={refreshPreview}
             disabled={loading}
@@ -142,7 +105,7 @@ export function PreviewPanel() {
         </div>
 
         {/* Stats grid */}
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           <div className="px-2.5 py-1.5 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
             <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">
               {t("preview.reports", language)}
@@ -197,36 +160,12 @@ export function PreviewPanel() {
           </div>
         ) : preview ? (
           <>
-            {/* View mode toggle */}
-            <div className="mb-4 flex justify-center gap-2">
-              <button
-                onClick={() => setViewMode("html")}
-                className={`px-4 py-1.5 text-xs font-semibold rounded-md border transition-all ${
-                  viewMode === "html"
-                    ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-semibold"
-                    : "bg-gray-50/60 dark:bg-gray-800/30 border-transparent text-gray-500 dark:text-gray-400 hover:bg-gray-100/70 dark:hover:bg-gray-800/50"
-                }`}
-              >
-                HTML
-              </button>
-              <button
-                onClick={() => setViewMode("markdown")}
-                className={`px-4 py-1.5 text-xs font-semibold rounded-md border transition-all ${
-                  viewMode === "markdown"
-                    ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-semibold"
-                    : "bg-gray-50/60 dark:bg-gray-800/30 border-transparent text-gray-500 dark:text-gray-400 hover:bg-gray-100/70 dark:hover:bg-gray-800/50"
-                }`}
-              >
-                Markdown
-              </button>
-            </div>
-
             {/* Preview content */}
-            {viewMode === "html" ? (
+            {previewFormat === "html" ? (
               <div
                 className="markdown-preview prose dark:prose-invert max-w-none bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 text-sm"
                 dangerouslySetInnerHTML={{
-                  __html: DOMPurify.sanitize(marked.parse(displayContent, { breaks: true }) as string),
+                  __html: DOMPurify.sanitize(String(marked.parse(displayContent, { breaks: true }))),
                 }}
               />
             ) : (
@@ -236,45 +175,6 @@ export function PreviewPanel() {
             )}
           </>
         ) : null}
-      </div>
-
-      {/* Footer */}
-      <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-start gap-x-5 gap-y-2 flex-wrap flex-shrink-0">
-        <label className="flex items-center gap-1.5 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={project.exclude_self !== false}
-            onChange={toggleExcludeSelf}
-            className="w-3.5 h-3.5 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
-          />
-          <span className="text-xs text-gray-700 dark:text-gray-300 font-semibold select-none">
-            {t("settings.excludeSelf", language)}
-          </span>
-        </label>
-
-        <label className="flex items-center gap-1.5 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={isCleanMode}
-            onChange={handleToggleClean}
-            className="w-3.5 h-3.5 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
-          />
-          <span className="text-xs text-gray-700 dark:text-gray-300 font-semibold select-none">
-            {t("settings.removeWhitespace", language)}
-          </span>
-        </label>
-
-        <label className="flex items-center gap-1.5 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={mergeLines}
-            onChange={toggleMergeLines}
-            className="w-3.5 h-3.5 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
-          />
-          <span className="text-xs text-gray-700 dark:text-gray-300 font-semibold select-none">
-            {t("settings.mergeLines", language)}
-          </span>
-        </label>
       </div>
     </div>
   );

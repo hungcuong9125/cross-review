@@ -36,4 +36,5 @@ sample-export/
 
 # Project documentation (Harness local files)
 docs/
-
+upstreams/*
+upstrems/*

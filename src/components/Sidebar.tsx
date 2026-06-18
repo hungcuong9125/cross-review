@@ -1,5 +1,7 @@
 import { useProjectStore } from "../state/projectStore";
 import { t } from "../lib/i18n";
+import { useToast } from "../hooks/useToast";
+import { useExportActions } from "../hooks/useExport";
 
 function CopyIcon() {
   return (
@@ -70,7 +72,6 @@ export function Sidebar() {
     addQa,
     removeQa,
     duplicateQa,
-    removeEmptyQa,
     removeAllQa,
     addComponent,
     language,
@@ -79,6 +80,57 @@ export function Sidebar() {
     duplicateComponent,
     removeComponent,
   } = useProjectStore();
+
+  const { success, error: toastError } = useToast();
+  const validation = useProjectStore((s) => s.validation);
+  const { handleExportMd, handleExportZip } = useExportActions(project, validation, language);
+
+  const handleImport = async () => {
+    try {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const selected = await open({
+        multiple: true,
+        filters: [
+          { name: "Markdown & ZIP", extensions: ["md", "zip"] },
+          { name: "Markdown", extensions: ["md"] },
+          { name: "ZIP Archive", extensions: ["zip"] },
+        ],
+      });
+      if (!selected) return;
+      const files = Array.isArray(selected) ? selected : [selected];
+      const { readTextFile } = await import("@tauri-apps/plugin-fs");
+      const newReports: { id: string; name: string; content: string; active: boolean }[] = [];
+      for (const filePath of files) {
+        if (filePath.endsWith(".zip")) {
+          const { readFile } = await import("@tauri-apps/plugin-fs");
+          const zipData = await readFile(filePath);
+          const { ZipReader, BlobReader, TextWriter } = await import("@zip.js/zip.js");
+          const blob = new Blob([zipData]);
+          const reader = new ZipReader(new BlobReader(blob));
+          const entries = await reader.getEntries();
+          for (const entry of entries) {
+            if (entry.filename.endsWith(".md") && !entry.directory && entry.getData) {
+              const text = await entry.getData(new TextWriter());
+              const name = entry.filename.replace(/\.md$/, "").replace(/[_-]/g, " ");
+              newReports.push({ id: crypto.randomUUID?.() ?? Math.random().toString(36).substring(2, 11), name, content: text, active: true });
+            }
+          }
+          await reader.close();
+        } else if (filePath.endsWith(".md")) {
+          const text = await readTextFile(filePath);
+          const name = filePath.split("/").pop()?.replace(/\.md$/, "").replace(/[_-]/g, " ") ?? "Imported";
+          newReports.push({ id: crypto.randomUUID?.() ?? Math.random().toString(36).substring(2, 11), name, content: text, active: true });
+        }
+      }
+      if (newReports.length > 0) {
+        useProjectStore.setState((state) => ({
+          project: { ...state.project, qa_reports: [...state.project.qa_reports, ...newReports] },
+        }));
+        useProjectStore.getState().refreshValidation();
+        success(`Imported ${newReports.length} file(s)`);
+      }
+    } catch (err) { toastError(`Import failed: ${err}`); }
+  };
 
   const qaReports = project.qa_reports;
 
@@ -219,33 +271,28 @@ export function Sidebar() {
         )}
       </div>
 
-      {/* Bottom info bar */}
-      <div className="p-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
-        <div className="flex justify-between text-[10px] text-gray-500 dark:text-gray-400">
-          <span>{t("sidebar.reports", language)}: {qaReports.length}</span>
-          <span>{t("sidebar.components", language)}: {project.components.length}</span>
-        </div>
-        <div className="flex gap-1">
-          {qaReports.some((q) => q.name.trim() === "" && q.content.trim() === "") && (
-            <button
-              onClick={removeEmptyQa}
-              className="flex-1 px-2 py-1 text-[10px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors"
-            >
-              {t("sidebar.removeEmpty", language)}
-            </button>
-          )}
-          {qaReports.length > 0 && (
-            <button
-              onClick={() => {
-                if (confirm(t("dialog.confirmRemoveAll", language))) {
-                  removeAllQa();
-                }
-              }}
-              className="flex-1 px-2 py-1 text-[10px] text-red-400 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
-            >
-              {t("sidebar.removeAll", language)}
-            </button>
-          )}
+      {/* Bottom action buttons — 2×2 grid */}
+      <div className="p-2.5 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <div className="grid grid-cols-2 gap-1.5">
+          <button onClick={handleExportMd} className="px-2 py-1.5 text-[11px] font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors">
+            {t("footer.exportMd", language)}
+          </button>
+          <button onClick={handleExportZip} className="px-2 py-1.5 text-[11px] font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors">
+            {t("footer.exportZip", language)}
+          </button>
+          <button onClick={handleImport} className="px-2 py-1.5 text-[11px] font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors">
+            {t("footer.import", language)}
+          </button>
+          <button
+            onClick={() => {
+              if (confirm(t("dialog.confirmRemoveAll", language))) {
+                removeAllQa();
+              }
+            }}
+            className="px-2 py-1.5 text-[11px] font-medium text-red-400 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+          >
+            {t("sidebar.removeAll", language)}
+          </button>
         </div>
       </div>
     </div>
