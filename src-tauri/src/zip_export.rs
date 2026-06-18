@@ -14,7 +14,6 @@ pub fn export_to_zip(project: &Project, output_path: &str) -> Result<String, Exp
     let exports = generate_exports(project)?;
     let path = Path::new(output_path);
 
-    // Ensure parent directory exists
     if let Some(parent) = path.parent() {
         if !parent.as_os_str().is_empty() && !parent.exists() {
             fs::create_dir_all(parent)
@@ -30,7 +29,6 @@ pub fn export_to_zip(project: &Project, output_path: &str) -> Result<String, Exp
         .compression_method(CompressionMethod::Deflated)
         .unix_permissions(0o644);
 
-    // Use a closure so we can clean up the partial file on error
     let write_result = (|| -> Result<(), ExportError> {
         for export in &exports {
             zip.start_file(&export.filename, options)
@@ -44,7 +42,6 @@ pub fn export_to_zip(project: &Project, output_path: &str) -> Result<String, Exp
     })();
 
     if let Err(e) = write_result {
-        // Clean up partial zip file on error
         let _ = fs::remove_file(path);
         return Err(e);
     }

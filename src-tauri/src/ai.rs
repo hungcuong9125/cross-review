@@ -153,6 +153,7 @@ pub fn prompt_level_1() -> &'static str {
      The final answer must be valid Markdown."
 }
 
+/// Default prompt: synthesizes all sources into a single deduplicated report.
 pub fn prompt_level_2() -> &'static str {
     "You are a senior technical report editor and synthesis analyst.\n\
      Your task is to merge multiple source reports into one unified final report.\n\
@@ -286,6 +287,7 @@ pub fn prompt_level_2() -> &'static str {
      The final answer must be valid Markdown."
 }
 
+/// QA-review handoff: structured document for the next reviewer.
 pub fn prompt_level_3() -> &'static str {
     "You are a QA handoff report writer for technical code review.\n\
      Your task is to transform multiple source reports into a structured handoff document for another QA, reviewer, or code investigation team.\n\
@@ -519,10 +521,17 @@ fn build_client(cfg: &AiProviderConfig) -> Result<Client, AiErrorPayload> {
 }
 
 fn select_sources<'a>(project: &'a Project, target: Option<&'a QaReport>) -> Vec<&'a QaReport> {
+    let exclude_self = project.exclude_self;
     project
         .qa_reports
         .iter()
-        .filter(|qa| qa.active && target.map_or(true, |t| !project.exclude_self || qa.id != t.id))
+        .filter(|qa| {
+            qa.active
+                && match target {
+                    None => !exclude_self,
+                    Some(t) => qa.id != t.id,
+                }
+        })
         .collect()
 }
 
@@ -539,6 +548,10 @@ fn resolve_prompt(cfg: &AiProviderConfig) -> String {
         "3" => prompt_level_3().to_string(),
         "4" => {
             if cfg.system_prompt.trim().is_empty() {
+                eprintln!(
+                    "ai::resolve_prompt: prompt_level=4 but system_prompt is empty, \
+                     falling back to level 2"
+                );
                 prompt_level_2().to_string()
             } else {
                 cfg.system_prompt.clone()
@@ -553,12 +566,7 @@ fn resolve_prompt(cfg: &AiProviderConfig) -> String {
     }
 }
 
-fn estimate_total_chars(sources: &[&QaReport], cfg: &AiProviderConfig) -> usize {
-    estimate_chars(sources) + resolve_prompt(cfg).chars().count() + 64
-}
-
-fn build_chat_request(cfg: &AiProviderConfig, sources: &[&QaReport]) -> ChatRequest {
-    let system = resolve_prompt(cfg);
+fn build_chat_request(sources: &[&QaReport], system: String) -> ChatRequest {
     let mut body = String::with_capacity(estimate_chars(sources));
     for (i, qa) in sources.iter().enumerate() {
         if i > 0 {
@@ -686,92 +694,24 @@ fn make_debug_log(cfg: &AiProviderConfig, request_summary: String, response_text
     }
 }
 
-#[allow(dead_code)]
-pub async fn rewrite_for_target(
-    project: &Project,
-    target_qa_id: &str,
-    cancel: CancellationToken,
-) -> Result<RewriteOutput, AiErrorPayload> {
-    let cfg = project.ai_config.as_ref().ok_or(AiErrorPayload {
-        code: AiErrorCode::NotConfigured,
-        message: "AI is not configured. Open Settings to add a provider.".to_string(),
-        debug_log: None,
-    })?;
-    let target = project
-        .qa_reports
-        .iter()
-        .find(|q| q.id == target_qa_id)
-        .ok_or_else(|| AiErrorPayload {
-            code: AiErrorCode::TargetNotFound,
-            message: format!("Target QA '{target_qa_id}' not found."),
-            debug_log: None,
-        })?;
-    let sources = select_sources(project, Some(target));
-    if sources.is_empty() {
-        return Err(AiErrorPayload {
-            code: AiErrorCode::NoSources,
-            message: "No active sources to rewrite.".to_string(),
-            debug_log: None,
-        });
-    }
-    let chars = estimate_total_chars(&sources, cfg);
-    if chars > cfg.max_input_chars {
-        return Err(AiErrorPayload {
-            code: AiErrorCode::InputTooLarge {
-                chars,
-                max: cfg.max_input_chars,
-            },
-            message: format!(
-                "Input is {chars} chars, exceeds limit {} (raise in Settings).",
-                cfg.max_input_chars
-            ),
-            debug_log: None,
-        });
-    }
-    let request = build_chat_request(cfg, &sources);
-    let request_summary = capture_request_debug(&request, cfg);
-    let client = build_client(cfg)?;
-    let chat_options = build_chat_options(cfg);
-    let start = std::time::Instant::now();
-    register_cancel(cancel.clone());
-    let result = exec(
-        client,
-        &cfg.model,
-        request,
-        chat_options,
-        cancel,
-        REWRITE_TIMEOUT_SECS,
-        &cfg.api_key,
-    )
-    .await;
-    let duration_ms = start.elapsed().as_millis() as u64;
-    match result {
-        Ok(markdown) => {
-            let markdown = if cfg.remove_chinese {
-                strip_chinese(&markdown)
-            } else {
-                markdown
-            };
-            let debug_log = make_debug_log(cfg, request_summary, markdown.chars().take(5000).collect(), duration_ms, true);
-            Ok(RewriteOutput { markdown, input_chars: chars, debug_log: Some(debug_log) })
-        }
-        Err(e) => {
-            let debug_log = make_debug_log(cfg, request_summary, e.message.clone(), duration_ms, false);
-            Err(AiErrorPayload { code: e.code, message: e.message, debug_log: Some(debug_log) })
-        }
-    }
-}
-
 pub async fn rewrite_all(
     project: &Project,
     cancel: CancellationToken,
 ) -> Result<RewriteOutput, AiErrorPayload> {
+    run_rewrite(project, None, cancel).await
+}
+
+async fn run_rewrite(
+    project: &Project,
+    target: Option<&QaReport>,
+    cancel: CancellationToken,
+) -> Result<RewriteOutput, AiErrorPayload> {
     let cfg = project.ai_config.as_ref().ok_or(AiErrorPayload {
         code: AiErrorCode::NotConfigured,
         message: "AI is not configured. Open Settings to add a provider.".to_string(),
         debug_log: None,
     })?;
-    let sources = select_sources(project, None);
+    let sources = select_sources(project, target);
     if sources.is_empty() {
         return Err(AiErrorPayload {
             code: AiErrorCode::NoSources,
@@ -779,21 +719,22 @@ pub async fn rewrite_all(
             debug_log: None,
         });
     }
-    let chars = estimate_total_chars(&sources, cfg);
-    if chars > cfg.max_input_chars {
+    let system = resolve_prompt(cfg);
+    let total_chars = estimate_chars(&sources) + system.chars().count() + 64;
+    if total_chars > cfg.max_input_chars {
         return Err(AiErrorPayload {
             code: AiErrorCode::InputTooLarge {
-                chars,
+                chars: total_chars,
                 max: cfg.max_input_chars,
             },
             message: format!(
-                "Input is {chars} chars, exceeds limit {} (raise in Settings).",
+                "Input is {total_chars} chars, exceeds limit {} (raise in Settings).",
                 cfg.max_input_chars
             ),
             debug_log: None,
         });
     }
-    let request = build_chat_request(cfg, &sources);
+    let request = build_chat_request(&sources, system);
     let request_summary = capture_request_debug(&request, cfg);
     let client = build_client(cfg)?;
     let chat_options = build_chat_options(cfg);
@@ -817,12 +758,15 @@ pub async fn rewrite_all(
             } else {
                 markdown
             };
-            let debug_log = make_debug_log(cfg, request_summary, markdown.chars().take(5000).collect(), duration_ms, true);
-            Ok(RewriteOutput { markdown, input_chars: chars, debug_log: Some(debug_log) })
+            let scrubbed_response = scrub_api_key(&markdown, &cfg.api_key);
+            let response_preview: String = scrubbed_response.chars().take(5000).collect();
+            let debug_log = make_debug_log(cfg, request_summary, response_preview, duration_ms, true);
+            Ok(RewriteOutput { markdown, input_chars: total_chars, debug_log: Some(debug_log) })
         }
         Err(e) => {
-            let debug_log = make_debug_log(cfg, request_summary, e.message.clone(), duration_ms, false);
-            Err(AiErrorPayload { code: e.code, message: e.message, debug_log: Some(debug_log) })
+            let scrubbed_msg = scrub_api_key(&e.message, &cfg.api_key);
+            let debug_log = make_debug_log(cfg, request_summary, scrubbed_msg.clone(), duration_ms, false);
+            Err(AiErrorPayload { code: e.code, message: scrubbed_msg, debug_log: Some(debug_log) })
         }
     }
 }
@@ -834,9 +778,6 @@ pub async fn test_provider(cfg: &AiProviderConfig) -> Result<(), AiErrorPayload>
         .append_message(ChatMessage::user("ping"));
     let cancel = CancellationToken::new();
     let chat_options = build_chat_options(cfg);
-    // Don't register test's cancel token globally - test should run to completion.
-    // Also don't call clear_cancel() here — a concurrent rewrite may have a
-    // registered token that we must not wipe.
     let result = exec(
         client,
         &cfg.model,
@@ -901,6 +842,11 @@ pub async fn list_models(cfg: &AiProviderConfig) -> Result<Vec<String>, AiErrorP
         if !names.is_empty() {
             return Ok(names);
         }
+    } else {
+        eprintln!(
+            "ai::list_models: provider API unreachable, falling back to hardcoded list for {:?}",
+            cfg.kind
+        );
     }
 
     Ok(match cfg.kind {
@@ -1073,10 +1019,11 @@ mod tests {
             translate_vietnamese: false,
             remove_chinese: false,
         };
-        let total = estimate_total_chars(&source_refs, &cfg);
+        let system = resolve_prompt(&cfg);
+        let total = estimate_chars(&source_refs) + system.chars().count() + 64;
         assert!(
             total > 90,
-            "estimate_total_chars should include system prompt, got {}",
+            "estimate should include system prompt, got {}",
             total
         );
     }
@@ -1165,8 +1112,8 @@ mod tests {
             translate_vietnamese: false,
             remove_chinese: false,
         };
-        let total = estimate_total_chars(&source_refs, &cfg);
-        assert!(total > cfg.max_input_chars, "estimate_total_chars should exceed max_input_chars limit");
+        let total = estimate_chars(&source_refs) + resolve_prompt(&cfg).chars().count() + 64;
+        assert!(total > cfg.max_input_chars, "estimate should exceed max_input_chars limit");
 
         assert!(total > 1, "total chars should exceed the tiny limit");
     }
@@ -1249,7 +1196,7 @@ mod integration {
     use tokio_util::sync::CancellationToken;
 
     #[tokio::test]
-    async fn test_ai_rewrite_preview_ollama_e2e() {
+    async fn test_ai_rewrite_all_ollama_e2e() {
         if std::env::var("REVIEW_WEAVER_RUN_AI_TESTS").unwrap_or_default() != "1" {
             eprintln!("SKIP: set REVIEW_WEAVER_RUN_AI_TESTS=1 to run AI integration tests");
             return;
@@ -1291,7 +1238,7 @@ mod integration {
         };
 
         let cancel = CancellationToken::new();
-        let result = rewrite_for_target(&project, "qa1", cancel).await;
+        let result = rewrite_all(&project, cancel).await;
 
         match result {
             Ok(output) => {

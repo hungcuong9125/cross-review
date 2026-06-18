@@ -149,8 +149,8 @@ export interface AppSettings {
   remove_whitespace: boolean;
   merge_lines: boolean;
   preview_format: string;
-  translate_vietnamese: boolean;
-  remove_chinese: boolean;
+  translate_vietnamese?: boolean;
+  remove_chinese?: boolean;
   debug_enabled: boolean;
 }
 

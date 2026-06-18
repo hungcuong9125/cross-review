@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useProjectStore } from "../state/projectStore";
 import { t } from "../lib/i18n";
 import { useToast } from "../hooks/useToast";
+import { useExportActions } from "../hooks/useExport";
 import { PreviewBody } from "./PreviewBody";
-import { exportAllMarkdown, exportAllZip } from "../lib/api";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import pkg from "../../package.json";
@@ -16,17 +16,16 @@ export function ContentTabs() {
     previewMarkdown, validation,
     activeMainTab, aiBusy,
   } = useProjectStore();
-  const { success, error: toastError, info } = useToast();
+  const { success } = useToast();
+  const { handleExportMd, handleExportZip } = useExportActions(project, validation, language);
   const [copied, setCopied] = useState(false);
 
   const activeTab = contentTabs.find((tab) => tab.id === activeContentTabId);
 
   // Get the content to copy depending on which tab type is active
   const getCopyContent = () => {
-    // Debug view: copy the active debug tab's log
-    const debugTab = contentTabs.find((tab) => tab.id === activeContentTabId && tab.kind === "debug");
-    if (debugTab && debugTab.kind === "debug") {
-      const log = debugTab.log;
+    if (activeTab?.kind === "debug") {
+      const log = activeTab.log;
       return [
         `Provider: ${log.provider}`,
         `Model: ${log.model}`,
@@ -52,47 +51,21 @@ export function ContentTabs() {
     try {
       await navigator.clipboard.writeText(content);
     } catch {
-      // Fallback for non-HTTPS contexts where Clipboard API is unavailable
       const textarea = document.createElement("textarea");
       textarea.value = content;
       textarea.style.cssText = "position:fixed;left:-9999px";
       document.body.appendChild(textarea);
       textarea.select();
-      document.execCommand("copy");
+      try {
+        document.execCommand("copy");
+      } catch {
+        // ignore copy failures
+      }
       document.body.removeChild(textarea);
     }
     setCopied(true);
     success(t("toast.copied", language));
     setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleExportMd = async () => {
-    if (project.qa_reports.length === 0) return;
-    if (validation && !validation.valid) { info(t("dialog.validationFail", language)); return; }
-    try {
-      const { open } = await import("@tauri-apps/plugin-dialog");
-      const dir = await open({ directory: true, multiple: false });
-      if (dir) {
-        const paths = await exportAllMarkdown(project, dir as string);
-        success(`${t("dialog.exportSuccess", language)}: ${paths.length} files`);
-      }
-    } catch (err) { toastError(`${t("dialog.exportFail", language)}: ${err}`); }
-  };
-
-  const handleExportZip = async () => {
-    if (project.qa_reports.length === 0) return;
-    if (validation && !validation.valid) { info(t("dialog.validationFail", language)); return; }
-    try {
-      const { save } = await import("@tauri-apps/plugin-dialog");
-      const defaultName = project.title
-        ? `${project.title.toLowerCase().replace(/[^a-z0-9._-]/g, "-").replace(/-{2,}/g, "-")}-reviews.zip`
-        : "review-weaver-export.zip";
-      const path = await save({ defaultPath: defaultName, filters: [{ name: "ZIP Archive", extensions: ["zip"] }] });
-      if (path) {
-        const result = await exportAllZip(project, path);
-        success(`${t("dialog.exportSuccess", language)}: ${result}`);
-      }
-    } catch (err) { toastError(`${t("dialog.exportFail", language)}: ${err}`); }
   };
 
   const debugTabs = contentTabs.filter((tab) => tab.kind === "debug");
@@ -253,7 +226,7 @@ export function ContentTabs() {
           <div className="h-full overflow-y-auto p-4">
             {previewFormat === "html" ? (
               <div className="markdown-preview prose dark:prose-invert max-w-none bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 text-sm"
-                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(String(marked.parse(activeTab.markdown, { breaks: true }))) }} />
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(String(marked.parse(processContent(activeTab.markdown), { breaks: true }))) }} />
             ) : (
               <pre className="whitespace-pre-wrap break-words bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-mono text-gray-700 dark:text-gray-200 leading-relaxed">
                 {processContent(activeTab.markdown)}

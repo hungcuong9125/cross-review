@@ -87,7 +87,7 @@ impl std::fmt::Debug for AiProviderConfig {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AiErrorCode {
     NotConfigured,
     NoSources,

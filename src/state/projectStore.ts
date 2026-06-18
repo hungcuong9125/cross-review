@@ -548,9 +548,26 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   closeContentTab: (id) => {
     if (id === "preview") return;
     set((state) => {
+      const idx = state.contentTabs.findIndex((t) => t.id === id);
       const tabs = state.contentTabs.filter((t) => t.id !== id);
-      const activeId = state.activeContentTabId === id ? "preview" : state.activeContentTabId;
-      return { contentTabs: tabs, activeContentTabId: activeId };
+      let activeId = state.activeContentTabId;
+      if (state.activeContentTabId === id) {
+        if (idx > 0) {
+          activeId = state.contentTabs[idx - 1].id;
+        } else if (idx < state.contentTabs.length - 1) {
+          activeId = state.contentTabs[idx + 1].id;
+        } else {
+          activeId = "preview";
+        }
+      }
+      // If closing the last debug tab while on debug main tab, fall back to home
+      const closingKind = state.contentTabs[idx]?.kind;
+      const debugTabsLeft = tabs.filter((t) => t.kind === "debug").length;
+      const activeMainTab =
+        state.activeMainTab === "debug" && closingKind === "debug" && debugTabsLeft === 0
+          ? "home"
+          : state.activeMainTab;
+      return { contentTabs: tabs, activeContentTabId: activeId, activeMainTab };
     });
   },
 
@@ -559,7 +576,19 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const remaining = state.contentTabs.filter((t) => t.kind === "preview" || t.kind === "debug");
       const activeTab = state.contentTabs.find((t) => t.id === state.activeContentTabId);
       const activeId = activeTab?.kind === "ai" ? "preview" : state.activeContentTabId;
-      return { contentTabs: remaining.length > 0 ? remaining : [DEFAULT_PREVIEW_TAB], activeContentTabId: activeId };
+      // If user was on debug main tab, they were viewing a debug tab.
+      // After close-all-AI, only preview tabs remain → leave them on debug view.
+      const activeMainTab =
+        state.activeMainTab === "debug" && remaining.some((t) => t.kind === "debug")
+          ? "debug"
+          : state.activeMainTab === "debug"
+            ? "home"
+            : state.activeMainTab;
+      return {
+        contentTabs: remaining.length > 0 ? remaining : [DEFAULT_PREVIEW_TAB],
+        activeContentTabId: activeId,
+        activeMainTab,
+      };
     });
   },
 
@@ -625,14 +654,17 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         return line;
       });
 
-      // Preserve paragraph breaks (empty lines) as " | " before merging
-      // First pass: collapse consecutive empty lines into a single marker
+      // Preserve paragraph breaks (empty lines) as " | " before merging.
+      // Strip leading/trailing empty lines first to avoid orphan | separators.
+      while (lines.length > 0 && lines[0].trim() === "") lines.shift();
+      while (lines.length > 0 && lines[lines.length - 1].trim() === "") lines.pop();
+
       let joined = "";
       let prevEmpty = false;
       for (const line of lines) {
         const isEmpty = line.trim() === "";
         if (isEmpty) {
-          if (!prevEmpty) {
+          if (!prevEmpty && joined) {
             joined += "\n\n"; // paragraph break marker
           }
           prevEmpty = true;

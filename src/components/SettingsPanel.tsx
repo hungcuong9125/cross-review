@@ -32,7 +32,6 @@ export function SettingsPanel() {
 
   const { success, error: toastError, info } = useToast();
 
-  // Draft AI config state (separate from saved)
   const [draftKind, setDraftKind] = useState<AiProviderKind>(project.ai_config?.kind ?? "ollama");
   const [draftBaseUrl, setDraftBaseUrl] = useState(project.ai_config?.base_url ?? "");
   const [draftApiKey, setDraftApiKey] = useState(project.ai_config?.api_key ?? "");
@@ -50,7 +49,7 @@ export function SettingsPanel() {
   const [debugLogs, setDebugLogs] = useState<DebugLog[]>([]);
   const [selectedLog, setSelectedLog] = useState<DebugLog | null>(null);
 
-  // Sync draft state when project.ai_config changes (e.g. opening a different project file)
+  // Resync draft state when project.ai_config changes (e.g. opening a different project file)
   useEffect(() => {
     setDraftKind(project.ai_config?.kind ?? "ollama");
     setDraftBaseUrl(project.ai_config?.base_url ?? "");
@@ -90,15 +89,22 @@ export function SettingsPanel() {
     prompt_level: draftPromptLevel,
   });
 
-  const handleSave = () => {
+  const saveDraft = () => {
     const newConfig = buildDraftConfig();
     useProjectStore.setState((state) => ({
       project: { ...state.project, ai_config: newConfig },
     }));
     clearApiKeyScrubbed();
     setShowKeyBanner(false);
+  };
+
+  const handleSave = () => {
+    saveDraft();
     success(t("toast.aiSaved", language));
   };
+
+  // Silent save for use in handleGenerate (no toast)
+  const persistDraft = saveDraft;
 
   const [testBusy, setTestBusy] = useState(false);
 
@@ -132,35 +138,36 @@ export function SettingsPanel() {
     }
   };
 
-  // Auto-fetch models when provider kind changes
+  // Auto-fetch models when provider kind, base URL, or API key changes (debounced)
   useEffect(() => {
     if (draftKind === "openaicompatible") {
       setModels([]);
       return;
     }
     let cancelled = false;
-    aiListModels({
-      kind: draftKind,
-      base_url: draftBaseUrl,
-      api_key: draftApiKey,
-      model: "",
-      max_input_chars: draftMaxChars,
-      system_prompt: "",
-      thinking_effort: "",
-      translate_vietnamese: false,
-      remove_chinese: false,
-      prompt_level: "2",
-    }).then((result) => {
-      if (cancelled) return;
-      setModels(result);
-    }).catch((e) => { console.error("Failed to fetch models:", e); });
-    return () => { cancelled = true; };
-  }, [draftKind, draftBaseUrl, draftApiKey]);
+    const timer = setTimeout(() => {
+      aiListModels({
+        kind: draftKind,
+        base_url: draftBaseUrl,
+        api_key: draftApiKey,
+        model: "",
+        max_input_chars: draftMaxChars,
+        system_prompt: "",
+        thinking_effort: "",
+        translate_vietnamese: false,
+        remove_chinese: false,
+        prompt_level: "2",
+      }).then((result) => {
+        if (cancelled) return;
+        setModels(result);
+      }).catch((e) => { console.error("Failed to fetch models:", e); });
+    }, 150);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [draftKind, draftBaseUrl, draftApiKey, draftMaxChars]);
 
   const handleGenerate = async () => {
     if (aiBusy) return;
-    // Auto-save draft config before generating so unsaved changes take effect
-    handleSave();
+    persistDraft();
     const cfg = useProjectStore.getState().project.ai_config;
     if (!cfg || !cfg.model) {
       info(t("toast.aiNotConfigured", language));
@@ -174,7 +181,6 @@ export function SettingsPanel() {
     setAiBusy(true);
     try {
       const result = await aiRewriteExport(useProjectStore.getState().project);
-      // If debug enabled, create debug tab with actual request/response
       if (debugEnabled && result.debug_log) {
         appendDebugTab(result.debug_log);
         setActiveMainTab("debug");
@@ -185,7 +191,6 @@ export function SettingsPanel() {
     } catch (err) {
       if (typeof err === "string") { toastError(err); return; }
       const e = err as AiErrorPayload;
-      // If debug enabled and error has a debug log, show it
       if (debugEnabled && e.debug_log) {
         appendDebugTab(e.debug_log);
         setActiveMainTab("debug");
@@ -233,6 +238,8 @@ export function SettingsPanel() {
     try {
       await aiCancelRequest();
     } catch {
+      // ignore
+    } finally {
       setAiBusy(false);
     }
   };
@@ -245,8 +252,6 @@ export function SettingsPanel() {
       remove_whitespace: state.removeWhitespace,
       merge_lines: state.mergeLines,
       preview_format: state.previewFormat,
-      translate_vietnamese: state.project.ai_config?.translate_vietnamese ?? false,
-      remove_chinese: state.project.ai_config?.remove_chinese ?? false,
       debug_enabled: state.debugEnabled,
     };
     try {
@@ -294,6 +299,9 @@ export function SettingsPanel() {
           setDraftMaxChars(settings.ai_config.max_input_chars);
           setDraftPromptLevel(settings.ai_config.prompt_level);
         }
+        useProjectStore.getState().refreshValidation();
+        clearApiKeyScrubbed();
+        setShowKeyBanner(false);
         success(language === "vi" ? "Đã nhập cài đặt" : "Settings imported");
       }
     } catch (err) { toastError(`Import failed: ${err}`); }
@@ -343,7 +351,7 @@ export function SettingsPanel() {
             </label>
             <label className="flex items-center gap-1.5 cursor-pointer">
               <input type="checkbox" checked={draftRemoveChinese} onChange={() => setDraftRemoveChinese(!draftRemoveChinese)} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
-              <span className="text-xs text-gray-600 dark:text-gray-400">{language === "vi" ? "Xoá từ tiếng Trung" : "Remove Chinese"}</span>
+              <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.removeChinese", language)}</span>
             </label>
             {/* Row 3 */}
             <label className="flex items-center gap-1.5 cursor-pointer">
@@ -352,7 +360,7 @@ export function SettingsPanel() {
             </label>
             <label className="flex items-center gap-1.5 cursor-pointer">
               <input type="checkbox" checked={draftTranslateVietnamese} onChange={() => setDraftTranslateVietnamese(!draftTranslateVietnamese)} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
-              <span className="text-xs text-gray-600 dark:text-gray-400">{language === "vi" ? "Dịch tiếng Việt" : "Translate Vietnamese"}</span>
+              <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.translateVietnamese", language)}</span>
             </label>
             {/* Row 4 */}
             <label className="flex items-center gap-1.5 cursor-pointer">

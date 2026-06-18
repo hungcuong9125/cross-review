@@ -1,7 +1,7 @@
 import { useProjectStore } from "../state/projectStore";
 import { t } from "../lib/i18n";
 import { useToast } from "../hooks/useToast";
-import { exportAllMarkdown, exportAllZip } from "../lib/api";
+import { useExportActions } from "../hooks/useExport";
 
 function CopyIcon() {
   return (
@@ -81,37 +81,9 @@ export function Sidebar() {
     removeComponent,
   } = useProjectStore();
 
-  const { success, error: toastError, info } = useToast();
+  const { success, error: toastError } = useToast();
   const validation = useProjectStore((s) => s.validation);
-
-  const handleExportMd = async () => {
-    if (project.qa_reports.length === 0) { info(t("dialog.noReport", language)); return; }
-    if (validation && !validation.valid) { info(t("dialog.validationFail", language)); return; }
-    try {
-      const { open } = await import("@tauri-apps/plugin-dialog");
-      const dir = await open({ directory: true, multiple: false });
-      if (dir) {
-        const paths = await exportAllMarkdown(project, dir as string);
-        success(`${t("dialog.exportSuccess", language)}: ${paths.length} files`);
-      }
-    } catch (err) { toastError(`${t("dialog.exportFail", language)}: ${err}`); }
-  };
-
-  const handleExportZip = async () => {
-    if (project.qa_reports.length === 0) { info(t("dialog.noReport", language)); return; }
-    if (validation && !validation.valid) { info(t("dialog.validationFail", language)); return; }
-    try {
-      const { save } = await import("@tauri-apps/plugin-dialog");
-      const defaultName = project.title
-        ? `${project.title.toLowerCase().replace(/[^a-z0-9._-]/g, "-").replace(/-{2,}/g, "-")}-reviews.zip`
-        : "review-weaver-export.zip";
-      const path = await save({ defaultPath: defaultName, filters: [{ name: "ZIP Archive", extensions: ["zip"] }] });
-      if (path) {
-        const result = await exportAllZip(project, path);
-        success(`${t("dialog.exportSuccess", language)}: ${result}`);
-      }
-    } catch (err) { toastError(`${t("dialog.exportFail", language)}: ${err}`); }
-  };
+  const { handleExportMd, handleExportZip } = useExportActions(project, validation, language);
 
   const handleImport = async () => {
     try {
@@ -154,6 +126,7 @@ export function Sidebar() {
         useProjectStore.setState((state) => ({
           project: { ...state.project, qa_reports: [...state.project.qa_reports, ...newReports] },
         }));
+        useProjectStore.getState().refreshValidation();
         success(`Imported ${newReports.length} file(s)`);
       }
     } catch (err) { toastError(`Import failed: ${err}`); }

@@ -8,7 +8,6 @@ export interface Toast {
 
 let nextId = 0;
 
-// Module-level state so toasts survive component unmounts
 const listeners = new Set<(toasts: Toast[]) => void>();
 let toasts: Toast[] = [];
 

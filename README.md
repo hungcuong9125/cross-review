@@ -184,18 +184,33 @@ The compiled Markdown outputs follow this structural convention:
 
 ## Changelog
 
-### v0.6.7 (2026-06-18)
-- **Fixed**: `draftMaxChars` now properly synced with project config, participates in dirty check, and is restored on import
-- **Fixed**: `PreviewBody` useCallback dependency array now includes all relevant project fields (`qa_reports`, `components`, `exclude_self`)
-- **Fixed**: `toggleQaActive`/`toggleComponentActive` simplified from `!(x.active === false)` to `!x.active`
-- **Fixed**: `closeAllAiTabs` now identifies AI tabs by `kind` instead of fragile `activeContentTabId` prefix check
-- **Fixed**: Test button disabled while busy (`testBusy` guard) to prevent concurrent requests
-- **Changed**: `AiErrorPayload` now carries optional `debugLog` — provider errors include request/response debug info, surfaced in UI when debug mode is on
-- **Changed**: `rewrite_for_target`/`rewrite_all` return `Err(AiErrorPayload)` with debug log on provider errors instead of wrapping the error message in `Ok`
-- **Refactored**: Extracted `normalize_base_url()` helper; removed `default_rewrite_prompt()` and empty `prompt_level_4()`; consolidated prompt resolution into `resolve_prompt()`
-- **Refactored**: SettingsPanel — extracted `buildDraftConfig()` to eliminate duplicate config construction; Import/Export buttons extracted to shared `importExportButtons` JSX variable
-- **Chore**: Removed excessive doc comments across Rust modules. Removed `#[allow(dead_code)]` from `AiErrorCode`. Moved `ReasoningEffort`/`ChatRole` imports to top-level.
-- **Version**: Bumped to 0.6.7.
+### v0.7.0 (2026-06-19)
+- **Security**: AI response and error messages now scrubbed via `scrub_api_key()` to prevent API key leakage in debug logs
+- **Fixed**: `select_sources()` with `exclude_self=true` and no target now correctly returns empty sources (consistent with target-filtered behavior)
+- **Fixed**: Keyboard shortcut stale-closure bug — handlers moved to refs (`handleSaveRef`, `handleOpenRef`, `handleExportAllRef`) so keyboard events always read the latest project/validation state
+- **Fixed**: AI-generated content in preview tab now applies `processContent()` (whitespace normalization, merge lines) matching clipboard output
+- **Fixed**: `handleCancel` now resets `aiBusy` in `finally` block, preventing stuck busy state on cancel failure
+- **Fixed**: Tab close navigation — closing a non-active tab now activates the adjacent tab instead of always switching to "preview"
+- **Fixed**: `closeAllAiTabs` preserves debug main tab view when debug tabs remain; falls back to "home" otherwise
+- **Fixed**: Settings import now triggers `refreshValidation()`, clears API key scrub flag and reload banner
+- **Fixed**: Settings model auto-fetch debounced (150ms) to reduce API calls on rapid typing
+- **Fixed**: Sidebar file import now triggers `refreshValidation()` after inserting new reports
+- **Fixed**: `processContent` paragraph break handling strips leading/trailing empty lines to avoid orphan `|` separators
+- **Fixed**: Settings transfer list — "Remove Chinese" and "Translate Vietnamese" labels now use `t()` translation function
+- **Changed**: `handleGenerate` uses silent `persistDraft()` instead of `handleSave()` to avoid unnecessary success toast
+- **Changed**: Keyboard shortcut `useEffect` dependency narrowed to only `[language]` (handlers now read from refs)
+- **Changed**: `AppSettings.translate_vietnamese` and `AppSettings.remove_chinese` made optional
+- **Changed**: Removed `translate_vietnamese` and `remove_chinese` from export settings payload (stored in `ai_config`)
+- **Refactored**: Extracted `useExportActions` hook — export logic DRYed across Sidebar and ContentTabs
+- **Refactored**: Unified `rewrite_for_target` and `rewrite_all` into `run_rewrite`; removed `rewrite_for_target` public function
+- **Refactored**: Inlined `estimate_total_chars()` into `run_rewrite`; `build_chat_request()` now takes `system` string directly
+- **Refactored**: SettingsPanel — extracted `saveDraft()` for silent save without toast, reused in `handleGenerate`
+- **Refactored**: `AiErrorCode` now derives `PartialEq, Eq`
+- **Removed**: ~21 unused translation keys (dead code cleanup)
+- **Removed**: Excessive doc comments across Rust and TypeScript modules
+- **Removed**: Unused `exportAllMarkdown` import from App.tsx
+- **Removed**: Unused `info` toast import from Sidebar
+- **Version**: Bumped to 0.7.0.
 
 ### v0.6.6 (2026-06-18)
 - **Feature**: 4-level prompt system — dropdown to select prompt mode:
