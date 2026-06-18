@@ -45,7 +45,9 @@ export function useExportActions() {
           ? previewMarkdown
           : processContent(activeTab.markdown);
 
-        await exportSingleMarkdown(content, path);
+        const contentWithSignature = content + "\n\n<!-- review-weaver-signature: v1 -->";
+
+        await exportSingleMarkdown(contentWithSignature, path);
         success(`${t("dialog.exportSuccess", language)}`);
       }
     } catch (err) {
@@ -95,7 +97,9 @@ export function useExportActions() {
           ? previewMarkdown
           : processContent(activeTab.markdown);
 
-        await exportSingleZip(defaultFilename, content, path);
+        const contentWithSignature = content + "\n\n<!-- review-weaver-signature: v1 -->";
+
+        await exportSingleZip(defaultFilename, contentWithSignature, path);
         success(`${t("dialog.exportSuccess", language)}`);
       }
     } catch (err) {

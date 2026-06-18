@@ -46,17 +46,12 @@ pub struct AiProviderConfig {
     pub system_prompt: String,
     #[serde(default = "default_max_input_chars")]
     pub max_input_chars: usize,
-    /// Reasoning effort level: "none", "low", "medium", "high", "max". Empty = none.
     #[serde(default)]
     pub thinking_effort: String,
-    /// When true, prepend Vietnamese instruction to the system prompt.
     #[serde(default)]
     pub translate_vietnamese: bool,
-    /// When true, strip CJK characters from AI output.
     #[serde(default)]
     pub remove_chinese: bool,
-    /// Prompt level: "1"=Source-Preserved Summary, "2"=Unified Final Report,
-    /// "3"=QA Review Handoff, "4"=Custom Prompt. Default "2".
     #[serde(default = "default_prompt_level")]
     pub prompt_level: String,
 }
@@ -188,7 +183,20 @@ pub struct Component {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AiReportSaved {
+    pub id: String,
+    pub title: String,
+    pub markdown: String,
+    pub initial_char_count: i32,
+    pub model_used: String,
+    pub prompt_level: String,
+    pub filename: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Project {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub document_type: Option<String>,
     #[serde(default)]
     pub title: String,
     #[serde(default)]
@@ -203,6 +211,8 @@ pub struct Project {
     pub closing_text: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ai_config: Option<AiProviderConfig>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ai_reports: Option<Vec<AiReportSaved>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -233,6 +243,7 @@ pub struct ValidationReport {
 impl Default for Project {
     fn default() -> Self {
         Self {
+            document_type: Some("review-weaver-project".to_string()),
             title: String::new(),
             components: Vec::new(),
             qa_reports: Vec::new(),
@@ -240,6 +251,7 @@ impl Default for Project {
             opening_text: None,
             closing_text: None,
             ai_config: None,
+            ai_reports: None,
         }
     }
 }
@@ -258,6 +270,8 @@ pub struct DebugLog {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct AppSettings {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub document_type: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ai_config: Option<AiProviderConfig>,
     #[serde(default)]

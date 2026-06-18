@@ -98,6 +98,7 @@ export function Sidebar() {
       if (!selected) return;
       const files = Array.isArray(selected) ? selected : [selected];
       const { readTextFile } = await import("@tauri-apps/plugin-fs");
+      const { isValidMarkdownReport } = await import("../lib/sanitize");
       const newReports: { id: string; name: string; content: string; active: boolean }[] = [];
       for (const filePath of files) {
         if (filePath.endsWith(".zip")) {
@@ -110,6 +111,12 @@ export function Sidebar() {
           for (const entry of entries) {
             if (entry.filename.endsWith(".md") && !entry.directory && entry.getData) {
               const text = await entry.getData(new TextWriter());
+              if (!isValidMarkdownReport(entry.filename, text)) {
+                alert(language === "vi"
+                  ? `Tệp tin "${entry.filename}" bên trong file ZIP không đúng định dạng tài liệu nguồn!`
+                  : `File "${entry.filename}" inside ZIP is not a valid source document!`);
+                continue;
+              }
               const name = entry.filename.replace(/\.md$/, "").replace(/[_-]/g, " ");
               newReports.push({ id: crypto.randomUUID?.() ?? Math.random().toString(36).substring(2, 11), name, content: text, active: true });
             }
@@ -117,7 +124,14 @@ export function Sidebar() {
           await reader.close();
         } else if (filePath.endsWith(".md")) {
           const text = await readTextFile(filePath);
-          const name = filePath.split("/").pop()?.replace(/\.md$/, "").replace(/[_-]/g, " ") ?? "Imported";
+          const baseName = filePath.split(/[/\\]/).pop() || "Imported";
+          if (!isValidMarkdownReport(baseName, text)) {
+            alert(language === "vi"
+              ? `Tệp tin "${baseName}" không đúng định dạng tài liệu nguồn!`
+              : `File "${baseName}" is not a valid source document!`);
+            continue;
+          }
+          const name = baseName.replace(/\.md$/, "").replace(/[_-]/g, " ");
           newReports.push({ id: crypto.randomUUID?.() ?? Math.random().toString(36).substring(2, 11), name, content: text, active: true });
         }
       }

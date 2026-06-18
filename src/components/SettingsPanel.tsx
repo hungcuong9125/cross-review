@@ -187,7 +187,7 @@ export function SettingsPanel() {
       }
       const now = new Date();
       const title = `AI ${now.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit" })} ${now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
-      
+
       const pad = (n: number) => String(n).padStart(2, "0");
       const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
       const projectSlug = project.title
@@ -262,6 +262,7 @@ export function SettingsPanel() {
   const handleExportSettings = async () => {
     const state = useProjectStore.getState();
     const settings: AppSettings = {
+      document_type: "review-weaver-settings",
       ai_config: state.project.ai_config,
       compact_mode: state.compactMode,
       remove_whitespace: state.removeWhitespace,
@@ -349,39 +350,54 @@ export function SettingsPanel() {
               {t("settings.previewFormat.markdown", language)}
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-3">
-            {/* Row 1 */}
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input type="checkbox" checked={project.exclude_self !== false} onChange={toggleExcludeSelf} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
-              <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.excludeSelf", language)}</span>
-            </label>
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input type="checkbox" checked={debugEnabled} onChange={() => setDebugEnabled(!debugEnabled)} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
-              <span className="text-xs text-gray-600 dark:text-gray-400">{language === "vi" ? "Bật debug" : "Enable debug"}</span>
-            </label>
-            {/* Row 2 */}
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input type="checkbox" checked={compactMode} onChange={toggleCompactMode} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
-              <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.compactMode", language)}</span>
-            </label>
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input type="checkbox" checked={draftRemoveChinese} onChange={() => setDraftRemoveChinese(!draftRemoveChinese)} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
-              <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.removeChinese", language)}</span>
-            </label>
-            {/* Row 3 */}
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input type="checkbox" checked={removeWhitespace} onChange={toggleRemoveWhitespace} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
-              <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.removeWhitespace", language)}</span>
-            </label>
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input type="checkbox" checked={draftTranslateVietnamese} onChange={() => setDraftTranslateVietnamese(!draftTranslateVietnamese)} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
-              <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.translateVietnamese", language)}</span>
-            </label>
-            {/* Row 4 */}
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input type="checkbox" checked={mergeLines} onChange={toggleMergeLines} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
-              <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.mergeLines", language)}</span>
-            </label>
+
+          {/* Section Headers */}
+          <div className="grid grid-cols-2 gap-x-4 mt-4 mb-2">
+            <div className="text-[11px] font-bold text-gray-400 dark:text-gray-500 tracking-wider uppercase">
+              {language === "vi" ? "THIẾT LẬP HIỂN THỊ" : "DISPLAY SETTINGS"}
+            </div>
+            <div className="text-[11px] font-bold text-gray-400 dark:text-gray-500 tracking-wider uppercase">
+              {language === "vi" ? "THIẾT LẬP XỬ LÝ" : "PROCESSING SETTINGS"}
+            </div>
+          </div>
+
+          {/* Checkboxes in columns */}
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+            {/* DISPLAY SETTINGS */}
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" checked={project.exclude_self !== false} onChange={toggleExcludeSelf} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
+                <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.excludeSelf", language)}</span>
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" checked={compactMode} onChange={toggleCompactMode} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
+                <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.compactMode", language)}</span>
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" checked={removeWhitespace} onChange={toggleRemoveWhitespace} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
+                <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.removeWhitespace", language)}</span>
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" checked={mergeLines} onChange={toggleMergeLines} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
+                <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.mergeLines", language)}</span>
+              </label>
+            </div>
+
+            {/* PROCESSING SETTINGS */}
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" checked={debugEnabled} onChange={() => setDebugEnabled(!debugEnabled)} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
+                <span className="text-xs text-gray-600 dark:text-gray-400">{language === "vi" ? "Bật debug" : "Enable debug"}</span>
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" checked={draftRemoveChinese} onChange={() => setDraftRemoveChinese(!draftRemoveChinese)} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
+                <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.removeChinese", language)}</span>
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" checked={draftTranslateVietnamese} onChange={() => setDraftTranslateVietnamese(!draftTranslateVietnamese)} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
+                <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.translateVietnamese", language)}</span>
+              </label>
+            </div>
           </div>
         </div>
 

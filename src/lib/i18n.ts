@@ -40,12 +40,12 @@ export const translations = {
   // Settings
   'settings.removeWhitespace': { vi: 'Chuẩn hóa khoảng trắng', en: 'Normalize whitespace' },
   'settings.mergeLines': { vi: 'Xuất thành một dòng', en: 'Export as single line' },
-  'settings.excludeSelf': { vi: 'Review chéo', en: 'Cross-review' },
+  'settings.excludeSelf': { vi: 'Review chéo', en: 'Cross review' },
 
   // Toolbar
-  'toolbar.new': { vi: 'Thêm mới', en: 'New' },
-  'toolbar.open': { vi: 'Mở', en: 'Open' },
-  'toolbar.save': { vi: 'Lưu', en: 'Save' },
+  'toolbar.new': { vi: 'Dự án mới', en: 'New project' },
+  'toolbar.open': { vi: 'Mở dự án', en: 'Open project' },
+  'toolbar.save': { vi: 'Lưu dự án', en: 'Save project' },
   'toolbar.projectTitle': { vi: 'Tên dự án', en: 'Project title' },
   'toolbar.lightMode': { vi: 'Sáng', en: 'Light' },
   'toolbar.darkMode': { vi: 'Tối', en: 'Dark' },
@@ -115,7 +115,7 @@ export const translations = {
 
   // Content tabs
   'tab.closeAi': { vi: 'Đóng tab AI', en: 'Close AI tab' },
-  'tab.closeAllAi': { vi: 'Đóng tất cả tab AI', en: 'Close all AI tabs' },
+  'tab.closeAllAi': { vi: 'Đóng tất cả tab', en: 'Close all tabs' },
   'tab.preview': { vi: 'Xem trước', en: 'Preview' },
 
   // Toasts

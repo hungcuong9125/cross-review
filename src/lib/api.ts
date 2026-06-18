@@ -52,12 +52,24 @@ export interface Component {
   active?: boolean;
 }
 
+export interface AiReportSaved {
+  id: string;
+  title: string;
+  markdown: string;
+  initial_char_count: number;
+  model_used: string;
+  prompt_level: string;
+  filename: string;
+}
+
 export interface Project {
+  document_type?: string;
   title: string;
   components: Component[];
   qa_reports: QaReport[];
   exclude_self?: boolean;
   ai_config?: AiProviderConfig;
+  ai_reports?: AiReportSaved[];
 }
 
 export interface ExportFile {
@@ -160,6 +172,7 @@ export async function aiDefaultPrompt(): Promise<string> {
 }
 
 export interface AppSettings {
+  document_type?: string;
   ai_config?: AiProviderConfig;
   compact_mode: boolean;
   remove_whitespace: boolean;

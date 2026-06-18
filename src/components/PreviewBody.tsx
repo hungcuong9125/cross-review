@@ -61,16 +61,18 @@ export function PreviewBody() {
   }, [refreshPreview]);
 
   const activeCount = project.qa_reports.filter((q) => q.active !== false).length;
-  const displayContent = preview ? processContent(preview.markdown) : "";
+  const rawContent = preview ? preview.markdown : "";
+  const processedContent = preview ? processContent(preview.markdown) : "";
+  const displayContent = rawContent;
   const filename = preview ? preview.filename : "-";
 
-  // Sync preview content and filename to store for footer export
+  // Sync preview content and filename to store for footer export (uses processed content)
   useEffect(() => {
-    setPreviewMarkdown(displayContent);
+    setPreviewMarkdown(processedContent);
     setPreviewFilename(filename);
-  }, [displayContent, filename, setPreviewMarkdown, setPreviewFilename]);
+  }, [processedContent, filename, setPreviewMarkdown, setPreviewFilename]);
 
-  const displayCharCount = displayContent.length;
+  const displayCharCount = processedContent.length;
   const initialCharCount = preview ? preview.markdown.length : 0;
   const percentChange = initialCharCount > 0 ? Math.round(((displayCharCount - initialCharCount) / initialCharCount) * 100) : 0;
 

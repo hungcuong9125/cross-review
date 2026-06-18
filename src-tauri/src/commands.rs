@@ -83,6 +83,18 @@ pub fn open_project(path: String) -> Result<Project, String> {
         fs::read_to_string(&path).map_err(|e| format!("Cannot read project file: {}", e))?;
     let project: Project =
         serde_json::from_str(&content).map_err(|e| format!("Invalid project file: {}", e))?;
+    
+    let is_valid = match &project.document_type {
+        Some(dt) => dt == "review-weaver-project",
+        None => {
+            !project.qa_reports.is_empty() || !project.components.is_empty() || !project.title.is_empty()
+        }
+    };
+
+    if !is_valid {
+        return Err("Tệp tin không đúng định dạng dự án của Review Weaver!".to_string());
+    }
+
     Ok(project)
 }
 
@@ -150,5 +162,18 @@ pub fn import_settings_cmd(path: String) -> Result<AppSettings, String> {
         fs::read_to_string(&path).map_err(|e| format!("Cannot read settings file: {}", e))?;
     let settings: AppSettings =
         serde_json::from_str(&content).map_err(|e| format!("Invalid settings file: {}", e))?;
+    
+    let is_valid = match &settings.document_type {
+        Some(dt) => dt == "review-weaver-settings",
+        None => {
+            // Support legacy settings files by verifying key structure
+            settings.ai_config.is_some() || settings.compact_mode || settings.remove_whitespace
+        }
+    };
+    
+    if !is_valid {
+        return Err("Tệp tin không đúng định dạng cấu hình của Review Weaver!".to_string());
+    }
+
     Ok(settings)
 }

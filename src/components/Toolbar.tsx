@@ -51,9 +51,19 @@ export function Toolbar() {
   const handleSave = async () => {
     try {
       const { save } = await import("@tauri-apps/plugin-dialog");
+      const toSlug = (str: string) =>
+        str
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[đĐ]/g, "d")
+          .replace(/[^a-z0-9._-]/g, "-")
+          .replace(/-{2,}/g, "-")
+          .replace(/^-+|-+$/g, "");
+      const slugTitle = project.title ? toSlug(project.title) : "";
       const path = await save({
-        defaultPath: project.title
-          ? `${project.title.toLowerCase().replace(/[^a-z0-9._-]/g, "-").replace(/-{2,}/g, "-")}.review-weaver.json`
+        defaultPath: slugTitle
+          ? `${slugTitle}.review-weaver.json`
           : "project.review-weaver.json",
         filters: [
           { name: "Review Weaver Project", extensions: ["review-weaver.json"] },

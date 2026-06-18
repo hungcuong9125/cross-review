@@ -30,8 +30,9 @@ function AiTabContent({ tab }: {
   } = useProjectStore();
 
 
-  const displayContent = processContent(tab.markdown);
-  const displayCharCount = displayContent.length;
+  const rawContent = tab.markdown;
+  const processedContent = processContent(rawContent);
+  const displayCharCount = processedContent.length;
   const initialCharCount = tab.initialCharCount;
   const percentChange = initialCharCount > 0 ? Math.round(((displayCharCount - initialCharCount) / initialCharCount) * 100) : 0;
 
@@ -108,10 +109,10 @@ function AiTabContent({ tab }: {
       <div className="flex-1 overflow-y-auto p-4">
         {previewFormat === "html" ? (
           <div className="markdown-preview prose dark:prose-invert max-w-none bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 text-sm"
-            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(String(marked.parse(displayContent, { breaks: true }))) }} />
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(String(marked.parse(rawContent, { breaks: true }))) }} />
         ) : (
           <pre className="whitespace-pre-wrap break-words bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-mono text-gray-700 dark:text-gray-200 leading-relaxed">
-            {displayContent}
+            {rawContent}
           </pre>
         )}
       </div>
@@ -126,10 +127,54 @@ export function ContentTabs() {
     processContent,
     previewMarkdown,
     activeMainTab, aiBusy,
+    appendAiTab,
   } = useProjectStore();
   const { success } = useToast();
   const { handleExportMd, handleExportZip } = useExportActions();
   const [copied, setCopied] = useState(false);
+
+  const handleImportReport = async () => {
+    try {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const { readTextFile } = await import("@tauri-apps/plugin-fs");
+      const { isValidMarkdownReport } = await import("../lib/sanitize");
+      const selected = await open({
+        multiple: true,
+        filters: [
+          { name: "Markdown", extensions: ["md"] },
+        ],
+      });
+      if (selected) {
+        const filePaths = Array.isArray(selected) ? selected : [selected];
+        for (const filePath of filePaths) {
+          const content = await readTextFile(filePath);
+          const baseName = filePath.split(/[/\\]/).pop() || "Imported Report";
+          
+          if (!isValidMarkdownReport(baseName, content)) {
+            alert(language === "vi"
+              ? `Tệp tin "${baseName}" không đúng định dạng báo cáo của Review Weaver!`
+              : `File "${baseName}" is not a valid Review Weaver report!`);
+            continue;
+          }
+          
+          const title = baseName.endsWith(".md") ? baseName.slice(0, -3) : baseName;
+          
+          appendAiTab(
+            content,
+            title,
+            content.length,
+            "Imported",
+            "N/A",
+            baseName
+          );
+        }
+        success(language === "vi" ? "Đã import báo cáo thành công!" : "Imported reports successfully!");
+      }
+    } catch (err) {
+      console.error("Import error:", err);
+      alert(language === "vi" ? `Import thất bại: ${err}` : `Import failed: ${err}`);
+    }
+  };
 
   const activeTab = contentTabs.find((tab) => tab.id === activeContentTabId);
 
@@ -321,11 +366,22 @@ export function ContentTabs() {
             </div>
           );
         })}
+
+        {/* Separator and Import button */}
+        <span className="text-gray-300 dark:text-gray-600 text-xs mx-1">|</span>
+        <button onClick={handleImportReport}
+          className="px-2 py-1 text-[10px] text-gray-400 dark:text-gray-500 hover:text-blue-500 transition-colors whitespace-nowrap">
+          {language === "vi" ? "Import báo cáo" : "Import report"}
+        </button>
+
         {contentTabs.filter((ct) => ct.kind !== "debug").length > 1 && (
-          <button onClick={closeAllAiTabs}
-            className="ml-2 px-2 py-1 text-[10px] text-gray-400 hover:text-red-500 transition-colors whitespace-nowrap">
-            {t("tab.closeAllAi", language)}
-          </button>
+          <>
+            <span className="text-gray-300 dark:text-gray-600 text-xs mx-1">|</span>
+            <button onClick={closeAllAiTabs}
+              className="px-2 py-1 text-[10px] text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors whitespace-nowrap">
+              {t("tab.closeAllAi", language)}
+            </button>
+          </>
         )}
       </div>
 

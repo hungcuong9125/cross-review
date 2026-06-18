@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Project, QaReport, Component, ValidationReport, DebugLog } from "../lib/api";
+import type { Project, QaReport, Component, ValidationReport, DebugLog, AiReportSaved } from "../lib/api";
 import { validateProject } from "../lib/api";
 import { t, type Language } from "../lib/i18n";
 
@@ -123,6 +123,7 @@ interface ProjectState {
 }
 
 const DEFAULT_PROJECT: Project = {
+  document_type: "review-weaver-project",
   title: "",
   components: [],
   qa_reports: [],
@@ -191,12 +192,24 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   setProject: (project) => {
     const migrated = migrateProject(project);
     const firstQa = migrated.qa_reports[0];
+
+    const loadedAiTabs: ContentTab[] = (migrated.ai_reports || []).map((r) => ({
+      id: r.id,
+      kind: "ai" as const,
+      title: r.title,
+      markdown: r.markdown,
+      initialCharCount: r.initial_char_count,
+      modelUsed: r.model_used,
+      promptLevel: r.prompt_level,
+      filename: r.filename,
+    }));
+
     set({
       project: migrated,
       selectedQaId: firstQa?.id ?? null,
       activeMainTab: "home",
       activeItem: firstQa ? { type: "report", qaId: firstQa.id } : null,
-      contentTabs: [DEFAULT_PREVIEW_TAB],
+      contentTabs: [DEFAULT_PREVIEW_TAB, ...loadedAiTabs],
       activeContentTabId: "preview",
       previewMarkdown: "",
       previewFilename: "",
@@ -208,7 +221,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   newProject: () => {
     set({
-      project: { ...DEFAULT_PROJECT, components: [...DEFAULT_PROJECT.components], qa_reports: [], exclude_self: true },
+      project: { ...DEFAULT_PROJECT, document_type: "review-weaver-project", components: [...DEFAULT_PROJECT.components], qa_reports: [], exclude_self: true },
       selectedQaId: null,
       activeMainTab: "home",
       activeItem: null,
@@ -549,7 +562,20 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   appendAiTab: (markdown, title, initialCharCount, modelUsed, promptLevel, filename) => {
     const id = `ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const newAiReport: AiReportSaved = {
+      id,
+      title,
+      markdown,
+      initial_char_count: initialCharCount,
+      model_used: modelUsed,
+      prompt_level: promptLevel,
+      filename,
+    };
     set((state) => ({
+      project: {
+        ...state.project,
+        ai_reports: [...(state.project.ai_reports || []), newAiReport],
+      },
       contentTabs: [
         ...state.contentTabs,
         {
@@ -600,7 +626,18 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         state.activeMainTab === "debug" && closingKind === "debug" && debugTabsLeft === 0
           ? "home"
           : state.activeMainTab;
-      return { contentTabs: tabs, activeContentTabId: activeId, activeMainTab };
+
+      const updatedAiReports = (state.project.ai_reports || []).filter((r) => r.id !== id);
+
+      return {
+        project: {
+          ...state.project,
+          ai_reports: updatedAiReports,
+        },
+        contentTabs: tabs,
+        activeContentTabId: activeId,
+        activeMainTab,
+      };
     });
   },
 
@@ -618,6 +655,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
             ? "home"
             : state.activeMainTab;
       return {
+        project: {
+          ...state.project,
+          ai_reports: [],
+        },
         contentTabs: remaining.length > 0 ? remaining : [DEFAULT_PREVIEW_TAB],
         activeContentTabId: activeId,
         activeMainTab,

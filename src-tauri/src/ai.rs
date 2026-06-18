@@ -521,15 +521,14 @@ fn build_client(cfg: &AiProviderConfig) -> Result<Client, AiErrorPayload> {
 }
 
 fn select_sources<'a>(project: &'a Project, target: Option<&'a QaReport>) -> Vec<&'a QaReport> {
-    let exclude_self = project.exclude_self;
     project
         .qa_reports
         .iter()
         .filter(|qa| {
             qa.active
                 && match target {
-                    None => !exclude_self,
-                    Some(t) => qa.id != t.id,
+                    None => true,
+                    Some(t) => !project.exclude_self || qa.id != t.id,
                 }
         })
         .collect()

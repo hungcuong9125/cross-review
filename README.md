@@ -190,6 +190,18 @@ The compiled Markdown outputs follow this structural convention:
 
 ## Changelog
 
+### v0.8.0 (2026-06-19)
+- **Feature**: AI report tabs persistence — generated AI reports are now automatically saved inside the `.review-weaver.json` project file and fully restored upon opening.
+- **Feature**: "Import report" button — load external Markdown (`.md`) reports directly into new AI tabs from the Home tab bar.
+- **Feature**: Validation checks for imports — added validation rule (`isValidMarkdownReport`) to check extension, verify signature, identify legacy exports, and strip binary garbage for both report and source document imports.
+- **Feature**: Project and Settings file verification — added JSON signature validation to protect Open Project and Import Settings actions from loading invalid or unrelated files.
+- **Fixed**: Target `None` select sources bug in Rust backend — when Cross review is active, generating consolidated reports (with no specific target) now correctly selects all active sources instead of returning an empty list.
+- **Changed**: Reorganized settings panel — added horizontal separator and divided options into two distinct columns: `DISPLAY SETTINGS` (Cross review, Compact mode, Normalize whitespace, Export as single line) and `PROCESSING SETTINGS` (Enable debug, Remove Chinese, Translate Vietnamese).
+- **Changed**: Formatting scope isolation — `Compact mode`, `Normalize whitespace`, and `Export as single line` options now only affect Copy to clipboard and Export file processes, leaving the on-screen Markdown and HTML views clean.
+- **Changed**: Professional save filename convention — default file name generation converts project title to slug format, preserving letters and removing diacritics instead of forcing lowercase.
+- **Changed**: Renamed buttons for clarity — changed toolbar options to "New project", "Open project", "Save project", and tab actions to "Close all tabs".
+- **Version**: Bumped to 0.8.0.
+
 ### v0.7.0 (2026-06-19)
 - **Security**: AI response and error messages now scrubbed via `scrub_api_key()` to prevent API key leakage in debug logs
 - **Fixed**: `select_sources()` with `exclude_self=true` and no target now correctly returns empty sources (consistent with target-filtered behavior)
