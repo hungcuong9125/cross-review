@@ -1,8 +1,8 @@
 # Review Weave
 
-![Review Weave Interface](./screenshot.png)
+![Review Weave Interface](./screenshot-v2.png)
 
-**Review Weave** is a lightweight desktop application designed to help QA teams and AI models easily cross-review each other's work.
+**Review Weave** is a lightweight desktop application designed to help QA teams and AI models easily cross-review each other's work. It supports AI-powered report consolidation using multiple LLM providers.
 
 ## How It Works
 
@@ -17,12 +17,18 @@ Review Weave solves this by taking everyone's reports and generating customized 
 
 ## Key Features
 
+- **AI-Powered Report Consolidation**: Automatically rewrite and deduplicate multiple QA reports into a single consolidated report using LLM providers (OpenAI, Anthropic, Gemini, DeepSeek, Xiaomi MiMo, OpenCode Go, Ollama, or any OpenAI-compatible endpoint).
+- **Multi-Level Prompt System**: 4 prompt modes — Source-Preserved Summary, Unified Final Report, QA Review Handoff, or fully Custom Prompt.
+- **Debug & Log Mode**: Inspect raw AI request/response payloads for troubleshooting provider integrations.
 - **Simple Organization**: Neatly organize your information sources, opening notes, and closing notes in the left sidebar.
 - **Quick Toggles**: Instantly enable or disable specific reports to include or exclude them from the final export.
 - **Live Preview**: See exactly how the Markdown or HTML files will look for each recipient team in real-time.
 - **Smart Text Processing**:
   - Automatically removes extra blank lines and trims text (`Normalize Whitespace`).
   - Flattens text into a single continuous line for feeding into LLMs (`Export as Single Line`).
+  - Remove Chinese characters and Translate Vietnamese options for AI output post-processing.
+- **Import/Export Settings**: Save and restore all app settings (AI config, UI toggles) as JSON files.
+- **Bilingual UI**: Full English and Vietnamese language support.
 - **Offline & Fast**: Built with Rust and Tauri, meaning it's lightweight, secure, and works entirely offline.
 
 ## Prompt Modes
