@@ -110,7 +110,7 @@ pub async fn ai_cancel_request() -> Result<bool, String> {
 
 #[tauri::command]
 pub fn ai_default_prompt() -> String {
-    ai::default_rewrite_prompt().to_string()
+    ai::prompt_level_2().to_string()
 }
 
 #[tauri::command]

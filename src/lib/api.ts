@@ -33,6 +33,7 @@ export type AiErrorCode =
 export interface AiErrorPayload {
   code: AiErrorCode;
   message: string;
+  debug_log?: DebugLog;
 }
 
 export interface QaReport {

@@ -184,6 +184,19 @@ The compiled Markdown outputs follow this structural convention:
 
 ## Changelog
 
+### v0.6.7 (2026-06-18)
+- **Fixed**: `draftMaxChars` now properly synced with project config, participates in dirty check, and is restored on import
+- **Fixed**: `PreviewBody` useCallback dependency array now includes all relevant project fields (`qa_reports`, `components`, `exclude_self`)
+- **Fixed**: `toggleQaActive`/`toggleComponentActive` simplified from `!(x.active === false)` to `!x.active`
+- **Fixed**: `closeAllAiTabs` now identifies AI tabs by `kind` instead of fragile `activeContentTabId` prefix check
+- **Fixed**: Test button disabled while busy (`testBusy` guard) to prevent concurrent requests
+- **Changed**: `AiErrorPayload` now carries optional `debugLog` — provider errors include request/response debug info, surfaced in UI when debug mode is on
+- **Changed**: `rewrite_for_target`/`rewrite_all` return `Err(AiErrorPayload)` with debug log on provider errors instead of wrapping the error message in `Ok`
+- **Refactored**: Extracted `normalize_base_url()` helper; removed `default_rewrite_prompt()` and empty `prompt_level_4()`; consolidated prompt resolution into `resolve_prompt()`
+- **Refactored**: SettingsPanel — extracted `buildDraftConfig()` to eliminate duplicate config construction; Import/Export buttons extracted to shared `importExportButtons` JSX variable
+- **Chore**: Removed excessive doc comments across Rust modules. Removed `#[allow(dead_code)]` from `AiErrorCode`. Moved `ReasoningEffort`/`ChatRole` imports to top-level.
+- **Version**: Bumped to 0.6.7.
+
 ### v0.6.6 (2026-06-18)
 - **Feature**: 4-level prompt system — dropdown to select prompt mode:
   - Level 1: Source-Preserved Summary — keeps reports separate with comparison table

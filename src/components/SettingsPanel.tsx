@@ -37,7 +37,7 @@ export function SettingsPanel() {
   const [draftBaseUrl, setDraftBaseUrl] = useState(project.ai_config?.base_url ?? "");
   const [draftApiKey, setDraftApiKey] = useState(project.ai_config?.api_key ?? "");
   const [draftModel, setDraftModel] = useState(project.ai_config?.model ?? "");
-  const [draftMaxChars] = useState(2_000_000);
+  const [draftMaxChars, setDraftMaxChars] = useState(project.ai_config?.max_input_chars ?? 2_000_000);
   const [draftSystemPrompt, setDraftSystemPrompt] = useState(project.ai_config?.system_prompt ?? "");
   const [draftThinkingEffort, setDraftThinkingEffort] = useState(project.ai_config?.thinking_effort ?? "");
   const [draftPromptLevel, setDraftPromptLevel] = useState(project.ai_config?.prompt_level ?? "2");
@@ -59,6 +59,7 @@ export function SettingsPanel() {
     setDraftSystemPrompt(project.ai_config?.system_prompt ?? "");
     setDraftThinkingEffort(project.ai_config?.thinking_effort ?? "");
     setDraftPromptLevel(project.ai_config?.prompt_level ?? "2");
+    setDraftMaxChars(project.ai_config?.max_input_chars ?? 2_000_000);
     setDraftTranslateVietnamese(project.ai_config?.translate_vietnamese ?? false);
     setDraftRemoveChinese(project.ai_config?.remove_chinese ?? false);
     setShowApiKey(false);
@@ -69,25 +70,28 @@ export function SettingsPanel() {
     || draftBaseUrl !== (project.ai_config?.base_url ?? "")
     || draftApiKey !== (project.ai_config?.api_key ?? "")
     || draftModel !== (project.ai_config?.model ?? "")
+    || draftMaxChars !== (project.ai_config?.max_input_chars ?? 2_000_000)
     || draftSystemPrompt !== (project.ai_config?.system_prompt ?? "")
     || draftThinkingEffort !== (project.ai_config?.thinking_effort ?? "")
     || draftTranslateVietnamese !== (project.ai_config?.translate_vietnamese ?? false)
     || draftRemoveChinese !== (project.ai_config?.remove_chinese ?? false)
     || draftPromptLevel !== (project.ai_config?.prompt_level ?? "2");
 
+  const buildDraftConfig = () => ({
+    kind: draftKind,
+    base_url: draftBaseUrl,
+    api_key: draftApiKey,
+    model: draftModel,
+    max_input_chars: draftMaxChars,
+    system_prompt: draftSystemPrompt,
+    thinking_effort: draftThinkingEffort,
+    translate_vietnamese: draftTranslateVietnamese,
+    remove_chinese: draftRemoveChinese,
+    prompt_level: draftPromptLevel,
+  });
+
   const handleSave = () => {
-    const newConfig = {
-      kind: draftKind,
-      base_url: draftBaseUrl,
-      api_key: draftApiKey,
-      model: draftModel,
-      max_input_chars: draftMaxChars,
-      system_prompt: draftSystemPrompt,
-      thinking_effort: draftThinkingEffort,
-      translate_vietnamese: draftTranslateVietnamese,
-      remove_chinese: draftRemoveChinese,
-      prompt_level: draftPromptLevel,
-    };
+    const newConfig = buildDraftConfig();
     useProjectStore.setState((state) => ({
       project: { ...state.project, ai_config: newConfig },
     }));
@@ -96,20 +100,13 @@ export function SettingsPanel() {
     success(t("toast.aiSaved", language));
   };
 
+  const [testBusy, setTestBusy] = useState(false);
+
   const handleTest = async () => {
+    if (testBusy) return;
+    setTestBusy(true);
     setTestResult(null);
-    const config = {
-      kind: draftKind,
-      base_url: draftBaseUrl,
-      api_key: draftApiKey,
-      model: draftModel,
-      max_input_chars: draftMaxChars,
-      system_prompt: draftSystemPrompt,
-      thinking_effort: draftThinkingEffort,
-      translate_vietnamese: draftTranslateVietnamese,
-      remove_chinese: draftRemoveChinese,
-      prompt_level: draftPromptLevel,
-    };
+    const config = buildDraftConfig();
     try {
       if (debugEnabled) {
         const log = await aiTestProviderDebug(config);
@@ -130,6 +127,8 @@ export function SettingsPanel() {
       const msg = typeof err === "string" ? err : (err as AiErrorPayload).message ?? String(err);
       setTestResult(msg);
       toastError(msg);
+    } finally {
+      setTestBusy(false);
     }
   };
 
@@ -154,9 +153,9 @@ export function SettingsPanel() {
     }).then((result) => {
       if (cancelled) return;
       setModels(result);
-    }).catch(() => { });
+    }).catch((e) => { console.error("Failed to fetch models:", e); });
     return () => { cancelled = true; };
-  }, [draftKind]);
+  }, [draftKind, draftBaseUrl, draftApiKey]);
 
   const handleGenerate = async () => {
     if (aiBusy) return;
@@ -186,6 +185,11 @@ export function SettingsPanel() {
     } catch (err) {
       if (typeof err === "string") { toastError(err); return; }
       const e = err as AiErrorPayload;
+      // If debug enabled and error has a debug log, show it
+      if (debugEnabled && e.debug_log) {
+        appendDebugTab(e.debug_log);
+        setActiveMainTab("debug");
+      }
       switch (e.code) {
         case "input_too_large":
           toastError(e.message);
@@ -229,7 +233,6 @@ export function SettingsPanel() {
     try {
       await aiCancelRequest();
     } catch {
-      // If cancel IPC fails, reset busy state so UI isn't stuck
       setAiBusy(false);
     }
   };
@@ -288,12 +291,24 @@ export function SettingsPanel() {
           setDraftThinkingEffort(settings.ai_config.thinking_effort);
           setDraftTranslateVietnamese(settings.ai_config.translate_vietnamese);
           setDraftRemoveChinese(settings.ai_config.remove_chinese);
+          setDraftMaxChars(settings.ai_config.max_input_chars);
           setDraftPromptLevel(settings.ai_config.prompt_level);
         }
         success(language === "vi" ? "Đã nhập cài đặt" : "Settings imported");
       }
     } catch (err) { toastError(`Import failed: ${err}`); }
   };
+
+  const importExportButtons = (
+    <>
+      <button onClick={handleImportSettings} className="text-[10px] text-blue-500 hover:underline">
+        {language === "vi" ? "Nhập cài đặt" : "Import settings"}
+      </button>
+      <button onClick={handleExportSettings} className="text-[10px] text-blue-500 hover:underline">
+        {language === "vi" ? "Xuất cài đặt" : "Export settings"}
+      </button>
+    </>
+  );
 
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700">
@@ -461,14 +476,7 @@ export function SettingsPanel() {
                   <button onClick={() => setDraftSystemPrompt("")} className="text-[10px] text-blue-500 hover:underline">
                     {t("settings.aiPrompt.reset", language)}
                   </button>
-                  <div className="flex items-center gap-4">
-                    <button onClick={handleImportSettings} className="text-[10px] text-blue-500 hover:underline">
-                      {language === "vi" ? "Nhập cài đặt" : "Import settings"}
-                    </button>
-                    <button onClick={handleExportSettings} className="text-[10px] text-blue-500 hover:underline">
-                      {language === "vi" ? "Xuất cài đặt" : "Export settings"}
-                    </button>
-                  </div>
+                  {importExportButtons}
                 </div>
               </div>
             )}
@@ -476,18 +484,13 @@ export function SettingsPanel() {
             {/* Import/Export settings — shown when not level 4 */}
             {draftPromptLevel !== "4" && (
               <div className="flex items-center justify-end gap-4 mt-0.5">
-                <button onClick={handleImportSettings} className="text-[10px] text-blue-500 hover:underline">
-                  {language === "vi" ? "Nhập cài đặt" : "Import settings"}
-                </button>
-                <button onClick={handleExportSettings} className="text-[10px] text-blue-500 hover:underline">
-                  {language === "vi" ? "Xuất cài đặt" : "Export settings"}
-                </button>
+                {importExportButtons}
               </div>
             )}
 
             {/* Test + Save buttons */}
             <div className="flex gap-1">
-              <button onClick={handleTest} className="flex-1 px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors">
+              <button onClick={handleTest} disabled={testBusy} className="flex-1 px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                 {t("settings.aiProvider.test", language)}
               </button>
               <button onClick={handleSave} className="flex-1 px-3 py-1.5 text-xs font-medium bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors">

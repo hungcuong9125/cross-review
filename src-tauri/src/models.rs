@@ -87,7 +87,6 @@ impl std::fmt::Debug for AiProviderConfig {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum AiErrorCode {
     NotConfigured,
@@ -149,6 +148,8 @@ impl<'de> Deserialize<'de> for AiErrorCode {
 pub struct AiErrorPayload {
     pub code: AiErrorCode,
     pub message: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub debug_log: Option<DebugLog>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

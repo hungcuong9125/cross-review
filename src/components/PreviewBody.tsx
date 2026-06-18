@@ -53,7 +53,7 @@ export function PreviewBody() {
     } finally {
       setLoading(false);
     }
-  }, [project, selectedQaId]);
+  }, [project.qa_reports, project.components, project.exclude_self, selectedQaId]);
 
   useEffect(() => {
     refreshPreview();

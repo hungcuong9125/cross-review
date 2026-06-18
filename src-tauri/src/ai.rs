@@ -6,9 +6,20 @@ use crate::models::{
     AiErrorCode, AiErrorPayload, AiProviderConfig, AiProviderKind, DebugLog, Project, QaReport,
 };
 use genai::adapter::AdapterKind;
-use genai::chat::{ChatMessage, ChatOptions, ChatRequest};
+use genai::chat::{ChatMessage, ChatOptions, ChatRequest, ChatRole, ReasoningEffort};
 use genai::resolver::{AuthData, Endpoint, ProviderConfig, ServiceTargetResolver};
 use genai::Client;
+
+fn normalize_base_url(raw: &str) -> String {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        String::new()
+    } else if trimmed.ends_with('/') {
+        trimmed.to_string()
+    } else {
+        format!("{trimmed}/")
+    }
+}
 
 static CURRENT_CANCEL_TOKEN: OnceLock<Mutex<Option<CancellationToken>>> = OnceLock::new();
 
@@ -33,10 +44,6 @@ pub fn cancel_in_flight() -> bool {
     }
     false
 }
-pub fn default_rewrite_prompt() -> &'static str {
-    prompt_level_2()
-}
-
 pub fn prompt_level_1() -> &'static str {
     "You are a professional technical report editor.\n\
      Your task is to rewrite and summarize multiple source reports while preserving the separation between them.\n\
@@ -428,10 +435,6 @@ pub fn prompt_level_3() -> &'static str {
      The final answer must be valid Markdown."
 }
 
-pub fn prompt_level_4() -> &'static str {
-    ""
-}
-
 pub fn scrub_api_key(s: &str, api_key: &str) -> String {
     if api_key.is_empty() {
         return s.to_string();
@@ -439,15 +442,10 @@ pub fn scrub_api_key(s: &str, api_key: &str) -> String {
     s.replace(api_key, "<REDACTED>")
 }
 
-/// Removes CJK Unified Ideographs and CJK punctuation. Keeps Latin, Vietnamese, markdown.
 pub fn strip_chinese(text: &str) -> String {
     text.chars()
         .filter(|c| {
             let cp = *c as u32;
-            // CJK Unified Ideographs: U+4E00..U+9FFF
-            // CJK Unified Ideographs Extension A: U+3400..U+4DBF
-            // CJK Compatibility Ideographs: U+F900..U+FAFF
-            // CJK Symbols and Punctuation: U+3000..U+303F (、。，：；etc.)
             let is_cjk = (0x4E00..=0x9FFF).contains(&cp)
                 || (0x3400..=0x4DBF).contains(&cp)
                 || (0xF900..=0xFAFF).contains(&cp)
@@ -484,19 +482,10 @@ fn build_client(cfg: &AiProviderConfig) -> Result<Client, AiErrorPayload> {
                 message: "OpenaiCompatible requires a base_url".to_string(),
             },
             message: "OpenaiCompatible requires a base_url".to_string(),
+            debug_log: None,
         });
     }
-    // Trailing slash ensures Url::join("chat/completions") resolves correctly.
-    let user_base_url = {
-        let trimmed = cfg.base_url.trim();
-        if trimmed.is_empty() {
-            String::new()
-        } else if trimmed.ends_with('/') {
-            trimmed.to_string()
-        } else {
-            format!("{trimmed}/")
-        }
-    };
+    let user_base_url = normalize_base_url(&cfg.base_url);
     let user_api_key = cfg.api_key.clone();
 
     let target_resolver = ServiceTargetResolver::from_resolver_fn(
@@ -544,20 +533,8 @@ fn estimate_chars(sources: &[&QaReport]) -> usize {
         .sum()
 }
 
-fn system_prompt_chars(cfg: &AiProviderConfig) -> usize {
-    if cfg.system_prompt.trim().is_empty() {
-        default_rewrite_prompt().chars().count()
-    } else {
-        cfg.system_prompt.chars().count()
-    }
-}
-
-fn estimate_total_chars(sources: &[&QaReport], cfg: &AiProviderConfig) -> usize {
-    estimate_chars(sources) + system_prompt_chars(cfg) + 64
-}
-
-fn build_chat_request(cfg: &AiProviderConfig, sources: &[&QaReport]) -> ChatRequest {
-    let mut system = match cfg.prompt_level.as_str() {
+fn resolve_prompt(cfg: &AiProviderConfig) -> String {
+    let base = match cfg.prompt_level.as_str() {
         "1" => prompt_level_1().to_string(),
         "3" => prompt_level_3().to_string(),
         "4" => {
@@ -570,8 +547,18 @@ fn build_chat_request(cfg: &AiProviderConfig, sources: &[&QaReport]) -> ChatRequ
         _ => prompt_level_2().to_string(), // "2" or empty → level 2
     };
     if cfg.translate_vietnamese {
-        system = prepend_vietnamese_instruction(&system);
+        prepend_vietnamese_instruction(&base)
+    } else {
+        base
     }
+}
+
+fn estimate_total_chars(sources: &[&QaReport], cfg: &AiProviderConfig) -> usize {
+    estimate_chars(sources) + resolve_prompt(cfg).chars().count() + 64
+}
+
+fn build_chat_request(cfg: &AiProviderConfig, sources: &[&QaReport]) -> ChatRequest {
+    let system = resolve_prompt(cfg);
     let mut body = String::with_capacity(estimate_chars(sources));
     for (i, qa) in sources.iter().enumerate() {
         if i > 0 {
@@ -596,7 +583,6 @@ const REWRITE_TIMEOUT_SECS: u64 = 120;
 const TEST_TIMEOUT_SECS: u64 = 30;
 
 fn build_chat_options(cfg: &AiProviderConfig) -> Option<ChatOptions> {
-    use genai::chat::ReasoningEffort;
     let effort = match cfg.thinking_effort.trim().to_lowercase().as_str() {
         "low" => Some(ReasoningEffort::Low),
         "medium" => Some(ReasoningEffort::Medium),
@@ -628,6 +614,7 @@ async fn exec(
                             .ok_or_else(|| AiErrorPayload {
                                 code: AiErrorCode::EmptyResponse,
                                 message: "AI returned an empty response.".to_string(),
+                                debug_log: None,
                             })
                     }
                     Ok(Err(e)) => {
@@ -636,33 +623,33 @@ async fn exec(
                         Err(AiErrorPayload {
                             code: AiErrorCode::Provider { message: scrubbed.clone() },
                             message: format!("AI provider error: {scrubbed}"),
+                            debug_log: None,
                         })
                     }
                     Err(_) => Err(AiErrorPayload {
                         code: AiErrorCode::Timeout { seconds: timeout_secs },
                         message: format!("AI request timed out after {timeout_secs}s"),
+                        debug_log: None,
                     }),
                 }
             }
             _ = cancel.cancelled() => Err(AiErrorPayload {
                 code: AiErrorCode::Cancelled,
                 message: "AI request was cancelled.".to_string(),
+                debug_log: None,
             }),
         }
     };
     fut.await
 }
 
-/// Result of a rewrite call: the markdown output, input char count, and optional debug log.
 pub struct RewriteOutput {
     pub markdown: String,
     pub input_chars: usize,
     pub debug_log: Option<DebugLog>,
 }
 
-/// Capture debug info from a ChatRequest before sending.
 fn capture_request_debug(request: &ChatRequest, cfg: &AiProviderConfig) -> String {
-    use genai::chat::ChatRole;
     let debug_request = serde_json::json!({
         "system": request.system.as_deref().unwrap_or(""),
         "messages": request.messages.iter().map(|m| {
@@ -708,6 +695,7 @@ pub async fn rewrite_for_target(
     let cfg = project.ai_config.as_ref().ok_or(AiErrorPayload {
         code: AiErrorCode::NotConfigured,
         message: "AI is not configured. Open Settings to add a provider.".to_string(),
+        debug_log: None,
     })?;
     let target = project
         .qa_reports
@@ -716,12 +704,14 @@ pub async fn rewrite_for_target(
         .ok_or_else(|| AiErrorPayload {
             code: AiErrorCode::TargetNotFound,
             message: format!("Target QA '{target_qa_id}' not found."),
+            debug_log: None,
         })?;
     let sources = select_sources(project, Some(target));
     if sources.is_empty() {
         return Err(AiErrorPayload {
             code: AiErrorCode::NoSources,
             message: "No active sources to rewrite.".to_string(),
+            debug_log: None,
         });
     }
     let chars = estimate_total_chars(&sources, cfg);
@@ -735,6 +725,7 @@ pub async fn rewrite_for_target(
                 "Input is {chars} chars, exceeds limit {} (raise in Settings).",
                 cfg.max_input_chars
             ),
+            debug_log: None,
         });
     }
     let request = build_chat_request(cfg, &sources);
@@ -754,15 +745,21 @@ pub async fn rewrite_for_target(
     )
     .await;
     let duration_ms = start.elapsed().as_millis() as u64;
-    result.map(|markdown| {
-        let markdown = if cfg.remove_chinese {
-            strip_chinese(&markdown)
-        } else {
-            markdown
-        };
-        let debug_log = make_debug_log(cfg, request_summary, markdown.chars().take(5000).collect(), duration_ms, true);
-        RewriteOutput { markdown, input_chars: chars, debug_log: Some(debug_log) }
-    })
+    match result {
+        Ok(markdown) => {
+            let markdown = if cfg.remove_chinese {
+                strip_chinese(&markdown)
+            } else {
+                markdown
+            };
+            let debug_log = make_debug_log(cfg, request_summary, markdown.chars().take(5000).collect(), duration_ms, true);
+            Ok(RewriteOutput { markdown, input_chars: chars, debug_log: Some(debug_log) })
+        }
+        Err(e) => {
+            let debug_log = make_debug_log(cfg, request_summary, e.message.clone(), duration_ms, false);
+            Err(AiErrorPayload { code: e.code, message: e.message, debug_log: Some(debug_log) })
+        }
+    }
 }
 
 pub async fn rewrite_all(
@@ -772,12 +769,14 @@ pub async fn rewrite_all(
     let cfg = project.ai_config.as_ref().ok_or(AiErrorPayload {
         code: AiErrorCode::NotConfigured,
         message: "AI is not configured. Open Settings to add a provider.".to_string(),
+        debug_log: None,
     })?;
     let sources = select_sources(project, None);
     if sources.is_empty() {
         return Err(AiErrorPayload {
             code: AiErrorCode::NoSources,
             message: "No active sources to rewrite.".to_string(),
+            debug_log: None,
         });
     }
     let chars = estimate_total_chars(&sources, cfg);
@@ -791,6 +790,7 @@ pub async fn rewrite_all(
                 "Input is {chars} chars, exceeds limit {} (raise in Settings).",
                 cfg.max_input_chars
             ),
+            debug_log: None,
         });
     }
     let request = build_chat_request(cfg, &sources);
@@ -810,15 +810,21 @@ pub async fn rewrite_all(
     )
     .await;
     let duration_ms = start.elapsed().as_millis() as u64;
-    result.map(|markdown| {
-        let markdown = if cfg.remove_chinese {
-            strip_chinese(&markdown)
-        } else {
-            markdown
-        };
-        let debug_log = make_debug_log(cfg, request_summary, markdown.chars().take(5000).collect(), duration_ms, true);
-        RewriteOutput { markdown, input_chars: chars, debug_log: Some(debug_log) }
-    })
+    match result {
+        Ok(markdown) => {
+            let markdown = if cfg.remove_chinese {
+                strip_chinese(&markdown)
+            } else {
+                markdown
+            };
+            let debug_log = make_debug_log(cfg, request_summary, markdown.chars().take(5000).collect(), duration_ms, true);
+            Ok(RewriteOutput { markdown, input_chars: chars, debug_log: Some(debug_log) })
+        }
+        Err(e) => {
+            let debug_log = make_debug_log(cfg, request_summary, e.message.clone(), duration_ms, false);
+            Err(AiErrorPayload { code: e.code, message: e.message, debug_log: Some(debug_log) })
+        }
+    }
 }
 
 pub async fn test_provider(cfg: &AiProviderConfig) -> Result<(), AiErrorPayload> {
@@ -845,7 +851,6 @@ pub async fn test_provider(cfg: &AiProviderConfig) -> Result<(), AiErrorPayload>
     Ok(())
 }
 
-/// Like `test_provider` but returns a debug log with request/response details.
 pub async fn test_provider_debug(cfg: &AiProviderConfig) -> Result<DebugLog, AiErrorPayload> {
     let client = build_client(cfg)?;
     let request = ChatRequest::default()
@@ -854,14 +859,7 @@ pub async fn test_provider_debug(cfg: &AiProviderConfig) -> Result<DebugLog, AiE
     let cancel = CancellationToken::new();
     let chat_options = build_chat_options(cfg);
 
-    // Capture request details
-    let request_json = serde_json::json!({
-        "system": "Reply with the single word: ok",
-        "messages": [{"role": "user", "content": "ping"}],
-        "model": cfg.model,
-        "thinking_effort": cfg.thinking_effort,
-    });
-    let request_summary = serde_json::to_string_pretty(&request_json).unwrap_or_default();
+    let request_summary = capture_request_debug(&request, cfg);
 
     let start = std::time::Instant::now();
     let result = exec(
@@ -876,44 +874,21 @@ pub async fn test_provider_debug(cfg: &AiProviderConfig) -> Result<DebugLog, AiE
     .await;
     let duration_ms = start.elapsed().as_millis() as u64;
 
-    let ts = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
-    let timestamp = format!("{}", ts);
-
     match result {
-        Ok(text) => Ok(DebugLog {
-            timestamp,
-            provider: cfg.kind.as_str().to_string(),
-            model: cfg.model.clone(),
-            thinking_effort: cfg.thinking_effort.clone(),
-            request_messages: request_summary,
-            response_text: text,
-            duration_ms,
-            success: true,
-        }),
-        Err(e) => Ok(DebugLog {
-            timestamp,
-            provider: cfg.kind.as_str().to_string(),
-            model: cfg.model.clone(),
-            thinking_effort: cfg.thinking_effort.clone(),
-            request_messages: request_summary,
-            response_text: e.message.clone(),
-            duration_ms,
-            success: false,
-        }),
+        Ok(text) => Ok(make_debug_log(cfg, request_summary, text, duration_ms, true)),
+        Err(e) => Ok(make_debug_log(cfg, request_summary, e.message, duration_ms, false)),
     }
 }
 
 pub async fn list_models(cfg: &AiProviderConfig) -> Result<Vec<String>, AiErrorPayload> {
     let client = build_client(cfg)?;
     let adapter = to_adapter(cfg.kind);
+    let base_url = normalize_base_url(&cfg.base_url);
     let provider_config = ProviderConfig {
-        endpoint: if cfg.base_url.trim().is_empty() {
+        endpoint: if base_url.is_empty() {
             None
         } else {
-            Some(Endpoint::from_owned(cfg.base_url.trim().to_string()))
+            Some(Endpoint::from_owned(base_url))
         },
         auth: if cfg.api_key.is_empty() {
             None
@@ -991,7 +966,6 @@ pub async fn list_models(cfg: &AiProviderConfig) -> Result<Vec<String>, AiErrorP
                 "qwen3.7-plus".to_string(),
             ]
         }
-        // OpenaiCompatible: no fallback — user types model name freely
         AiProviderKind::OpenaiCompatible => vec![],
     })
 }
@@ -1099,7 +1073,6 @@ mod tests {
             translate_vietnamese: false,
             remove_chinese: false,
         };
-        // source chars: name(1) + content(5) + 16 = 22, + system_prompt(10) + 64 = 96
         let total = estimate_total_chars(&source_refs, &cfg);
         assert!(
             total > 90,
@@ -1110,7 +1083,7 @@ mod tests {
 
     #[test]
     fn test_default_system_prompt_includes_language_rule() {
-        let prompt = default_rewrite_prompt();
+        let prompt = prompt_level_2();
         assert!(
             prompt.contains("English") || prompt.contains("language"),
             "Default prompt should mention language"
@@ -1135,16 +1108,13 @@ mod tests {
 
     #[test]
     fn test_cancel_in_flight_returns_true() {
-        // No token registered yet — should return false
         assert!(!cancel_in_flight(), "cancel_in_flight should return false when no token registered");
 
-        // Register a token — cancel_in_flight should return true
         let token = CancellationToken::new();
         register_cancel(token.clone());
         assert!(cancel_in_flight(), "cancel_in_flight should return true after register");
         assert!(token.is_cancelled(), "Token should be cancelled");
 
-        // After cancel_in_flight took the token, slot is empty — should return false
         assert!(!cancel_in_flight(), "cancel_in_flight should return false after token was taken");
     }
 
@@ -1163,21 +1133,13 @@ mod tests {
         let token2 = CancellationToken::new();
         register_cancel(token1.clone());
         register_cancel(token2.clone());
-        // token1 should have been cancelled by register_cancel replacement
         assert!(token1.is_cancelled(), "Previous token should be cancelled on replace");
-        // cancel_in_flight should cancel token2
         assert!(cancel_in_flight());
         assert!(token2.is_cancelled(), "Current token should be cancelled");
     }
 
     #[test]
     fn test_input_too_large() {
-        // Create sources that exceed a small max_input_chars limit.
-        // The estimate_total_chars includes source chars + system_prompt_chars + 64.
-        // One source with name "A" (1) + content "hello world" (11) + 16 = 28
-        // system_prompt_chars with default prompt is ~1430 chars
-        // total = 28 + ~1430 + 64 = ~1522
-        // Set max_input_chars = 1, so it's guaranteed to exceed.
         let qa = QaReport {
             id: "1".into(),
             name: "A".into(),
@@ -1197,7 +1159,7 @@ mod tests {
             api_key: String::new(),
             model: "llama3.2".into(),
             system_prompt: String::new(),
-            max_input_chars: 1, // impossibly low — always triggers InputTooLarge
+            max_input_chars: 1,
             thinking_effort: String::new(),
             prompt_level: "2".to_string(),
             translate_vietnamese: false,
@@ -1206,8 +1168,6 @@ mod tests {
         let total = estimate_total_chars(&source_refs, &cfg);
         assert!(total > cfg.max_input_chars, "estimate_total_chars should exceed max_input_chars limit");
 
-        // Verify the error code shape — InputTooLarge is returned when chars > max
-        // (without calling the provider, which is enforced by the early return in rewrite_*)
         assert!(total > 1, "total chars should exceed the tiny limit");
     }
 
@@ -1227,7 +1187,6 @@ mod tests {
 
     #[test]
     fn test_strip_chinese_removes_cjk_punctuation() {
-        // CJK symbols (U+3000-303F) are removed, fullwidth ASCII (U+FF00+) are kept
         let input = "Hello、world。你好！test【bracket】";
         let result = strip_chinese(input);
         assert_eq!(result, "Helloworld！testbracket");
@@ -1251,10 +1210,6 @@ mod tests {
 
     #[test]
     fn test_service_target_uses_base_url_when_set() {
-        // Verify that build_client succeeds with a custom base_url and
-        // does not panic. The actual ServiceTargetResolver behaviour is
-        // exercised at integration level (requires a running endpoint),
-        // but we can at least confirm the client builds without error.
         let cfg = AiProviderConfig {
             kind: AiProviderKind::OpenaiCompatible,
             base_url: "http://127.0.0.1:8080/v1/".into(),
@@ -1270,7 +1225,6 @@ mod tests {
         let result = build_client(&cfg);
         assert!(result.is_ok(), "build_client should succeed with custom base_url");
 
-        // Verify that OpenaiCompatible with empty base_url fails
         let cfg_no_url = AiProviderConfig {
             kind: AiProviderKind::OpenaiCompatible,
             base_url: String::new(),
@@ -1288,7 +1242,6 @@ mod tests {
     }
 }
 
-/// Integration tests — set REVIEW_WEAVER_RUN_AI_TESTS=1 to enable.
 #[cfg(test)]
 mod integration {
     use super::*;

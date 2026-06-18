@@ -434,7 +434,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       project: {
         ...state.project,
         qa_reports: state.project.qa_reports.map((q) =>
-          q.id === id ? { ...q, active: !(q.active === false) } : q
+          q.id === id ? { ...q, active: !q.active } : q
         ),
       },
     }));
@@ -446,7 +446,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       project: {
         ...state.project,
         components: state.project.components.map((c) =>
-          c.id === id ? { ...c, active: !(c.active === false) } : c
+          c.id === id ? { ...c, active: !c.active } : c
         ),
       },
     }));
@@ -557,7 +557,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   closeAllAiTabs: () => {
     set((state) => {
       const remaining = state.contentTabs.filter((t) => t.kind === "preview" || t.kind === "debug");
-      const activeId = state.activeContentTabId.startsWith("ai-") ? "preview" : state.activeContentTabId;
+      const activeTab = state.contentTabs.find((t) => t.id === state.activeContentTabId);
+      const activeId = activeTab?.kind === "ai" ? "preview" : state.activeContentTabId;
       return { contentTabs: remaining.length > 0 ? remaining : [DEFAULT_PREVIEW_TAB], activeContentTabId: activeId };
     });
   },
