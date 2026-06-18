@@ -97,6 +97,22 @@ export async function exportAllZip(
   return invoke<string>("export_all_zip", { project, outputZipPath });
 }
 
+export async function exportSingleMarkdown(
+  markdown: string,
+  outputPath: string
+): Promise<void> {
+  return invoke<void>("export_single_markdown", { markdown, outputPath });
+}
+
+export async function exportSingleZip(
+  filename: string,
+  markdown: string,
+  outputZipPath: string
+): Promise<string> {
+  return invoke<string>("export_single_zip", { filename, markdown, outputZipPath });
+}
+
+
 export async function saveProject(
   project: Project,
   path: string

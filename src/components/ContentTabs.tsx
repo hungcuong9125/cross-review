@@ -8,16 +8,127 @@ import { marked } from "marked";
 import DOMPurify from "dompurify";
 import pkg from "../../package.json";
 
+function AiTabContent({ tab }: {
+  tab: {
+    id: string;
+    kind: "ai";
+    title: string;
+    markdown: string;
+    initialCharCount: number;
+    modelUsed: string;
+    promptLevel: string;
+    filename: string;
+  };
+}) {
+  const {
+    language,
+    previewFormat,
+    processContent,
+    compactMode,
+    removeWhitespace,
+    mergeLines,
+  } = useProjectStore();
+
+
+  const displayContent = processContent(tab.markdown);
+  const displayCharCount = displayContent.length;
+  const initialCharCount = tab.initialCharCount;
+  const percentChange = initialCharCount > 0 ? Math.round(((displayCharCount - initialCharCount) / initialCharCount) * 100) : 0;
+
+  const getPromptLevelLabel = (level: string, lang: string) => {
+    switch (level) {
+      case "1": return lang === "vi" ? "Mức 1" : "Level 1";
+      case "2": return lang === "vi" ? "Mức 2" : "Level 2";
+      case "3": return lang === "vi" ? "Mức 3" : "Level 3";
+      case "4": return lang === "vi" ? "Mức 4" : "Level 4";
+      default: return `Level ${level}`;
+    }
+  };
+
+  return (
+    <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
+      {/* Header/Stats Grid */}
+      <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
+        <div className="grid grid-cols-5 gap-2">
+          {/* Model */}
+          <div className="px-2.5 py-1.5 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">
+              {t("preview.modelUsed", language)}
+            </p>
+            <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 truncate" title={tab.modelUsed}>
+              {tab.modelUsed}
+            </p>
+          </div>
+          {/* Report Mode */}
+          <div className="px-2.5 py-1.5 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">
+              {t("preview.promptLevel", language)}
+            </p>
+            <p className="text-sm font-semibold text-purple-600 dark:text-purple-400 truncate">
+              {getPromptLevelLabel(tab.promptLevel, language)}
+            </p>
+          </div>
+          <div className="px-2.5 py-1.5 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">
+              {t("preview.initialCharacters", language)}
+            </p>
+            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 font-mono">
+              {initialCharCount.toLocaleString()}
+            </p>
+          </div>
+          {/* Current characters */}
+          <div className="px-2.5 py-1.5 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">
+              {t("preview.characters", language)}
+              {(compactMode || removeWhitespace || mergeLines) && (
+                <span className="ml-1 text-[8px] text-blue-500">(proc)</span>
+              )}
+            </p>
+            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              {displayCharCount.toLocaleString()}
+              {initialCharCount > 0 && (
+                <span className={`ml-1 text-xs font-normal ${percentChange < 0 ? "text-green-600 dark:text-green-400" : percentChange > 0 ? "text-red-500" : "text-gray-500"}`}>
+                  ({percentChange >= 0 ? "+" : ""}{percentChange}%)
+                </span>
+              )}
+            </p>
+          </div>
+          {/* Export Filename */}
+          <div className="px-2.5 py-1.5 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">
+              {t("preview.file", language)}
+            </p>
+            <p className="text-xs font-mono font-medium text-gray-700 dark:text-gray-300 truncate" title={tab.filename}>
+              {tab.filename}
+            </p>
+          </div>
+        </div>
+      </div>
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {previewFormat === "html" ? (
+          <div className="markdown-preview prose dark:prose-invert max-w-none bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 text-sm"
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(String(marked.parse(displayContent, { breaks: true }))) }} />
+        ) : (
+          <pre className="whitespace-pre-wrap break-words bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-mono text-gray-700 dark:text-gray-200 leading-relaxed">
+            {displayContent}
+          </pre>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function ContentTabs() {
   const {
     contentTabs, activeContentTabId, setActiveContentTab,
     closeContentTab, closeAllAiTabs, language,
-    processContent, previewFormat, project,
-    previewMarkdown, validation,
+    processContent,
+    previewMarkdown,
     activeMainTab, aiBusy,
   } = useProjectStore();
   const { success } = useToast();
-  const { handleExportMd, handleExportZip } = useExportActions(project, validation, language);
+  const { handleExportMd, handleExportZip } = useExportActions();
   const [copied, setCopied] = useState(false);
 
   const activeTab = contentTabs.find((tab) => tab.id === activeContentTabId);
@@ -223,16 +334,7 @@ export function ContentTabs() {
         {activeTab?.kind === "preview" ? (
           <PreviewBody />
         ) : activeTab?.kind === "ai" ? (
-          <div className="h-full overflow-y-auto p-4">
-            {previewFormat === "html" ? (
-              <div className="markdown-preview prose dark:prose-invert max-w-none bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 text-sm"
-                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(String(marked.parse(processContent(activeTab.markdown), { breaks: true }))) }} />
-            ) : (
-              <pre className="whitespace-pre-wrap break-words bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-mono text-gray-700 dark:text-gray-200 leading-relaxed">
-                {processContent(activeTab.markdown)}
-              </pre>
-            )}
-          </div>
+          <AiTabContent tab={activeTab} />
         ) : null}
       </div>
 

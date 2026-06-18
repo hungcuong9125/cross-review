@@ -31,8 +31,11 @@ export const translations = {
   'preview.copy': { vi: 'Copy Markdown', en: 'Copy Markdown' },
   'preview.reports': { vi: 'Nguồn thông tin', en: 'Information sources' },
   'preview.excludedCount': { vi: 'Nguồn bị loại trừ', en: 'Excluded sources' },
-  'preview.characters': { vi: 'Số ký tự', en: 'Character count' },
+  'preview.characters': { vi: 'Ký tự còn lại', en: 'Remaining characters' },
   'preview.file': { vi: 'Tên file xuất', en: 'Export filename' },
+  'preview.initialCharacters': { vi: 'Tổng ký tự ban đầu', en: 'Total characters' },
+  'preview.modelUsed': { vi: 'Model tạo báo cáo', en: 'Generation model' },
+  'preview.promptLevel': { vi: 'Chế độ báo cáo', en: 'Report mode' },
 
   // Settings
   'settings.removeWhitespace': { vi: 'Chuẩn hóa khoảng trắng', en: 'Normalize whitespace' },

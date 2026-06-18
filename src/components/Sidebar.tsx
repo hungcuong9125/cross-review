@@ -82,8 +82,7 @@ export function Sidebar() {
   } = useProjectStore();
 
   const { success, error: toastError } = useToast();
-  const validation = useProjectStore((s) => s.validation);
-  const { handleExportMd, handleExportZip } = useExportActions(project, validation, language);
+  const { handleExportMd, handleExportZip } = useExportActions();
 
   const handleImport = async () => {
     try {

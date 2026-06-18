@@ -15,7 +15,16 @@ export type MainTab = "home" | "reports" | "opening" | "closing" | "debug";
 
 export type ContentTab =
   | { id: "preview"; kind: "preview"; title: string }
-  | { id: string; kind: "ai"; title: string; markdown: string }
+  | {
+      id: string;
+      kind: "ai";
+      title: string;
+      markdown: string;
+      initialCharCount: number;
+      modelUsed: string;
+      promptLevel: string;
+      filename: string;
+    }
   | { id: string; kind: "debug"; title: string; log: DebugLog };
 
 export type ActiveItem =
@@ -39,7 +48,14 @@ interface ProjectState {
   contentTabs: ContentTab[];
   activeContentTabId: string;
   setActiveContentTab: (id: string) => void;
-  appendAiTab: (markdown: string, title: string) => string;
+  appendAiTab: (
+    markdown: string,
+    title: string,
+    initialCharCount: number,
+    modelUsed: string,
+    promptLevel: string,
+    filename: string,
+  ) => string;
   appendDebugTab: (log: DebugLog) => string;
   closeContentTab: (id: string) => void;
   closeAllAiTabs: () => void;
@@ -102,6 +118,8 @@ interface ProjectState {
   // Preview markdown (for copy in footer)
   previewMarkdown: string;
   setPreviewMarkdown: (md: string) => void;
+  previewFilename: string;
+  setPreviewFilename: (name: string) => void;
 }
 
 const DEFAULT_PROJECT: Project = {
@@ -168,6 +186,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   previewFormat: "html",
   aiBusy: false,
   previewMarkdown: "",
+  previewFilename: "",
 
   setProject: (project) => {
     const migrated = migrateProject(project);
@@ -180,6 +199,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       contentTabs: [DEFAULT_PREVIEW_TAB],
       activeContentTabId: "preview",
       previewMarkdown: "",
+      previewFilename: "",
       aiBusy: false,
       validation: null,
     });
@@ -195,6 +215,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       contentTabs: [DEFAULT_PREVIEW_TAB],
       activeContentTabId: "preview",
       previewMarkdown: "",
+      previewFilename: "",
       aiBusy: false,
       validation: null,
     });
@@ -526,10 +547,22 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   setActiveContentTab: (id) => set({ activeContentTabId: id }),
 
-  appendAiTab: (markdown, title) => {
+  appendAiTab: (markdown, title, initialCharCount, modelUsed, promptLevel, filename) => {
     const id = `ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     set((state) => ({
-      contentTabs: [...state.contentTabs, { id, kind: "ai" as const, title, markdown }],
+      contentTabs: [
+        ...state.contentTabs,
+        {
+          id,
+          kind: "ai" as const,
+          title,
+          markdown,
+          initialCharCount,
+          modelUsed,
+          promptLevel,
+          filename,
+        },
+      ],
       activeContentTabId: id,
     }));
     return id;
@@ -604,6 +637,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 
   setPreviewMarkdown: (md) => set({ previewMarkdown: md }),
+  setPreviewFilename: (name) => set({ previewFilename: name }),
 
   processContent: (content: string) => {
     const state = get();

@@ -18,6 +18,8 @@ fn main() {
             commands::generate_preview_cmd,
             commands::export_all_markdown,
             commands::export_all_zip,
+            commands::export_single_markdown,
+            commands::export_single_zip,
             commands::save_project,
             commands::open_project,
             commands::ai_test_provider,

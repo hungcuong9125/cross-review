@@ -17,6 +17,7 @@ export function PreviewBody() {
     selectQaOnly,
     previewFormat,
     setPreviewMarkdown,
+    setPreviewFilename,
   } = useProjectStore();
 
   const [preview, setPreview] = useState<ExportFile | null>(null);
@@ -61,14 +62,18 @@ export function PreviewBody() {
 
   const activeCount = project.qa_reports.filter((q) => q.active !== false).length;
   const displayContent = preview ? processContent(preview.markdown) : "";
+  const filename = preview ? preview.filename : "-";
 
-  // Sync preview content to store for footer copy
+  // Sync preview content and filename to store for footer export
   useEffect(() => {
     setPreviewMarkdown(displayContent);
-  }, [displayContent, setPreviewMarkdown]);
-  const displayCharCount = displayContent.length;
+    setPreviewFilename(filename);
+  }, [displayContent, filename, setPreviewMarkdown, setPreviewFilename]);
 
-  const filename = preview ? preview.filename : "-";
+  const displayCharCount = displayContent.length;
+  const initialCharCount = preview ? preview.markdown.length : 0;
+  const percentChange = initialCharCount > 0 ? Math.round(((displayCharCount - initialCharCount) / initialCharCount) * 100) : 0;
+
   const inactiveCount = project.qa_reports.filter((q) => q.active === false).length;
   const selfExcluded = project.exclude_self !== false && selectedQaId ? 1 : 0;
   const selectedIsInactive = selectedQaId
@@ -81,13 +86,10 @@ export function PreviewBody() {
       {/* Header */}
       <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 space-y-3 flex-shrink-0">
         <div className="flex items-center gap-2">
-          <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
-            {t("preview.target", language)}
-          </label>
           <select
             value={selectedQaId ?? ""}
             onChange={(e) => selectQaOnly(e.target.value)}
-            className="flex-1 min-w-0 h-[34px] px-3 py-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md text-sm focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+            className="flex-1 min-w-0 h-9 px-2 py-0.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md text-xs focus:ring-1 focus:ring-blue-500 focus:border-transparent"
           >
             {project.qa_reports.filter((q) => q.active !== false).map((qa) => (
               <option key={qa.id} value={qa.id}>
@@ -98,14 +100,14 @@ export function PreviewBody() {
           <button
             onClick={refreshPreview}
             disabled={loading}
-            className="w-[34px] h-[34px] inline-flex items-center justify-center bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md text-sm border border-transparent transition-colors disabled:opacity-50 flex-shrink-0"
+            className="w-9 h-9 inline-flex items-center justify-center bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md text-xs border border-transparent transition-colors disabled:opacity-50 flex-shrink-0"
           >
             ↻
           </button>
         </div>
 
         {/* Stats grid */}
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-5 gap-2">
           <div className="px-2.5 py-1.5 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
             <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">
               {t("preview.reports", language)}
@@ -124,6 +126,14 @@ export function PreviewBody() {
           </div>
           <div className="px-2.5 py-1.5 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
             <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">
+              {t("preview.initialCharacters", language)}
+            </p>
+            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 font-mono">
+              {initialCharCount.toLocaleString()}
+            </p>
+          </div>
+          <div className="px-2.5 py-1.5 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">
               {t("preview.characters", language)}
               {(compactMode || removeWhitespace || mergeLines) && (
                 <span className="ml-1 text-[8px] text-blue-500">(proc)</span>
@@ -131,6 +141,11 @@ export function PreviewBody() {
             </p>
             <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
               {displayCharCount.toLocaleString()}
+              {initialCharCount > 0 && (
+                <span className={`ml-1 text-xs font-normal ${percentChange < 0 ? "text-green-600 dark:text-green-400" : percentChange > 0 ? "text-red-500" : "text-gray-500"}`}>
+                  ({percentChange >= 0 ? "+" : ""}{percentChange}%)
+                </span>
+              )}
             </p>
           </div>
           <div className="px-2.5 py-1.5 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">

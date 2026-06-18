@@ -187,7 +187,22 @@ export function SettingsPanel() {
       }
       const now = new Date();
       const title = `AI ${now.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit" })} ${now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
-      appendAiTab(result.markdown, title);
+      
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+      const projectSlug = project.title
+        ? project.title.toLowerCase().replace(/[^a-z0-9._-]/g, "-").replace(/-{2,}/g, "-").replace(/^-+|-+$/g, "")
+        : "";
+      const filename = projectSlug ? `ai-report-${projectSlug}-${ts}.md` : `ai-report-${ts}.md`;
+
+      appendAiTab(
+        result.markdown,
+        title,
+        result.markdown.length,
+        result.model_used || cfg?.model || "",
+        cfg?.prompt_level || "2",
+        filename
+      );
     } catch (err) {
       if (typeof err === "string") { toastError(err); return; }
       const e = err as AiErrorPayload;

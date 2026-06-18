@@ -47,6 +47,29 @@ pub fn export_all_zip(project: Project, output_zip_path: String) -> Result<Strin
 }
 
 #[tauri::command]
+pub fn export_single_markdown(markdown: String, output_path: String) -> Result<(), String> {
+    let path = Path::new(&output_path);
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() && !parent.exists() {
+            fs::create_dir_all(parent).map_err(|e| format!("Cannot create directory: {}", e))?;
+        }
+    }
+    fs::write(path, markdown).map_err(|e| format!("Cannot write file: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn export_single_zip(
+    filename: String,
+    markdown: String,
+    output_zip_path: String,
+) -> Result<String, String> {
+    crate::zip_export::export_single_to_zip(&filename, &markdown, &output_zip_path)
+        .map_err(|e| e.to_string())
+}
+
+
+#[tauri::command]
 pub fn save_project(project: Project, path: String) -> Result<(), String> {
     let json = serde_json::to_string_pretty(&project)
         .map_err(|e| format!("Serialization error: {}", e))?;

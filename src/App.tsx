@@ -15,9 +15,9 @@ import { sanitizeForStorage, recordScrubIfNeeded } from "./lib/sanitize";
 import { t } from "./lib/i18n";
 
 function App() {
-  const { project, setProject, newProject, darkMode, validation, language, activeMainTab } =
+  const { project, setProject, newProject, darkMode, language, activeMainTab } =
     useProjectStore();
-  const { handleExportMd } = useExportActions(project, validation, language);
+  const { handleExportMd } = useExportActions();
 
   const [rightSidebarWidth, setRightSidebarWidth] = useState(400);
   const cleanupDragRef = useRef<(() => void) | null>(null);
