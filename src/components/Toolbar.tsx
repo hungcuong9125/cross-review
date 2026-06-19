@@ -3,9 +3,9 @@ import {
   saveProject,
   openProject,
 } from "../lib/api";
+import { toSlug } from "../lib/slug";
 import { t } from "../lib/i18n";
 
-// SVG icons for tabs
 const TabIcons = {
   home: (
     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -51,15 +51,6 @@ export function Toolbar() {
   const handleSave = async () => {
     try {
       const { save } = await import("@tauri-apps/plugin-dialog");
-      const toSlug = (str: string) =>
-        str
-          .toLowerCase()
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .replace(/[đĐ]/g, "d")
-          .replace(/[^a-z0-9._-]/g, "-")
-          .replace(/-{2,}/g, "-")
-          .replace(/^-+|-+$/g, "");
       const slugTitle = project.title ? toSlug(project.title) : "";
       const path = await save({
         defaultPath: slugTitle
@@ -70,9 +61,8 @@ export function Toolbar() {
           { name: "JSON", extensions: ["json"] },
         ],
       });
-      if (path) {
-        await saveProject(project, path);
-      }
+      if (!path) return;
+      await saveProject(project, path);
     } catch (err) {
       console.error("Save error:", err);
       alert(`${t("dialog.saveFail", language)}: ${err}`);
@@ -112,7 +102,6 @@ export function Toolbar() {
 
   return (
     <div className="h-14 flex items-center px-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-      {/* Left: project title - matches sidebar width */}
       <div className="min-w-0 w-72">
         <input
           type="text"
@@ -122,8 +111,6 @@ export function Toolbar() {
           placeholder={t("toolbar.projectTitle", language)}
         />
       </div>
-
-      {/* Center: main tabs - separated buttons style */}
       <div className="flex-1 flex justify-center">
         <div className="flex items-center gap-2">
           {mainTabs.map((tab) => {
@@ -154,8 +141,6 @@ export function Toolbar() {
           })}
         </div>
       </div>
-
-      {/* Right: actions */}
       <div className="flex items-center gap-1 w-auto">
         <ToolbarButton onClick={handleNew} title="Ctrl/Cmd + N">
           {t("toolbar.new", language)}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useProjectStore } from "../state/projectStore";
 import { t } from "../lib/i18n";
 import { useToast } from "../hooks/useToast";
@@ -6,6 +6,7 @@ import { useExportActions } from "../hooks/useExport";
 import { PreviewBody } from "./PreviewBody";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
+import { percentChange } from "../lib/utils";
 import pkg from "../../package.json";
 
 function AiTabContent({ tab }: {
@@ -34,7 +35,7 @@ function AiTabContent({ tab }: {
   const processedContent = processContent(rawContent);
   const displayCharCount = processedContent.length;
   const initialCharCount = tab.initialCharCount;
-  const percentChange = initialCharCount > 0 ? Math.round(((displayCharCount - initialCharCount) / initialCharCount) * 100) : 0;
+  const pct = percentChange(initialCharCount, displayCharCount);
 
   const getPromptLevelLabel = (level: string, lang: string) => {
     switch (level) {
@@ -48,10 +49,8 @@ function AiTabContent({ tab }: {
 
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
-      {/* Header/Stats Grid */}
       <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
         <div className="grid grid-cols-5 gap-2">
-          {/* Model */}
           <div className="px-2.5 py-1.5 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
             <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">
               {t("preview.modelUsed", language)}
@@ -60,7 +59,6 @@ function AiTabContent({ tab }: {
               {tab.modelUsed}
             </p>
           </div>
-          {/* Report Mode */}
           <div className="px-2.5 py-1.5 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
             <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">
               {t("preview.promptLevel", language)}
@@ -74,10 +72,9 @@ function AiTabContent({ tab }: {
               {t("preview.initialCharacters", language)}
             </p>
             <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 font-mono">
-              {initialCharCount.toLocaleString()}
+              {initialCharCount > 0 ? initialCharCount.toLocaleString() : "—"}
             </p>
           </div>
-          {/* Current characters */}
           <div className="px-2.5 py-1.5 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
             <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">
               {t("preview.characters", language)}
@@ -88,13 +85,12 @@ function AiTabContent({ tab }: {
             <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
               {displayCharCount.toLocaleString()}
               {initialCharCount > 0 && (
-                <span className={`ml-1 text-xs font-normal ${percentChange < 0 ? "text-green-600 dark:text-green-400" : percentChange > 0 ? "text-red-500" : "text-gray-500"}`}>
-                  ({percentChange >= 0 ? "+" : ""}{percentChange}%)
+                <span className={`ml-1 text-xs font-normal ${pct < 0 ? "text-green-600 dark:text-green-400" : pct > 0 ? "text-red-500" : "text-gray-500"}`}>
+                  ({pct >= 0 ? "+" : ""}{pct}%)
                 </span>
               )}
             </p>
           </div>
-          {/* Export Filename */}
           <div className="px-2.5 py-1.5 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
             <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">
               {t("preview.file", language)}
@@ -105,7 +101,6 @@ function AiTabContent({ tab }: {
           </div>
         </div>
       </div>
-      {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto p-4">
         {previewFormat === "html" ? (
           <div className="markdown-preview prose dark:prose-invert max-w-none bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 text-sm"
@@ -132,6 +127,10 @@ export function ContentTabs() {
   const { success } = useToast();
   const { handleExportMd, handleExportZip } = useExportActions();
   const [copied, setCopied] = useState(false);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+  }, []);
 
   const handleImportReport = async () => {
     try {
@@ -140,34 +139,25 @@ export function ContentTabs() {
       const { isValidMarkdownReport } = await import("../lib/sanitize");
       const selected = await open({
         multiple: true,
-        filters: [
-          { name: "Markdown", extensions: ["md"] },
-        ],
+        filters: [{ name: "Markdown", extensions: ["md"] }],
       });
-      if (selected) {
-        const filePaths = Array.isArray(selected) ? selected : [selected];
-        for (const filePath of filePaths) {
-          const content = await readTextFile(filePath);
-          const baseName = filePath.split(/[/\\]/).pop() || "Imported Report";
-          
-          if (!isValidMarkdownReport(baseName, content)) {
-            alert(language === "vi"
-              ? `Tệp tin "${baseName}" không đúng định dạng báo cáo của Review Weaver!`
-              : `File "${baseName}" is not a valid Review Weaver report!`);
-            continue;
-          }
-          
-          const title = baseName.endsWith(".md") ? baseName.slice(0, -3) : baseName;
-          
-          appendAiTab(
-            content,
-            title,
-            content.length,
-            "Imported",
-            "N/A",
-            baseName
-          );
+      if (!selected) return;
+      const filePaths = Array.isArray(selected) ? selected : [selected];
+      let imported = 0;
+      for (const filePath of filePaths) {
+        const content = await readTextFile(filePath);
+        const baseName = filePath.split(/[/\\]/).pop() || "Imported Report";
+        if (!isValidMarkdownReport(baseName, content)) {
+          alert(language === "vi"
+            ? `Tệp tin "${baseName}" không đúng định dạng báo cáo của Review Weaver!`
+            : `File "${baseName}" is not a valid Review Weaver report!`);
+          continue;
         }
+        const title = baseName.endsWith(".md") ? baseName.slice(0, -3) : baseName;
+        appendAiTab(content, title, 0, "Imported", "N/A", baseName);
+        imported++;
+      }
+      if (imported > 0) {
         success(language === "vi" ? "Đã import báo cáo thành công!" : "Imported reports successfully!");
       }
     } catch (err) {
@@ -177,8 +167,6 @@ export function ContentTabs() {
   };
 
   const activeTab = contentTabs.find((tab) => tab.id === activeContentTabId);
-
-  // Get the content to copy depending on which tab type is active
   const getCopyContent = () => {
     if (activeTab?.kind === "debug") {
       const log = activeTab.log;
@@ -221,14 +209,13 @@ export function ContentTabs() {
     }
     setCopied(true);
     success(t("toast.copied", language));
-    setTimeout(() => setCopied(false), 2000);
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
   };
 
   const debugTabs = contentTabs.filter((tab) => tab.kind === "debug");
   const activeDebugTab = activeTab?.kind === "debug" ? activeTab : debugTabs.length > 0 ? debugTabs[debugTabs.length - 1] : null;
   const isDebugView = activeMainTab === "debug" || activeTab?.kind === "debug";
-
-  // When main tab is debug OR a debug content tab is active → show clean debug view
   if (isDebugView) {
     if (!activeDebugTab) {
       return (
@@ -252,7 +239,6 @@ export function ContentTabs() {
     const log = activeDebugTab.log;
     return (
       <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900 relative">
-        {/* Loading overlay when generating */}
         {aiBusy && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-50/80 dark:bg-gray-900/80">
             <div className="flex flex-col items-center gap-3">
@@ -261,7 +247,6 @@ export function ContentTabs() {
             </div>
           </div>
         )}
-        {/* Tab bar — only show debug tabs */}
         <div className="flex items-center border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 overflow-x-auto">
           {debugTabs.map((tab) => {
             const isActive = tab.id === activeContentTabId;
@@ -282,8 +267,6 @@ export function ContentTabs() {
             </button>
           )}
         </div>
-
-        {/* Debug content — clean, no preview header/stats */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
             <div className="grid grid-cols-2 gap-2 text-xs">
@@ -314,8 +297,6 @@ export function ContentTabs() {
             </pre>
           </div>
         </div>
-
-        {/* Debug footer */}
         <div className="p-2.5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center gap-2 flex-shrink-0">
           <div className="flex gap-1.5">
             <button onClick={handleExportMd} className="px-2.5 py-1.5 text-[11px] font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors">
@@ -337,11 +318,8 @@ export function ContentTabs() {
       </div>
     );
   }
-
-  // Normal view (Preview + AI tabs)
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900 relative">
-      {/* Loading overlay when generating */}
       {aiBusy && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-50/80 dark:bg-gray-900/80">
           <div className="flex flex-col items-center gap-3">
@@ -350,7 +328,6 @@ export function ContentTabs() {
           </div>
         </div>
       )}
-      {/* Tab bar */}
       <div className="flex items-center border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 overflow-x-auto">
         {contentTabs.filter((ct) => ct.kind !== "debug").map((tab) => {
           const isActive = tab.id === activeContentTabId;
@@ -366,8 +343,6 @@ export function ContentTabs() {
             </div>
           );
         })}
-
-        {/* Separator and Import button */}
         <span className="text-gray-300 dark:text-gray-600 text-xs mx-1">|</span>
         <button onClick={handleImportReport}
           className="px-2 py-1 text-[10px] text-gray-400 dark:text-gray-500 hover:text-blue-500 transition-colors whitespace-nowrap">
@@ -393,8 +368,6 @@ export function ContentTabs() {
           <AiTabContent tab={activeTab} />
         ) : null}
       </div>
-
-      {/* Unified footer — Export, Copy, Version */}
       {activeTab && (
         <div className="p-2.5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center gap-2 flex-shrink-0">
           <div className="flex gap-1.5">

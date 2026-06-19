@@ -190,6 +190,20 @@ The compiled Markdown outputs follow this structural convention:
 
 ## Changelog
 
+### v0.8.1 (2026-06-19)
+- **Fixed**: `isValidMarkdownReport` `BINARY_BYTES` regex was matching the Combining Diacritical Marks Unicode block (U+0300–U+036F) instead of ASCII control bytes — Vietnamese/accented text was being rejected as binary, while real binary content (NUL, etc.) slipped past the check. Now uses proper `[\x00-\x08\x0E-\x1F\x7F\xFF]` escape sequence.
+- **Fixed**: `isValidMarkdownReport` `MARKDOWN_STRUCTURE` regex now matches lists at the start of content (added `(^|\n)` anchor) — reports that begin with `- item` were previously rejected.
+- **Fixed**: Imported reports no longer show a fake "0% change" percent indicator — `appendAiTab` now passes `initialCharCount: 0` for imports and the "Initial Characters" cell renders `—` when no baseline is available.
+- **Fixed**: `setTimeout` in `handleCopy` was leaking on unmount — now stored in `copyTimerRef` and cleared in a `useEffect` cleanup.
+- **Refactored**: Extracted `toSlug` helper to `src/lib/slug.ts` and `percentChange` helper to `src/lib/utils.ts` — eliminated triplicated slug logic from `App.tsx`, `Toolbar.tsx`, `SettingsPanel.tsx`, and inline percent calculation from `ContentTabs.tsx`/`PreviewBody.tsx`.
+- **Refactored**: Unified `handleExportMd` and `handleExportZip` into a single `exportTab(mode)` callback with `useCallback` wrappers — eliminated ~80 lines of duplicated export logic.
+- **Refactored**: Hoisted `BINARY_BYTES` and `MARKDOWN_STRUCTURE` regexes to module scope (no per-call `new RegExp` allocation).
+- **Changed**: Renamed `handleExportAllRef` to `handleExportMdRef` in `App.tsx` to match its actual semantics (the ref points only to the MD export, not a combined ZIP+MD action).
+- **Changed**: Moved the `import` of `percentChange` to the top of `ContentTabs.tsx` and `PreviewBody.tsx` to satisfy ESM module hoisting conventions.
+- **Removed**: Excessive explanatory JSX/TS comments across all components and the project store (~120 lines).
+- **Removed**: Whitespace-only changes in `src-tauri/src/commands.rs` (trailing spaces on blank lines).
+- **Version**: Bumped to 0.8.1 (package.json, Cargo.toml, tauri.conf.json).
+
 ### v0.8.0 (2026-06-19)
 - **Feature**: AI report tabs persistence — generated AI reports are now automatically saved inside the `.review-weaver.json` project file and fully restored upon opening.
 - **Feature**: "Import report" button — load external Markdown (`.md`) reports directly into new AI tabs from the Home tab bar.

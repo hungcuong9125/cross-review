@@ -4,6 +4,7 @@ import { aiTestProvider, aiTestProviderDebug, aiListModels, aiRewriteExport, aiC
 import { t } from "../lib/i18n";
 import { useToast } from "../hooks/useToast";
 import { isApiKeyScrubbed, clearApiKeyScrubbed } from "../lib/sanitize";
+import { toSlug } from "../lib/slug";
 
 const PROVIDER_KINDS: { value: AiProviderKind; label: string }[] = [
   { value: "ollama", label: "Ollama" },
@@ -48,8 +49,6 @@ export function SettingsPanel() {
   const [draftRemoveChinese, setDraftRemoveChinese] = useState(project.ai_config?.remove_chinese ?? false);
   const [debugLogs, setDebugLogs] = useState<DebugLog[]>([]);
   const [selectedLog, setSelectedLog] = useState<DebugLog | null>(null);
-
-  // Resync draft state when project.ai_config changes (e.g. opening a different project file)
   useEffect(() => {
     setDraftKind(project.ai_config?.kind ?? "ollama");
     setDraftBaseUrl(project.ai_config?.base_url ?? "");
@@ -103,9 +102,6 @@ export function SettingsPanel() {
     success(t("toast.aiSaved", language));
   };
 
-  // Silent save for use in handleGenerate (no toast)
-  const persistDraft = saveDraft;
-
   const [testBusy, setTestBusy] = useState(false);
 
   const handleTest = async () => {
@@ -137,8 +133,6 @@ export function SettingsPanel() {
       setTestBusy(false);
     }
   };
-
-  // Auto-fetch models when provider kind, base URL, or API key changes (debounced)
   useEffect(() => {
     if (draftKind === "openaicompatible") {
       setModels([]);
@@ -167,7 +161,7 @@ export function SettingsPanel() {
 
   const handleGenerate = async () => {
     if (aiBusy) return;
-    persistDraft();
+    saveDraft();
     const cfg = useProjectStore.getState().project.ai_config;
     if (!cfg || !cfg.model) {
       info(t("toast.aiNotConfigured", language));
@@ -190,9 +184,7 @@ export function SettingsPanel() {
 
       const pad = (n: number) => String(n).padStart(2, "0");
       const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-      const projectSlug = project.title
-        ? project.title.toLowerCase().replace(/[^a-z0-9._-]/g, "-").replace(/-{2,}/g, "-").replace(/^-+|-+$/g, "")
-        : "";
+      const projectSlug = project.title ? toSlug(project.title) : "";
       const filename = projectSlug ? `ai-report-${projectSlug}-${ts}.md` : `ai-report-${ts}.md`;
 
       appendAiTab(
@@ -302,7 +294,6 @@ export function SettingsPanel() {
           previewFormat: settings.preview_format as "html" | "markdown",
           debugEnabled: settings.debug_enabled,
         }));
-        // Sync draft state
         if (settings.ai_config) {
           setDraftKind(settings.ai_config.kind);
           setDraftBaseUrl(settings.ai_config.base_url);
@@ -337,7 +328,6 @@ export function SettingsPanel() {
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700">
       <div className="flex-1 overflow-y-auto p-3 space-y-4">
-        {/* Preview format section */}
         <div>
           <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
             {t("settings.previewFormat", language)}
@@ -350,8 +340,6 @@ export function SettingsPanel() {
               {t("settings.previewFormat.markdown", language)}
             </button>
           </div>
-
-          {/* Section Headers */}
           <div className="grid grid-cols-2 gap-x-4 mt-4 mb-2">
             <div className="text-[11px] font-bold text-gray-400 dark:text-gray-500 tracking-wider uppercase">
               {language === "vi" ? "THIẾT LẬP HIỂN THỊ" : "DISPLAY SETTINGS"}
@@ -360,10 +348,7 @@ export function SettingsPanel() {
               {language === "vi" ? "THIẾT LẬP XỬ LÝ" : "PROCESSING SETTINGS"}
             </div>
           </div>
-
-          {/* Checkboxes in columns */}
           <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-            {/* DISPLAY SETTINGS */}
             <div className="space-y-1.5">
               <label className="flex items-center gap-1.5 cursor-pointer">
                 <input type="checkbox" checked={project.exclude_self !== false} onChange={toggleExcludeSelf} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
@@ -382,8 +367,6 @@ export function SettingsPanel() {
                 <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.mergeLines", language)}</span>
               </label>
             </div>
-
-            {/* PROCESSING SETTINGS */}
             <div className="space-y-1.5">
               <label className="flex items-center gap-1.5 cursor-pointer">
                 <input type="checkbox" checked={debugEnabled} onChange={() => setDebugEnabled(!debugEnabled)} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
@@ -402,14 +385,10 @@ export function SettingsPanel() {
         </div>
 
         <hr className="border-gray-200 dark:border-gray-700" />
-
-        {/* AI provider section */}
         <div>
           <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
             {t("settings.aiProvider", language)}
           </h3>
-
-          {/* Key scrub banner */}
           {showKeyBanner && (
             <div className="mb-2 p-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded text-xs text-amber-800 dark:text-amber-300">
               <p className="mb-1">{t("settings.aiProvider.keyMissing", language)}</p>
@@ -420,13 +399,11 @@ export function SettingsPanel() {
           )}
 
           <div className="space-y-2">
-            {/* Kind */}
             <div>
               <label className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">{t("settings.aiProvider.name", language)}</label>
               <select value={draftKind} onChange={(e) => {
                 const newKind = e.target.value as AiProviderKind;
                 setDraftKind(newKind);
-                // Clear base_url when switching provider so default endpoint is used
                 setDraftBaseUrl("");
                 setDraftModel("");
               }}
@@ -434,16 +411,12 @@ export function SettingsPanel() {
                 {PROVIDER_KINDS.map(k => <option key={k.value} value={k.value}>{k.label}</option>)}
               </select>
             </div>
-
-            {/* Base URL */}
             <div>
               <label className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">{t("settings.aiProvider.baseUrl", language)}</label>
               <input type="text" value={draftBaseUrl} onChange={(e) => setDraftBaseUrl(e.target.value)}
                 placeholder="http://localhost:11434/"
                 className="w-full h-7 text-xs px-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent" />
             </div>
-
-            {/* API key */}
             <div>
               <label className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">{t("settings.aiProvider.apiKey", language)}</label>
               <div className="flex gap-1">
@@ -454,8 +427,6 @@ export function SettingsPanel() {
                 </button>
               </div>
             </div>
-
-            {/* Model + Thinking Mode — 2 columns */}
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">{t("settings.aiProvider.model", language)}</label>
@@ -492,8 +463,6 @@ export function SettingsPanel() {
                   : "⚠ Some models lack Thinking Mode, invalid settings will be ignored silently"}
               </p>
             )}
-
-            {/* Prompt level */}
             <div>
               <label className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">{t("settings.aiPrompt", language)}</label>
               <select value={draftPromptLevel} onChange={(e) => setDraftPromptLevel(e.target.value)}
@@ -504,8 +473,6 @@ export function SettingsPanel() {
                 <option value="4">{language === "vi" ? "Mức 4: Prompt tuỳ chỉnh" : "Level 4: Custom Prompt"}</option>
               </select>
             </div>
-
-            {/* Custom prompt textarea — only shown for level 4 */}
             {draftPromptLevel === "4" && (
               <div>
                 <textarea value={draftSystemPrompt} onChange={(e) => setDraftSystemPrompt(e.target.value)}
@@ -519,15 +486,11 @@ export function SettingsPanel() {
                 </div>
               </div>
             )}
-
-            {/* Import/Export settings — shown when not level 4 */}
             {draftPromptLevel !== "4" && (
               <div className="flex items-center justify-end gap-4 mt-0.5">
                 {importExportButtons}
               </div>
             )}
-
-            {/* Test + Save buttons */}
             <div className="flex gap-1">
               <button onClick={handleTest} disabled={testBusy} className="flex-1 px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                 {t("settings.aiProvider.test", language)}
@@ -544,8 +507,6 @@ export function SettingsPanel() {
             )}
           </div>
         </div>
-
-        {/* Debug logs */}
         {debugEnabled && debugLogs.length > 0 && (
           <div>
             <div className="flex items-center justify-between mb-1">
@@ -570,8 +531,6 @@ export function SettingsPanel() {
           </div>
         )}
       </div>
-
-      {/* Debug log detail modal */}
       {selectedLog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setSelectedLog(null)}>
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-[90vw] max-w-2xl max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
@@ -610,8 +569,6 @@ export function SettingsPanel() {
           </div>
         </div>
       )}
-
-      {/* Sticky generate button — always visible */}
       <div className="p-2.5 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 space-y-1">
         <button
           onClick={handleGenerate}

@@ -129,11 +129,8 @@ const DEFAULT_PROJECT: Project = {
   qa_reports: [],
   exclude_self: true,
 };
-
-// Migrate old project format to new format
 function migrateProject(project: Project): Project {
   const migrated = { ...project, components: [...(project.components || [])] };
-  // Migrate old opening_text/closing_text to components
   if ('opening_text' in (project as any) && (project as any).opening_text) {
     const hasOpening = migrated.components.some(c => c.position === "opening");
     if (!hasOpening) {
@@ -164,7 +161,6 @@ function migrateProject(project: Project): Project {
       });
     }
   }
-  // Clear legacy fields to prevent redundant serialization in saved files
   delete (migrated as any).opening_text;
   delete (migrated as any).closing_text;
   return migrated;
@@ -261,7 +257,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         state.selectedQaId === id
           ? newReports[0]?.id ?? null
           : state.selectedQaId;
-      // Preserve component selection when deleting a non-selected QA
       const newActiveItem =
         state.activeItem?.type === "component"
           ? state.activeItem
@@ -329,7 +324,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set((state) => ({
       project: { ...state.project, qa_reports: [] },
       selectedQaId: null,
-      // Preserve component selection — components are not deleted
       activeItem:
         state.activeItem?.type === "component" ? state.activeItem : null,
     }));
@@ -447,7 +441,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     activeMainTab: "reports",
     activeItem: id ? { type: "report", qaId: id } : null,
   }),
-  /** Like selectQa but does NOT change activeMainTab — for PreviewBody auto-select. */
   selectQaOnly: (id) => set({
     selectedQaId: id,
     activeItem: id ? { type: "report", qaId: id } : null,
@@ -619,7 +612,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           activeId = "preview";
         }
       }
-      // If closing the last debug tab while on debug main tab, fall back to home
       const closingKind = state.contentTabs[idx]?.kind;
       const debugTabsLeft = tabs.filter((t) => t.kind === "debug").length;
       const activeMainTab =
@@ -627,12 +619,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           ? "home"
           : state.activeMainTab;
 
-      const updatedAiReports = (state.project.ai_reports || []).filter((r) => r.id !== id);
-
+      if (closingKind !== "ai") {
+        return { contentTabs: tabs, activeContentTabId: activeId, activeMainTab };
+      }
       return {
         project: {
           ...state.project,
-          ai_reports: updatedAiReports,
+          ai_reports: (state.project.ai_reports || []).filter((r) => r.id !== id),
         },
         contentTabs: tabs,
         activeContentTabId: activeId,
@@ -686,8 +679,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     if (state.removeWhitespace) {
       processed = processed.replace(/\n{3,}/g, "\n\n");
     }
-    // Skip compactMode when mergeLines is active — mergeLines needs paragraph
-    // breaks (\n\n) intact to produce the ' | ' separator.
+    // mergeLines needs paragraph breaks (\n\n) intact to produce the ' | ' separator
     if (state.compactMode && !state.mergeLines) {
       processed = processed.replace(/\n{2,}/g, "\n");
     }
@@ -696,22 +688,20 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       let inCodeBlock = false;
       let fenceChar = "";
       let fenceLen = 0;
+      // Track fenced code blocks — don't transform content inside them.
+      // A closing fence must use the same character and have ≥ the opening length.
       lines = lines.map((line) => {
         const trimmed = line.trim();
-        // Track fenced code blocks — don't transform content inside them.
-        // A closing fence must use the same character and have ≥ the opening length.
         const fenceMatch = trimmed.match(/^(`{3,}|~{3,})(\s*\S*)?$/);
         if (fenceMatch) {
           const chars = fenceMatch[1][0]; // ` or ~
           const len = fenceMatch[1].length;
           const info = (fenceMatch[2] || "").trim();
           if (!inCodeBlock) {
-            // Opening fence: must have no info or info string starts the block
             inCodeBlock = true;
             fenceChar = chars;
             fenceLen = len;
           } else if (chars === fenceChar && len >= fenceLen && info === "") {
-            // Closing fence: same char, ≥ length, no info string
             inCodeBlock = false;
             fenceChar = "";
             fenceLen = 0;
@@ -719,7 +709,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           return line;
         }
         if (inCodeBlock) return line;
-        // Remove markdown horizontal rules
         if (trimmed === "---" || trimmed === "___" || trimmed === "***") {
           return "";
         }
@@ -728,9 +717,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         }
         return line;
       });
-
-      // Preserve paragraph breaks (empty lines) as " | " before merging.
-      // Strip leading/trailing empty lines first to avoid orphan | separators.
+      // Strip leading/trailing empty lines so the join doesn't emit orphan ' | ' separators.
       while (lines.length > 0 && lines[0].trim() === "") lines.shift();
       while (lines.length > 0 && lines[lines.length - 1].trim() === "") lines.pop();
 
@@ -740,7 +727,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         const isEmpty = line.trim() === "";
         if (isEmpty) {
           if (!prevEmpty && joined) {
-            joined += "\n\n"; // paragraph break marker
+            joined += "\n\n";
           }
           prevEmpty = true;
         } else {
@@ -751,12 +738,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           prevEmpty = false;
         }
       }
-
-      // Merge all lines into one continuous line
       processed = joined
-        .replace(/\n{2,}/g, " | ")  // paragraph break → separator
-        .replace(/\n/g, " ")         // line break → space
-        .replace(/\s{2,}/g, " ")     // multiple spaces → single space
+        .replace(/\n{2,}/g, " | ")
+        .replace(/\n/g, " ")
+        .replace(/\s{2,}/g, " ")
         .trim();
     }
     return processed;

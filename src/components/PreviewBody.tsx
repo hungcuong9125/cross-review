@@ -4,6 +4,7 @@ import DOMPurify from "dompurify";
 import { useProjectStore } from "../state/projectStore";
 import { generatePreview, type ExportFile } from "../lib/api";
 import { t } from "../lib/i18n";
+import { percentChange } from "../lib/utils";
 
 export function PreviewBody() {
   const {
@@ -22,8 +23,6 @@ export function PreviewBody() {
 
   const [preview, setPreview] = useState<ExportFile | null>(null);
   const [loading, setLoading] = useState(false);
-
-  // Set initial selected QA target when active list changes
   useEffect(() => {
     const activeQas = project.qa_reports.filter((q) => q.active !== false);
     if (activeQas.length > 0) {
@@ -36,8 +35,6 @@ export function PreviewBody() {
       }
     }
   }, [project.qa_reports, selectedQaId, selectQaOnly]);
-
-  // Generate preview when target or project changes
   const refreshPreview = useCallback(async () => {
     const activeQas = project.qa_reports.filter((q) => q.active !== false);
     if (!selectedQaId || activeQas.length < 2) {
@@ -65,8 +62,6 @@ export function PreviewBody() {
   const processedContent = preview ? processContent(preview.markdown) : "";
   const displayContent = rawContent;
   const filename = preview ? preview.filename : "-";
-
-  // Sync preview content and filename to store for footer export (uses processed content)
   useEffect(() => {
     setPreviewMarkdown(processedContent);
     setPreviewFilename(filename);
@@ -74,7 +69,7 @@ export function PreviewBody() {
 
   const displayCharCount = processedContent.length;
   const initialCharCount = preview ? preview.markdown.length : 0;
-  const percentChange = initialCharCount > 0 ? Math.round(((displayCharCount - initialCharCount) / initialCharCount) * 100) : 0;
+  const pct = percentChange(initialCharCount, displayCharCount);
 
   const inactiveCount = project.qa_reports.filter((q) => q.active === false).length;
   const selfExcluded = project.exclude_self !== false && selectedQaId ? 1 : 0;
@@ -85,7 +80,6 @@ export function PreviewBody() {
 
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
       <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 space-y-3 flex-shrink-0">
         <div className="flex items-center gap-2">
           <select
@@ -107,8 +101,6 @@ export function PreviewBody() {
             ↻
           </button>
         </div>
-
-        {/* Stats grid */}
         <div className="grid grid-cols-5 gap-2">
           <div className="px-2.5 py-1.5 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
             <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">
@@ -144,8 +136,8 @@ export function PreviewBody() {
             <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
               {displayCharCount.toLocaleString()}
               {initialCharCount > 0 && (
-                <span className={`ml-1 text-xs font-normal ${percentChange < 0 ? "text-green-600 dark:text-green-400" : percentChange > 0 ? "text-red-500" : "text-gray-500"}`}>
-                  ({percentChange >= 0 ? "+" : ""}{percentChange}%)
+                <span className={`ml-1 text-xs font-normal ${pct < 0 ? "text-green-600 dark:text-green-400" : pct > 0 ? "text-red-500" : "text-gray-500"}`}>
+                  ({pct >= 0 ? "+" : ""}{pct}%)
                 </span>
               )}
             </p>
@@ -160,8 +152,6 @@ export function PreviewBody() {
           </div>
         </div>
       </div>
-
-      {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto p-4">
         {!selectedQaId || project.qa_reports.filter((q) => q.active !== false).length < 2 ? (
           <div className="h-full flex items-center justify-center">
@@ -177,7 +167,6 @@ export function PreviewBody() {
           </div>
         ) : preview ? (
           <>
-            {/* Preview content */}
             {previewFormat === "html" ? (
               <div
                 className="markdown-preview prose dark:prose-invert max-w-none bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 text-sm"

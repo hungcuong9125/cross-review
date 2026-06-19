@@ -146,8 +146,6 @@ export function Sidebar() {
   };
 
   const qaReports = project.qa_reports;
-
-  // Build unified list: opening components, QA reports, closing components
   const openingComps = project.components
     .filter((c) => c.position === "opening")
     .sort((a, b) => a.order - b.order);
@@ -164,16 +162,13 @@ export function Sidebar() {
 
   return (
     <div className="w-72 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col h-full">
-      {/* Top action buttons */}
       <div className="p-3 border-b border-gray-200 dark:border-gray-700 space-y-2">
-        {/* Row 1: Add report - full width */}
         <button
           onClick={addQa}
           className="w-full px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded transition-colors"
         >
           + {t("sidebar.addReport", language)}
         </button>
-        {/* Row 2: Add opening + Add closing - side by side */}
         <div className="flex gap-1.5">
           <button
             onClick={() => addComponent("opening")}
@@ -189,10 +184,7 @@ export function Sidebar() {
           </button>
         </div>
       </div>
-
-      {/* Unified scrollable list */}
       <div className="flex-1 overflow-y-auto p-3 space-y-5">
-        {/* QA Reports Group */}
         {qaReports.length > 0 && (
           <div className="space-y-1.5">
             <div className="text-[11px] font-bold text-gray-400 dark:text-gray-500 tracking-wider uppercase">
@@ -219,8 +211,6 @@ export function Sidebar() {
             </div>
           </div>
         )}
-
-        {/* Opening Components Group */}
         {openingComps.length > 0 && (
           <div className="space-y-1.5">
             <div className="text-[11px] font-bold text-gray-400 dark:text-gray-500 tracking-wider uppercase">
@@ -247,8 +237,6 @@ export function Sidebar() {
             </div>
           </div>
         )}
-
-        {/* Closing Components Group */}
         {closingComps.length > 0 && (
           <div className="space-y-1.5">
             <div className="text-[11px] font-bold text-gray-400 dark:text-gray-500 tracking-wider uppercase">
@@ -275,16 +263,12 @@ export function Sidebar() {
             </div>
           </div>
         )}
-
-        {/* Empty state */}
         {qaReports.length === 0 && openingComps.length === 0 && closingComps.length === 0 && (
           <p className="px-2 py-8 text-xs text-gray-400 dark:text-gray-500 text-center">
             {t("sidebar.noQa", language)}
           </p>
         )}
       </div>
-
-      {/* Bottom action buttons — 2×2 grid */}
       <div className="p-2.5 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
         <div className="grid grid-cols-2 gap-1.5">
           <button onClick={handleExportMd} className="px-2 py-1.5 text-[11px] font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors">

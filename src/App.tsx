@@ -12,6 +12,7 @@ import {
 } from "./lib/api";
 import { useExportActions } from "./hooks/useExport";
 import { sanitizeForStorage, recordScrubIfNeeded } from "./lib/sanitize";
+import { toSlug } from "./lib/slug";
 import { t } from "./lib/i18n";
 
 function App() {
@@ -23,22 +24,11 @@ function App() {
   const cleanupDragRef = useRef<(() => void) | null>(null);
   const handleSaveRef = useRef<() => void>(() => {});
   const handleOpenRef = useRef<() => void>(() => {});
-  const handleExportAllRef = useRef<() => void>(() => {});
-
-  const handleExportAll = handleExportMd;
+  const handleExportMdRef = useRef<() => void>(() => {});
 
   const handleSave = async () => {
     try {
       const { save } = await import("@tauri-apps/plugin-dialog");
-      const toSlug = (str: string) =>
-        str
-          .toLowerCase()
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .replace(/[đĐ]/g, "d")
-          .replace(/[^a-z0-9._-]/g, "-")
-          .replace(/-{2,}/g, "-")
-          .replace(/^-+|-+$/g, "");
       const slugTitle = project.title ? toSlug(project.title) : "";
       const path = await save({
         defaultPath: slugTitle
@@ -49,9 +39,8 @@ function App() {
           { name: "JSON", extensions: ["json"] },
         ],
       });
-      if (path) {
-        await saveProject(project, path);
-      }
+      if (!path) return;
+      await saveProject(project, path);
     } catch (err) {
       console.error("Save error:", err);
       alert(`${t("dialog.saveFail", language)}: ${err}`);
@@ -78,12 +67,10 @@ function App() {
     }
   };
 
-  // Keep handler refs in sync with the latest closures (project, validation, etc.).
-  // The keyboard listener reads from refs so the stale-closure bug from
-  // `eslint-disable react-hooks/exhaustive-deps` is fixed.
+  // Keep handler refs in sync with the latest closures.
   handleSaveRef.current = handleSave;
   handleOpenRef.current = handleOpen;
-  handleExportAllRef.current = handleExportAll;
+  handleExportMdRef.current = handleExportMd;
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -113,7 +100,6 @@ function App() {
     window.addEventListener("mouseup", handleMouseUp);
   };
 
-  // Clean up drag listeners on unmount
   useEffect(() => {
     return () => { cleanupDragRef.current?.(); };
   }, []);
@@ -122,7 +108,6 @@ function App() {
     document.documentElement.classList.toggle("dark", darkMode);
   }, [darkMode]);
 
-  // Load auto-saved draft on mount
   const draftLoaded = useRef(false);
   useEffect(() => {
     const saved = localStorage.getItem("review-weaver-draft");
@@ -139,7 +124,6 @@ function App() {
     draftLoaded.current = true;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-save draft to localStorage (skip until draft is loaded)
   useEffect(() => {
     if (!draftLoaded.current) return;
     const timer = setTimeout(() => {
@@ -177,7 +161,7 @@ function App() {
         case "e":
           if (e.shiftKey) break;
           e.preventDefault();
-          handleExportAllRef.current();
+          handleExportMdRef.current();
           break;
       }
     };
