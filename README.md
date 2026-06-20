@@ -65,6 +65,10 @@ Cross Review integrates with 8 LLM providers out of the box. Each provider has i
 - All providers support configurable **base URL**, **API key**, and **model** overrides.
 - **Thinking Mode** (Reasoning Effort) is supported for OpenAI, Anthropic, and Gemini; silently ignored by other providers.
 - **OpenAI Compatible** requires a custom base URL and accepts any model name via free-text input.
+- **Anthropic `/v1/messages` routing for proxy gateways**: Some API proxy gateways (like `openmodel.ai`) serve certain models (such as `deepseek-v4-flash`) exclusively through the Anthropic Messages API surface (`/v1/messages`) rather than the OpenAI-compatible `/v1/chat/completions` endpoint. To force the app to route requests to `/v1/messages` using the Anthropic messages format:
+  1. Select **OpenAI Compatible** (to enable free-text model input).
+  2. Set the **Base URL** to the proxy's API root (e.g., `https://api.openmodel.ai/v1`).
+  3. Prefix the model name with `anthropic::` (e.g., `anthropic::deepseek-v4-flash`). The app will use the Anthropic adapter to format the request and strip the prefix before sending the payload.
 - The default provider is **Ollama** (no API key required for local inference).
 
 ## Technology Stack
@@ -212,7 +216,27 @@ The compiled Markdown outputs follow this structural convention:
 
 ## Changelog
 
-### v0.9.4 (2026-06-21) — Current
+### v0.9.5 (2026-06-21) — Current
+
+- **Added**: Per-source exclusion in AI rewrite — frontend passes `selectedQaId` to Rust backend, enabling targeted source exclusion from the consolidated report.
+- **Added**: Default base URLs for each provider — provider dropdown auto-fills the correct default URL on selection switch.
+- **Added**: `exclude_self` setting now included in settings export/import round-trip.
+- **Added**: `PROVIDERS_NEEDING_API_KEY` set — API-key-missing warning banner only shows for providers that actually require one (no false positive for Ollama).
+- **Fixed**: `opencodego` base URL missing trailing slash (`/v1` → `/v1/`), which could produce malformed concatenated API URLs.
+- **Fixed**: Error type guard in `handleGenerate` — proper fallback with `toastError(String(err))` for non-`AiErrorPayload` exceptions.
+- **Fixed**: Model selection no longer unnecessarily cleared when switching between compatible providers; only cleared when switching to/from `openaicompatible`.
+- **Fixed**: Settings Quick Guide pipe rendering — `desc.split("|")` now handles any number of pipe characters instead of silently dropping content after the second pipe.
+- **Fixed**: Consolidated multiple redundant `useProjectStore.getState()` calls into a single store snapshot in `handleGenerate`.
+- **Changed**: AI report title now uses language-aware date format (`vi`: dd/MM, `en`: MM/dd) instead of hardcoded en-GB locale.
+- **Changed**: Debug tab title now shows date/time + `provider/model` for clearer tab identification.
+- **Changed**: Debug tab close-all button now visible with 1+ tabs (was 2+), uses i18n title string.
+- **Changed**: Settings checkboxes reorganized — "Exclude current source" moved to processing column, "Enable debug" uses i18n translation key.
+- **Changed**: Base URL input placeholder now dynamic per provider kind.
+- **Refactored**: Settings Quick Guide from hardcoded bilingual JSX to data-driven i18n-powered component via `GUIDE_ITEMS` array.
+- **Docs**: Added Anthropic `/v1/messages` routing instructions for proxy gateways (e.g., `openmodel.ai`).
+- **Version**: Bumped to 0.9.5 (package.json, Cargo.toml, tauri.conf.json).
+
+### v0.9.4 (2026-06-21)
 
 - **Added**: Settings Quick Guide panel in SettingsPanel — bilingual English/Vietnamese descriptions for each toggle (cross-review, compact mode, normalize whitespace, export as single line, enable debug, strip non-primary, output language).
 - **Changed**: Updated screenshot from `81905.png` to `screenshot.png`.

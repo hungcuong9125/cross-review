@@ -40,7 +40,16 @@ export const translations = {
   // Settings
   'settings.removeWhitespace': { vi: 'Chuẩn hóa khoảng trắng', en: 'Normalize whitespace' },
   'settings.mergeLines': { vi: 'Xuất thành một dòng', en: 'Export as single line' },
-  'settings.excludeSelf': { vi: 'Review chéo', en: 'Cross review' },
+  'settings.excludeSelf': { vi: 'Loại trừ nguồn hiện tại', en: 'Exclude current source' },
+  'settings.guide.title': { vi: 'Chú thích cài đặt', en: 'Settings Quick Guide' },
+  'settings.excludeSelf.desc': { vi: 'Loại bỏ báo cáo đang được chọn khỏi tệp tổng hợp được gửi.', en: 'Excludes the active source report from the final compiled report.' },
+  'settings.compactMode.desc': { vi: 'Thu gọn các dòng trống liền kề thành 1 dòng đơn.', en: 'Collapses multiple block/paragraph spaces into a single line break.' },
+  'settings.removeWhitespace.desc': { vi: 'Giới hạn tối đa chỉ có 1 dòng trống phân tách.', en: 'Limits consecutive blank lines to one.' },
+  'settings.mergeLines.desc': { vi: 'Gom toàn bộ văn bản thành 1 dòng duy nhất (nối bằng |).', en: 'Flattens all text into a single line, joined by |.' },
+  'settings.debugEnabled': { vi: 'Bật debug', en: 'Enable debug' },
+  'settings.debugEnabled.desc': { vi: 'Lưu nhật ký chi tiết các yêu cầu/phản hồi AI để kiểm tra lỗi.', en: 'Saves full API request/response payloads to diagnose issues.' },
+  'settings.stripNonPrimary.desc': { vi: 'Loại bỏ các ký tự ngoài hệ thống chữ chính (Cyrillic, CJK, Thái...).', en: 'Removes script characters outside the main writing system.' },
+  'settings.outputLanguage.desc': { vi: 'Dịch hoặc viết báo cáo bằng ngôn ngữ được chọn.', en: 'Instructs the AI to write the report in the selected language.' },
 
   // Toolbar
   'toolbar.new': { vi: 'Dự án mới', en: 'New project' },

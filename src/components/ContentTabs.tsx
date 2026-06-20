@@ -272,11 +272,15 @@ export function ContentTabs() {
               </div>
             );
           })}
-          {debugTabs.length > 1 && (
-            <button onClick={closeAllDebugTabs}
-              className="ml-2 px-2 py-1 text-[10px] text-gray-400 hover:text-red-500 transition-colors whitespace-nowrap">
-              {language === "vi" ? "Đóng tất cả" : "Close all"}
-            </button>
+          {debugTabs.length > 0 && (
+            <>
+              <span className="text-gray-300 dark:text-gray-600 text-xs mx-1">|</span>
+              <button onClick={closeAllDebugTabs}
+                className="px-2 py-1 text-[10px] text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors whitespace-nowrap"
+                title={t("tab.closeAllAi", language)}>
+                {t("tab.closeAllAi", language)}
+              </button>
+            </>
           )}
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-3">

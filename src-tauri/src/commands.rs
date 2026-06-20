@@ -90,6 +90,7 @@ pub async fn ai_list_models(config: AiProviderConfig) -> Result<Vec<String>, AiE
 #[tauri::command]
 pub async fn ai_rewrite_export(
     project: Project,
+    target_qa_id: Option<String>,
 ) -> Result<AiRewriteResult, AiErrorPayload> {
     let cancel = CancellationToken::new();
     let model = project
@@ -102,7 +103,7 @@ pub async fn ai_rewrite_export(
         .as_ref()
         .map(|c| c.kind.as_str().to_string())
         .unwrap_or_else(|| "ollama".to_string());
-    let output = ai::rewrite_all(&project, cancel).await?;
+    let output = ai::rewrite_all(&project, target_qa_id.as_deref(), cancel).await?;
     Ok(AiRewriteResult {
         markdown: output.markdown,
         model_used: model,

@@ -607,7 +607,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   appendDebugTab: (log) => {
     const id = `debug-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    const title = `Debug ${log.provider}/${log.model}`;
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const dateStr = get().language === "vi"
+      ? `${pad(now.getDate())}/${pad(now.getMonth() + 1)}`
+      : `${pad(now.getMonth() + 1)}/${pad(now.getDate())}`;
+    const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    const title = `Debug ${dateStr} ${timeStr} ${log.provider}/${log.model}`;
     set((state) => ({
       project: {
         ...state.project,

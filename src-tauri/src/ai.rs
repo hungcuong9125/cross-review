@@ -907,9 +907,11 @@ fn make_debug_log(cfg: &AiProviderConfig, request_summary: String, response_text
 
 pub async fn rewrite_all(
     project: &Project,
+    target_qa_id: Option<&str>,
     cancel: CancellationToken,
 ) -> Result<RewriteOutput, AiErrorPayload> {
-    run_rewrite(project, None, cancel).await
+    let target = target_qa_id.and_then(|id| project.qa_reports.iter().find(|q| q.id == id));
+    run_rewrite(project, target, cancel).await
 }
 
 async fn run_rewrite(
@@ -1588,7 +1590,7 @@ mod integration {
         };
 
         let cancel = CancellationToken::new();
-        let result = rewrite_all(&project, cancel).await;
+        let result = rewrite_all(&project, None, cancel).await;
 
         match result {
             Ok(output) => {

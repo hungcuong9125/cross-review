@@ -145,8 +145,8 @@ export async function aiTestProviderDebug(config: AiProviderConfig): Promise<Deb
   return invoke<DebugLog>("ai_test_provider_debug", { config });
 }
 
-export async function aiRewriteExport(project: Project): Promise<AiRewriteResult> {
-  return invoke<AiRewriteResult>("ai_rewrite_export", { project });
+export async function aiRewriteExport(project: Project, targetQaId?: string | null): Promise<AiRewriteResult> {
+  return invoke<AiRewriteResult>("ai_rewrite_export", { project, targetQaId });
 }
 
 export async function aiListModels(config: AiProviderConfig): Promise<string[]> {
@@ -171,6 +171,7 @@ export interface AppSettings {
   output_language: string;
   strip_non_primary: boolean;
   debug_enabled: boolean;
+  exclude_self: boolean;
 }
 
 export async function exportSettings(settings: AppSettings, path: string): Promise<void> {

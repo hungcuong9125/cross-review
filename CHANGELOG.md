@@ -2,6 +2,26 @@
 
 All notable changes to CrossReview are documented in this file.
 
+### v0.9.5 (2026-06-21)
+
+- **Added**: Per-source exclusion in AI rewrite — frontend passes `selectedQaId` to Rust backend, enabling targeted source exclusion from the consolidated report.
+- **Added**: Default base URLs for each provider — provider dropdown auto-fills the correct default URL on selection switch.
+- **Added**: `exclude_self` setting now included in settings export/import round-trip.
+- **Added**: `PROVIDERS_NEEDING_API_KEY` set — API-key-missing warning banner only shows for providers that actually require one (no false positive for Ollama).
+- **Fixed**: `opencodego` base URL missing trailing slash (`/v1` → `/v1/`), which could produce malformed concatenated API URLs.
+- **Fixed**: Error type guard in `handleGenerate` — proper fallback with `toastError(String(err))` for non-`AiErrorPayload` exceptions.
+- **Fixed**: Model selection no longer unnecessarily cleared when switching between compatible providers; only cleared when switching to/from `openaicompatible`.
+- **Fixed**: Settings Quick Guide pipe rendering — `desc.split("|")` now handles any number of pipe characters instead of silently dropping content after the second pipe.
+- **Fixed**: Consolidated multiple redundant `useProjectStore.getState()` calls into a single store snapshot in `handleGenerate`.
+- **Changed**: AI report title now uses language-aware date format (`vi`: dd/MM, `en`: MM/dd) instead of hardcoded en-GB locale.
+- **Changed**: Debug tab title now shows date/time + `provider/model` for clearer tab identification.
+- **Changed**: Debug tab close-all button now visible with 1+ tabs (was 2+), uses i18n title string.
+- **Changed**: Settings checkboxes reorganized — "Exclude current source" moved to processing column, "Enable debug" uses i18n translation key.
+- **Changed**: Base URL input placeholder now dynamic per provider kind.
+- **Refactored**: Settings Quick Guide from hardcoded bilingual JSX to data-driven i18n-powered component via `GUIDE_ITEMS` array.
+- **Docs**: Added Anthropic `/v1/messages` routing instructions for proxy gateways (e.g., `openmodel.ai`).
+- **Version**: Bumped to 0.9.5 (package.json, Cargo.toml, tauri.conf.json).
+
 ### v0.9.4 (2026-06-21)
 
 - **Added**: Settings Quick Guide panel in SettingsPanel — bilingual English/Vietnamese descriptions for each toggle (cross-review, compact mode, normalize whitespace, export as single line, enable debug, strip non-primary, output language).

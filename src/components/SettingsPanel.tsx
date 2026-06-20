@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useProjectStore } from "../state/projectStore";
 import { aiTestProvider, aiTestProviderDebug, aiListModels, aiRewriteExport, aiCancelRequest, exportSettings, importSettings, type AiProviderKind, type AiErrorPayload, type DebugLog, type AppSettings } from "../lib/api";
-import { t } from "../lib/i18n";
+import { t, type TranslationKey } from "../lib/i18n";
 import { useToast } from "../hooks/useToast";
 import { isApiKeyScrubbed, clearApiKeyScrubbed } from "../lib/sanitize";
 import { toSlug } from "../lib/slug";
@@ -15,6 +15,31 @@ const PROVIDER_KINDS: { value: AiProviderKind; label: string }[] = [
   { value: "mimo", label: "Xiaomi MiMo" },
   { value: "opencodego", label: "OpenCode Go" },
   { value: "openaicompatible", label: "OpenAI Compatible" },
+];
+
+const PROVIDERS_NEEDING_API_KEY: ReadonlySet<AiProviderKind> = new Set([
+  "openai", "anthropic", "gemini", "deepseek", "mimo", "opencodego", "openaicompatible",
+]);
+
+const DEFAULT_BASE_URLS: Record<AiProviderKind, string> = {
+  ollama: "http://localhost:11434/",
+  openai: "https://api.openai.com/v1/",
+  anthropic: "https://api.anthropic.com/v1/",
+  gemini: "https://generativelanguage.googleapis.com/v1/",
+  deepseek: "https://api.deepseek.com/v1/",
+  mimo: "https://api.xiaomimimo.com/v1/",
+  opencodego: "https://opencode.ai/zen/go/v1/",
+  openaicompatible: "",
+};
+
+const GUIDE_ITEMS: { labelKey: TranslationKey; descKey: TranslationKey }[] = [
+  { labelKey: "settings.excludeSelf", descKey: "settings.excludeSelf.desc" },
+  { labelKey: "settings.compactMode", descKey: "settings.compactMode.desc" },
+  { labelKey: "settings.removeWhitespace", descKey: "settings.removeWhitespace.desc" },
+  { labelKey: "settings.mergeLines", descKey: "settings.mergeLines.desc" },
+  { labelKey: "settings.debugEnabled", descKey: "settings.debugEnabled.desc" },
+  { labelKey: "settings.stripNonPrimary", descKey: "settings.stripNonPrimary.desc" },
+  { labelKey: "settings.outputLanguage", descKey: "settings.outputLanguage.desc" },
 ];
 
 export function SettingsPanel() {
@@ -44,7 +69,12 @@ export function SettingsPanel() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
   const [models, setModels] = useState<string[]>([]);
-  const [showKeyBanner, setShowKeyBanner] = useState(isApiKeyScrubbed() && !project.ai_config?.api_key && !!project.ai_config);
+  const [showKeyBanner, setShowKeyBanner] = useState(
+    isApiKeyScrubbed()
+    && !project.ai_config?.api_key
+    && !!project.ai_config
+    && PROVIDERS_NEEDING_API_KEY.has(project.ai_config.kind)
+  );
   const [draftOutputLanguage, setDraftOutputLanguage] = useState(project.ai_config?.output_language ?? "");
   const [draftStripNonPrimary, setDraftStripNonPrimary] = useState(project.ai_config?.strip_non_primary ?? false);
   const [debugLogs, setDebugLogs] = useState<DebugLog[]>([]);
@@ -61,7 +91,7 @@ export function SettingsPanel() {
     setDraftOutputLanguage(project.ai_config?.output_language ?? "");
     setDraftStripNonPrimary(project.ai_config?.strip_non_primary ?? false);
     setShowApiKey(false);
-    setShowKeyBanner(isApiKeyScrubbed() && !project.ai_config?.api_key && !!project.ai_config);
+    setShowKeyBanner(isApiKeyScrubbed() && !project.ai_config?.api_key && !!project.ai_config && PROVIDERS_NEEDING_API_KEY.has(project.ai_config.kind));
   }, [project.ai_config]);
 
   const isDirty = draftKind !== (project.ai_config?.kind ?? "ollama")
@@ -162,27 +192,33 @@ export function SettingsPanel() {
   const handleGenerate = async () => {
     if (aiBusy) return;
     saveDraft();
-    const cfg = useProjectStore.getState().project.ai_config;
+    const store = useProjectStore.getState();
+    const cfg = store.project.ai_config;
     if (!cfg || !cfg.model) {
       info(t("toast.aiNotConfigured", language));
       return;
     }
-    const activeCount = useProjectStore.getState().project.qa_reports.filter(q => q.active !== false).length;
+    const activeCount = store.project.qa_reports.filter(q => q.active !== false).length;
     if (activeCount < 2) {
       info(t("toast.needTwoSources", language));
       return;
     }
     setAiBusy(true);
     try {
-      const result = await aiRewriteExport(useProjectStore.getState().project);
+      const activeQaId = store.selectedQaId;
+      const result = await aiRewriteExport(store.project, activeQaId);
       if (debugEnabled && result.debug_log) {
         appendDebugTab(result.debug_log);
         setActiveMainTab("debug");
       }
       const now = new Date();
-      const title = `AI ${now.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit" })} ${now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
-
       const pad = (n: number) => String(n).padStart(2, "0");
+      const dateStr = language === "vi"
+        ? `${pad(now.getDate())}/${pad(now.getMonth() + 1)}`
+        : `${pad(now.getMonth() + 1)}/${pad(now.getDate())}`;
+      const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+      const title = `AI ${dateStr} ${timeStr}`;
+
       const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
       const projectSlug = project.title ? toSlug(project.title) : "";
       const filename = projectSlug ? `ai-report-${projectSlug}-${ts}.md` : `ai-report-${ts}.md`;
@@ -198,6 +234,10 @@ export function SettingsPanel() {
     } catch (err) {
       if (typeof err === "string") { toastError(err); return; }
       const e = err as AiErrorPayload;
+      if (typeof e?.code !== "string") {
+        toastError(String(err));
+        return;
+      }
       if (debugEnabled && e.debug_log) {
         appendDebugTab(e.debug_log);
         setActiveMainTab("debug");
@@ -263,6 +303,7 @@ export function SettingsPanel() {
       output_language: state.project.ai_config?.output_language ?? "",
       strip_non_primary: state.project.ai_config?.strip_non_primary ?? false,
       debug_enabled: state.debugEnabled,
+      exclude_self: state.project.exclude_self !== false,
     };
     try {
       const { save } = await import("@tauri-apps/plugin-dialog");
@@ -288,8 +329,8 @@ export function SettingsPanel() {
         const settings = await importSettings(path as string);
         useProjectStore.setState((state) => ({
           project: settings.ai_config
-            ? { ...state.project, ai_config: settings.ai_config }
-            : state.project,
+            ? { ...state.project, ai_config: settings.ai_config, exclude_self: settings.exclude_self }
+            : { ...state.project, exclude_self: settings.exclude_self },
           compactMode: settings.compact_mode,
           removeWhitespace: settings.remove_whitespace,
           mergeLines: settings.merge_lines,
@@ -353,10 +394,6 @@ export function SettingsPanel() {
           <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
             <div className="space-y-1.5">
               <label className="flex items-center gap-1.5 cursor-pointer">
-                <input type="checkbox" checked={project.exclude_self !== false} onChange={toggleExcludeSelf} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
-                <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.excludeSelf", language)}</span>
-              </label>
-              <label className="flex items-center gap-1.5 cursor-pointer">
                 <input type="checkbox" checked={compactMode} onChange={toggleCompactMode} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
                 <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.compactMode", language)}</span>
               </label>
@@ -372,103 +409,76 @@ export function SettingsPanel() {
             <div className="space-y-1.5">
               <label className="flex items-center gap-1.5 cursor-pointer">
                 <input type="checkbox" checked={debugEnabled} onChange={() => setDebugEnabled(!debugEnabled)} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
-                <span className="text-xs text-gray-600 dark:text-gray-400">{language === "vi" ? "Bật debug" : "Enable debug"}</span>
+                <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.debugEnabled", language)}</span>
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" checked={project.exclude_self !== false} onChange={toggleExcludeSelf} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
+                <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.excludeSelf", language)}</span>
               </label>
               <label className="flex items-center gap-1.5 cursor-pointer">
                 <input type="checkbox" checked={draftStripNonPrimary} onChange={() => setDraftStripNonPrimary(!draftStripNonPrimary)} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
                 <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.stripNonPrimary", language)}</span>
               </label>
-              <div>
-                <span className="text-[10px] text-gray-500 dark:text-gray-400 block mt-2">{t("settings.outputLanguage", language)}</span>
-                <select value={draftOutputLanguage} onChange={(e) => setDraftOutputLanguage(e.target.value)}
-                  className="w-full h-6 text-xs px-2 bg-gray-100 dark:bg-gray-600">
-                  <option value="">{t("settings.outputLanguage.chooseLanguage", language)}</option>
-                  <option value="vi">{language === "vi" ? "Tiếng Việt" : "Vietnamese"}</option>
-                  <option value="en">English</option>
-                  <option value="zh">{language === "vi" ? "中文 (Trung Quốc)" : "中文 (Chinese)"}</option>
-                  <option value="ja">{language === "vi" ? "日本語 (Nhật)" : "日本語 (Japanese)"}</option>
-                  <option value="ko">{language === "vi" ? "한국어 (Hàn)" : "한국어 (Korean)"}</option>
-                  <option value="ru">{language === "vi" ? "Русский (Nga)" : "Русский (Russian)"}</option>
-                  <option value="fr">{language === "vi" ? "Français (Pháp)" : "Français (French)"}</option>
-                  <option value="de">{language === "vi" ? "Deutsch (Đức)" : "Deutsch (German)"}</option>
-                  <option value="es">{language === "vi" ? "Español (TBN)" : "Español (Spanish)"}</option>
-                  <option value="pt">{language === "vi" ? "Português (BĐN)" : "Português (Portuguese)"}</option>
-                  <option value="it">{language === "vi" ? "Italiano (Ý)" : "Italiano (Italian)"}</option>
-                  <option value="th">{language === "vi" ? "ไทย (Thái)" : "ไทย (Thai)"}</option>
-                  <option value="ar">{language === "vi" ? "العربية (Ả Rập)" : "العربية (Arabic)"}</option>
-                  <option value="hi">{language === "vi" ? "हिन्दी (Hindi)" : "हिन्दी (Hindi)"}</option>
-                </select>
-              </div>
             </div>
+          </div>
+
+          <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-700/50 pt-2.5 mt-2.5">
+            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{t("settings.outputLanguage", language)}</span>
+            <select value={draftOutputLanguage} onChange={(e) => setDraftOutputLanguage(e.target.value)}
+              className="w-40 h-7 text-xs px-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent">
+              <option value="">{t("settings.outputLanguage.chooseLanguage", language)}</option>
+              <option value="vi">{language === "vi" ? "Tiếng Việt" : "Vietnamese"}</option>
+              <option value="en">English</option>
+              <option value="zh">{language === "vi" ? "中文 (Trung Quốc)" : "中文 (Chinese)"}</option>
+              <option value="ja">{language === "vi" ? "日本語 (Nhật)" : "日本語 (Japanese)"}</option>
+              <option value="ko">{language === "vi" ? "한국어 (Hàn)" : "한국어 (Korean)"}</option>
+              <option value="ru">{language === "vi" ? "Русский (Nga)" : "Русский (Russian)"}</option>
+              <option value="fr">{language === "vi" ? "Français (Pháp)" : "Français (French)"}</option>
+              <option value="de">{language === "vi" ? "Deutsch (Đức)" : "Deutsch (German)"}</option>
+              <option value="es">{language === "vi" ? "Español (TBN)" : "Español (Spanish)"}</option>
+              <option value="pt">{language === "vi" ? "Português (BĐN)" : "Português (Portuguese)"}</option>
+              <option value="it">{language === "vi" ? "Italiano (Ý)" : "Italiano (Italian)"}</option>
+              <option value="th">{language === "vi" ? "ไทย (Thái)" : "ไทย (Thai)"}</option>
+              <option value="ar">{language === "vi" ? "العربية (Ả Rập)" : "العربية (Arabic)"}</option>
+              <option value="hi">{language === "vi" ? "हिन्दी (Hindi)" : "हिन्दी (Hindi)"}</option>
+            </select>
           </div>
 
           <div className="mt-4 p-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-dashed border-gray-200 dark:border-gray-700 text-[10px] text-gray-500 dark:text-gray-400 space-y-1">
             <div className="font-bold text-gray-700 dark:text-gray-300 mb-1 uppercase tracking-wider">
-              {language === "vi" ? "Chú thích cài đặt" : "Settings Quick Guide"}
+              {t("settings.guide.title", language)}
             </div>
-            {language === "vi" ? (
-              <ul className="space-y-1">
-                <li className="flex items-start gap-1">
-                  <span className="text-amber-500 flex-shrink-0">★</span>
-                  <span><strong className="text-gray-600 dark:text-gray-300">Review chéo:</strong> Loại trừ báo cáo của chính người nhận khỏi tệp tổng hợp được gửi.</span>
-                </li>
-                <li className="flex items-start gap-1">
-                  <span className="text-amber-500 flex-shrink-0">★</span>
-                  <span><strong className="text-gray-600 dark:text-gray-300">Chế độ gọn:</strong> Thu gọn các dòng trống liền kề thành 1 dòng đơn.</span>
-                </li>
-                <li className="flex items-start gap-1">
-                  <span className="text-amber-500 flex-shrink-0">★</span>
-                  <span><strong className="text-gray-600 dark:text-gray-300">Chuẩn hóa khoảng trắng:</strong> Giới hạn tối đa chỉ có 1 dòng trống phân tách.</span>
-                </li>
-                <li className="flex items-start gap-1">
-                  <span className="text-amber-500 flex-shrink-0">★</span>
-                  <span><strong className="text-gray-600 dark:text-gray-300">Xuất thành một dòng:</strong> Gom toàn bộ văn bản thành 1 dòng duy nhất (nối bằng <code className="bg-gray-200 dark:bg-gray-800 px-0.5 rounded font-mono">|</code>).</span>
-                </li>
-                <li className="flex items-start gap-1">
-                  <span className="text-amber-500 flex-shrink-0">★</span>
-                  <span><strong className="text-gray-600 dark:text-gray-300">Bật debug:</strong> Lưu nhật ký chi tiết các yêu cầu/phản hồi AI để kiểm tra lỗi.</span>
-                </li>
-                <li className="flex items-start gap-1">
-                  <span className="text-amber-500 flex-shrink-0">★</span>
-                  <span><strong className="text-gray-600 dark:text-gray-300">Loại bỏ ký tự ngoại lai:</strong> Loại bỏ các ký tự ngoài hệ thống chữ chính (Cyrillic, CJK, Thái...).</span>
-                </li>
-                <li className="flex items-start gap-1">
-                  <span className="text-amber-500 flex-shrink-0">★</span>
-                  <span><strong className="text-gray-600 dark:text-gray-300">Ngôn ngữ xuất:</strong> Dịch hoặc viết báo cáo bằng ngôn ngữ được chọn.</span>
-                </li>
-              </ul>
-            ) : (
-              <ul className="space-y-1">
-                <li className="flex items-start gap-1">
-                  <span className="text-amber-500 flex-shrink-0">★</span>
-                  <span><strong className="text-gray-600 dark:text-gray-300">Cross review:</strong> Excludes the recipient's own report from their compiled output file.</span>
-                </li>
-                <li className="flex items-start gap-1">
-                  <span className="text-amber-500 flex-shrink-0">★</span>
-                  <span><strong className="text-gray-600 dark:text-gray-300">Compact mode:</strong> Collapses multiple block/paragraph spaces into a single line break.</span>
-                </li>
-                <li className="flex items-start gap-1">
-                  <span className="text-amber-500 flex-shrink-0">★</span>
-                  <span><strong className="text-gray-600 dark:text-gray-300">Normalize whitespace:</strong> Limits consecutive blank lines to one.</span>
-                </li>
-                <li className="flex items-start gap-1">
-                  <span className="text-amber-500 flex-shrink-0">★</span>
-                  <span><strong className="text-gray-600 dark:text-gray-300">Export as single line:</strong> Flattens all text into a single line, joined by <code className="bg-gray-200 dark:bg-gray-800 px-0.5 rounded font-mono">|</code>.</span>
-                </li>
-                <li className="flex items-start gap-1">
-                  <span className="text-amber-500 flex-shrink-0">★</span>
-                  <span><strong className="text-gray-600 dark:text-gray-300">Enable debug:</strong> Saves full API request/response payloads to diagnose issues.</span>
-                </li>
-                <li className="flex items-start gap-1">
-                  <span className="text-amber-500 flex-shrink-0">★</span>
-                  <span><strong className="text-gray-600 dark:text-gray-300">Strip Non-Primary:</strong> Removes script characters outside the main writing system.</span>
-                </li>
-                <li className="flex items-start gap-1">
-                  <span className="text-amber-500 flex-shrink-0">★</span>
-                  <span><strong className="text-gray-600 dark:text-gray-300">Output Language:</strong> Instructs the AI to write the report in the selected language.</span>
-                </li>
-              </ul>
-            )}
+            <ul className="space-y-1">
+              {GUIDE_ITEMS.map((item) => {
+                const label = t(item.labelKey, language);
+                const desc = t(item.descKey, language);
+
+                // Wrap pipe characters in <code> tags for visual clarity in merge-lines description
+                const parts = desc.split("|");
+                const renderedDesc = parts.length > 1 ? (
+                  <span>
+                    {parts.map((part, i) => (
+                      <span key={i}>
+                        {i > 0 && <code className="bg-gray-200 dark:bg-gray-800 px-0.5 rounded font-mono">|</code>}
+                        {part}
+                      </span>
+                    ))}
+                  </span>
+                ) : (
+                  <span>{desc}</span>
+                );
+
+                return (
+                  <li key={item.labelKey} className="flex items-start gap-1">
+                    <span className="text-amber-500 flex-shrink-0">★</span>
+                    <span>
+                      <strong className="text-gray-600 dark:text-gray-300">{label}:</strong>{" "}
+                      {renderedDesc}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         </div>
 
@@ -490,9 +500,11 @@ export function SettingsPanel() {
               <label className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">{t("settings.aiProvider.name", language)}</label>
               <select value={draftKind} onChange={(e) => {
                 const newKind = e.target.value as AiProviderKind;
+                const wasCompat = draftKind === "openaicompatible";
+                const nowCompat = newKind === "openaicompatible";
                 setDraftKind(newKind);
-                setDraftBaseUrl("");
-                setDraftModel("");
+                setDraftBaseUrl(DEFAULT_BASE_URLS[newKind] || "");
+                if (wasCompat !== nowCompat) setDraftModel("");
               }}
                 className="w-full h-7 text-xs px-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded">
                 {PROVIDER_KINDS.map(k => <option key={k.value} value={k.value}>{k.label}</option>)}
@@ -501,7 +513,7 @@ export function SettingsPanel() {
             <div>
               <label className="text-[10px] text-gray-500 dark:text-gray-400 block mb-0.5">{t("settings.aiProvider.baseUrl", language)}</label>
               <input type="text" value={draftBaseUrl} onChange={(e) => setDraftBaseUrl(e.target.value)}
-                placeholder="http://localhost:11434/"
+                placeholder={DEFAULT_BASE_URLS[draftKind] || "https://api.example.com/v1/"}
                 className="w-full h-7 text-xs px-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent" />
             </div>
             <div>

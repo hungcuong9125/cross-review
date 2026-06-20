@@ -560,7 +560,7 @@ dependencies = [
 
 [[package]]
 name = "cross-review"
-version = "0.9.4"
+version = "0.9.5"
 dependencies = [
  "chrono",
  "genai",

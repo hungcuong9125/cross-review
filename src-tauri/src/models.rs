@@ -291,10 +291,16 @@ pub struct AppSettings {
     pub strip_non_primary: bool,
     #[serde(default)]
     pub debug_enabled: bool,
+    #[serde(default = "default_exclude_self")]
+    pub exclude_self: bool,
 }
 
 fn default_preview_format() -> String {
     "html".to_string()
+}
+
+fn default_exclude_self() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
