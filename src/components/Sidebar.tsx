@@ -82,7 +82,7 @@ export function Sidebar() {
   } = useProjectStore();
 
   const { success, error: toastError } = useToast();
-  const { handleExportMd, handleExportZip } = useExportActions();
+  const { handleExportSourceMd, handleExportSourceZip } = useExportActions();
 
   const handleImport = async () => {
     try {
@@ -271,10 +271,10 @@ export function Sidebar() {
       </div>
       <div className="p-2.5 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
         <div className="grid grid-cols-2 gap-1.5">
-          <button onClick={handleExportMd} className="px-2 py-1.5 text-[11px] font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors">
+          <button onClick={handleExportSourceMd} className="px-2 py-1.5 text-[11px] font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors">
             {t("footer.exportMd", language)}
           </button>
-          <button onClick={handleExportZip} className="px-2 py-1.5 text-[11px] font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors">
+          <button onClick={handleExportSourceZip} className="px-2 py-1.5 text-[11px] font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors">
             {t("footer.exportZip", language)}
           </button>
           <button onClick={handleImport} className="px-2 py-1.5 text-[11px] font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors">

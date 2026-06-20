@@ -17,7 +17,7 @@ fn main() {
             commands::validate_project_cmd,
             commands::generate_preview_cmd,
             commands::export_single_markdown,
-            commands::export_single_zip,
+            commands::export_multiple_zip,
             commands::save_project,
             commands::open_project,
             commands::ai_test_provider,

@@ -213,6 +213,8 @@ pub struct Project {
     pub ai_config: Option<AiProviderConfig>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ai_reports: Option<Vec<AiReportSaved>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub debug_logs: Option<Vec<DebugLog>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -252,6 +254,7 @@ impl Default for Project {
             closing_text: None,
             ai_config: None,
             ai_reports: None,
+            debug_logs: None,
         }
     }
 }
@@ -292,4 +295,10 @@ pub struct AppSettings {
 
 fn default_preview_format() -> String {
     "html".to_string()
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ZipEntry {
+    pub filename: String,
+    pub markdown: String,
 }

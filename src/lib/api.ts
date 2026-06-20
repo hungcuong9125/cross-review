@@ -70,6 +70,7 @@ export interface Project {
   exclude_self?: boolean;
   ai_config?: AiProviderConfig;
   ai_reports?: AiReportSaved[];
+  debug_logs?: DebugLog[];
 }
 
 export interface ExportFile {
@@ -102,12 +103,16 @@ export async function exportSingleMarkdown(
   return invoke<void>("export_single_markdown", { markdown, outputPath });
 }
 
-export async function exportSingleZip(
-  filename: string,
-  markdown: string,
+export interface ZipEntry {
+  filename: string;
+  markdown: string;
+}
+
+export async function exportMultipleToZip(
+  entries: ZipEntry[],
   outputZipPath: string
 ): Promise<string> {
-  return invoke<string>("export_single_zip", { filename, markdown, outputZipPath });
+  return invoke<string>("export_multiple_zip", { entries, outputZipPath });
 }
 
 export async function saveProject(

@@ -18,7 +18,7 @@ import { t } from "./lib/i18n";
 function App() {
   const { project, setProject, newProject, darkMode, language, activeMainTab } =
     useProjectStore();
-  const { handleExportMd } = useExportActions();
+  const { handleExportTabMd } = useExportActions();
 
   const [rightSidebarWidth, setRightSidebarWidth] = useState(400);
   const cleanupDragRef = useRef<(() => void) | null>(null);
@@ -70,7 +70,7 @@ function App() {
   // Keep handler refs in sync with the latest closures.
   handleSaveRef.current = handleSave;
   handleOpenRef.current = handleOpen;
-  handleExportMdRef.current = handleExportMd;
+  handleExportMdRef.current = handleExportTabMd;
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();

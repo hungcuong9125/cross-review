@@ -59,6 +59,7 @@ interface ProjectState {
   appendDebugTab: (log: DebugLog) => string;
   closeContentTab: (id: string) => void;
   closeAllAiTabs: () => void;
+  closeAllDebugTabs: () => void;
 
   // Preview format
   previewFormat: "html" | "markdown";
@@ -128,6 +129,7 @@ const DEFAULT_PROJECT: Project = {
   components: [],
   qa_reports: [],
   exclude_self: true,
+  debug_logs: [],
 };
 function migrateProject(project: Project): Project {
   const migrated = { ...project, components: [...(project.components || [])] };
@@ -200,12 +202,19 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       filename: r.filename,
     }));
 
+    const loadedDebugTabs: ContentTab[] = (migrated.debug_logs || []).map((log, i) => ({
+      id: `debug-loaded-${i}-${Date.now()}`,
+      kind: "debug" as const,
+      title: `Debug ${log.provider}/${log.model}`,
+      log,
+    }));
+
     set({
       project: migrated,
       selectedQaId: firstQa?.id ?? null,
       activeMainTab: "home",
       activeItem: firstQa ? { type: "report", qaId: firstQa.id } : null,
-      contentTabs: [DEFAULT_PREVIEW_TAB, ...loadedAiTabs],
+      contentTabs: [DEFAULT_PREVIEW_TAB, ...loadedAiTabs, ...loadedDebugTabs],
       activeContentTabId: "preview",
       previewMarkdown: "",
       previewFilename: "",
@@ -217,7 +226,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   newProject: () => {
     set({
-      project: { ...DEFAULT_PROJECT, document_type: "review-weaver-project", components: [...DEFAULT_PROJECT.components], qa_reports: [], exclude_self: true },
+      project: {
+        ...DEFAULT_PROJECT,
+        components: [...DEFAULT_PROJECT.components],
+      },
       selectedQaId: null,
       activeMainTab: "home",
       activeItem: null,
@@ -591,6 +603,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const id = `debug-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const title = `Debug ${log.provider}/${log.model}`;
     set((state) => ({
+      project: {
+        ...state.project,
+        debug_logs: [...(state.project.debug_logs || []), log],
+      },
       contentTabs: [...state.contentTabs, { id, kind: "debug" as const, title, log }],
       activeContentTabId: id,
     }));
@@ -630,6 +646,16 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           ai_reports: (state.project.ai_reports || []).filter((r) => r.id !== id),
         };
       }
+      if (closingKind === "debug") {
+        const closedTab = state.contentTabs[idx] as { kind: "debug"; log: DebugLog };
+        const closedLogIndex = (state.project.debug_logs || []).indexOf(closedTab.log);
+        next.project = {
+          ...(next.project || state.project),
+          debug_logs: closedLogIndex >= 0
+            ? (state.project.debug_logs || []).filter((_, i) => i !== closedLogIndex)
+            : state.project.debug_logs,
+        };
+      }
       return next;
     });
   },
@@ -637,6 +663,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   closeAllAiTabs: () => {
     set((state) => {
       const remaining = state.contentTabs.filter((t) => t.kind === "preview" || t.kind === "debug");
+      const hasAiTab = remaining.length < state.contentTabs.length;
       const activeTab = state.contentTabs.find((t) => t.id === state.activeContentTabId);
       const activeId = activeTab?.kind === "ai" ? "preview" : state.activeContentTabId;
       const activeMainTab =
@@ -646,10 +673,30 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
             ? "home"
             : state.activeMainTab;
       return {
-        project: {
-          ...state.project,
-          ai_reports: [],
-        },
+        project: hasAiTab
+          ? { ...state.project, ai_reports: [] }
+          : state.project,
+        contentTabs: remaining.length > 0 ? remaining : [DEFAULT_PREVIEW_TAB],
+        activeContentTabId: activeId,
+        activeMainTab,
+      };
+    });
+  },
+
+  closeAllDebugTabs: () => {
+    set((state) => {
+      const remaining = state.contentTabs.filter((t) => t.kind !== "debug");
+      const hasDebugTab = remaining.length < state.contentTabs.length;
+      const activeTab = state.contentTabs.find((t) => t.id === state.activeContentTabId);
+      const activeId = activeTab?.kind === "debug" ? "preview" : state.activeContentTabId;
+      const activeMainTab =
+        state.activeMainTab === "debug" && !hasDebugTab
+          ? "home"
+          : state.activeMainTab;
+      return {
+        project: hasDebugTab
+          ? { ...state.project, debug_logs: [] }
+          : state.project,
         contentTabs: remaining.length > 0 ? remaining : [DEFAULT_PREVIEW_TAB],
         activeContentTabId: activeId,
         activeMainTab,

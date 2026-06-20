@@ -33,12 +33,15 @@ pub fn export_single_markdown(markdown: String, output_path: String) -> Result<(
 }
 
 #[tauri::command]
-pub fn export_single_zip(
-    filename: String,
-    markdown: String,
+pub fn export_multiple_zip(
+    entries: Vec<crate::models::ZipEntry>,
     output_zip_path: String,
 ) -> Result<String, String> {
-    crate::zip_export::export_single_to_zip(&filename, &markdown, &output_zip_path)
+    let entries: Vec<(String, String)> = entries
+        .into_iter()
+        .map(|e| (e.filename, e.markdown))
+        .collect();
+    crate::zip_export::export_multiple_to_zip(&entries, &output_zip_path)
         .map_err(|e| e.to_string())
 }
 

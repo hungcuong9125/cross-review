@@ -62,7 +62,6 @@ export function PreviewBody() {
     () => (preview ? processContent(preview.markdown) : ""),
     [preview, processContent, compactMode, removeWhitespace, mergeLines]
   );
-  const displayContent = processedContent;
   const filename = preview ? preview.filename : "-";
   useEffect(() => {
     setPreviewMarkdown(processedContent);
@@ -173,12 +172,12 @@ export function PreviewBody() {
               <div
                 className="markdown-preview prose dark:prose-invert max-w-none bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 text-sm"
                 dangerouslySetInnerHTML={{
-                  __html: DOMPurify.sanitize(String(marked.parse(displayContent, { breaks: true }))),
+                  __html: DOMPurify.sanitize(String(marked.parse(processedContent, { breaks: true }))),
                 }}
               />
             ) : (
               <pre className="whitespace-pre-wrap break-words bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-mono text-gray-700 dark:text-gray-200 leading-relaxed">
-                {displayContent}
+                {processedContent}
               </pre>
             )}
           </>

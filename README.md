@@ -1,6 +1,6 @@
 # Review Weave
 
-![Review Weave Interface](./screenshot-v2.png)
+![Review Weave Interface](./19225.png)
 
 **Review Weave** is a lightweight desktop application designed to help QA teams and AI models easily cross-review each other's work. It supports AI-powered report consolidation using multiple LLM providers.
 
@@ -189,6 +189,37 @@ The compiled Markdown outputs follow this structural convention:
 ```
 
 ## Changelog
+
+### v0.9.0 (2026-06-20)
+- **Added**: Custom opening/closing components now included in AI consolidation request body (`build_chat_request`) — user-authored component text is placed before sources (opening) and after sources (closing) with section separators.
+- **Added**: Vietnamese prompt enhancement — when translation is enabled, English output-language lines inside the prompt are now replaced with Vietnamese equivalents (beyond just prepending the CRITICAL instruction).
+- **Added**: `remove_chinese` critical instruction block appended to AI requests when the setting is active.
+- **Added**: Debug logs persistence — debug logs are now automatically saved inside the `.review-weaver.json` project file and fully restored upon opening; new debug tab management (append, close individual, close all) with `DebugLog` reference tracking in project state.
+- **Added**: Multi-entry ZIP export (`export_multiple_to_zip`) replacing single-file ZIP — export all AI/preview tabs as a single archive with collision-safe filenames.
+- **Added**: Source-level export buttons in sidebar — export the selected source as a standalone `.md` file or all active sources as a `.zip` archive.
+- **Added**: Debug log export — export the active debug tab's request/response as a standalone Markdown file.
+- **Added**: Loading spinner and overlay components (`LoadingSpinner`, `LoadingOverlay`) extracted and reused across AI request and report-generation views.
+- **Added**: `closeAllDebugTabs` action in project store — closes all debug tabs and clears debug logs from project state in one operation.
+- **Added**: `ZipEntry` model for Tauri IPC serialization of multi-entry ZIP exports.
+- **Added**: i18n keys for new UI strings (`dialog.noSource`, `footer.exportAllZip`, `loading.aiRequest`, `loading.generatingReport`).
+- **Fixed**: Source ZIP export (`handleExportSourceZip`) now includes the review-weaver signature — was inconsistent with the `.md` export path which always appended `SIGNATURE`.
+- **Fixed**: "Export All ZIP" (`handleExportAllTabsZip`) now regenerates preview content fresh via `generatePreview()` instead of reading the potentially stale cached `previewMarkdown` store value.
+- **Fixed**: Debug tab "Close all" button now correctly calls `closeAllDebugTabs` (was incorrectly calling `closeAllAiTabs`).
+- **Fixed**: AI tab content now renders `processedContent` via `useMemo` consistently — the raw `tab.markdown` variable was accidentally passed through to `marked.parse` in one code path.
+- **Fixed**: `closeAllAiTabs` no longer clears `debug_logs` project state when only AI tabs are being closed.
+- **Fixed**: `newProject` no longer redundantly overrides fields that already match `DEFAULT_PROJECT` defaults.
+- **Changed**: `build_chat_request` function signature expanded — now accepts `project`, `cfg` parameters; body construction includes opening components, source sections, optional critical instructions, and closing components.
+- **Changed**: `get_components` visibility broadened to `pub(crate)`; new `estimate_components_chars` helper added for more accurate capacity estimation in AI requests.
+- **Changed**: `export_single_zip` Tauri command replaced by generalized `export_multiple_zip` accepting an array of `ZipEntry` structs.
+- **Changed**: Unified `exportTab(mode)` callback replaced by separate named export handlers (`handleExportTabMd`, `handleExportSourceMd`, `handleExportSourceZip`, `handleExportAllTabsZip`, `handleExportDebugLog`) for clearer responsibility boundaries.
+- **Changed**: `isValidMarkdownReport` import moved from dynamic (`await import(...)`) to static top-level import.
+- **Changed**: Loading overlay DOM inlined in both AI and debug views replaced by shared `LoadingOverlay` component.
+- **Removed**: `handleExportMd`/`handleExportZip` export handlers and the underlying `exportTab(mode)` abstraction.
+- **Removed**: Dead `displayContent` intermediate variable in `PreviewBody`.
+- **Removed**: Verbose explanatory comment and unused variable in Vietnamese prompt test.
+- **Tests**: Added `test_resolve_prompt_vietnamese_replaces_english_line` covering all 3 prompt levels.
+- **Tests**: Updated test `Project` fixture construction in `ai.rs` and `export.rs` to include new `debug_logs: None` field.
+- **Version**: Bumped to 0.9.0 (package.json, Cargo.toml, tauri.conf.json).
 
 ### v0.8.2 (2026-06-20)
 - **Fixed**: `isValidMarkdownReport` was over-permissive — a bare signature comment or stray `**` passed validation. Replaced with stricter `REVIEW_REPORT_SIGNATURE` regex requiring `## N.` section headers. Split into `isValidSourceDocument` for source document imports (accepts any non-empty text) and `isValidMarkdownReport` for AI report imports (requires Review Weaver report structure).

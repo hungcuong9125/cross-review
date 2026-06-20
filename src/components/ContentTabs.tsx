@@ -7,7 +7,26 @@ import { PreviewBody } from "./PreviewBody";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { percentChange } from "../lib/utils";
+import { isValidMarkdownReport } from "../lib/sanitize";
 import pkg from "../../package.json";
+
+function LoadingSpinner({ color = "orange" }: { color?: "orange" | "blue" }) {
+  const colorClass = color === "orange" ? "border-orange-400" : "border-blue-400";
+  return <div className={`w-8 h-8 border-3 ${colorClass} border-t-transparent rounded-full animate-spin`} />;
+}
+
+function LoadingOverlay({ color, language }: { color: "orange" | "blue"; language: "vi" | "en" }) {
+  const text = t(color === "orange" ? "loading.aiRequest" : "loading.generatingReport", language);
+  const textColor = color === "orange" ? "text-orange-500" : "text-blue-500";
+  return (
+    <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-50/80 dark:bg-gray-900/80">
+      <div className="flex flex-col items-center gap-3">
+        <LoadingSpinner color={color} />
+        <p className={`text-sm ${textColor} font-medium`}>{text}</p>
+      </div>
+    </div>
+  );
+}
 
 function AiTabContent({ tab }: {
   tab: {
@@ -30,11 +49,9 @@ function AiTabContent({ tab }: {
     mergeLines,
   } = useProjectStore();
 
-
-  const rawContent = tab.markdown;
   const processedContent = useMemo(
-    () => processContent(rawContent),
-    [rawContent, processContent, compactMode, removeWhitespace, mergeLines]
+    () => processContent(tab.markdown),
+    [tab.markdown, processContent, compactMode, removeWhitespace, mergeLines]
   );
   const displayCharCount = processedContent.length;
   const initialCharCount = tab.initialCharCount;
@@ -107,10 +124,10 @@ function AiTabContent({ tab }: {
       <div className="flex-1 overflow-y-auto p-4">
         {previewFormat === "html" ? (
           <div className="markdown-preview prose dark:prose-invert max-w-none bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 text-sm"
-            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(String(marked.parse(rawContent, { breaks: true }))) }} />
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(String(marked.parse(processedContent, { breaks: true }))) }} />
         ) : (
           <pre className="whitespace-pre-wrap break-words bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-mono text-gray-700 dark:text-gray-200 leading-relaxed">
-            {rawContent}
+            {processedContent}
           </pre>
         )}
       </div>
@@ -121,14 +138,14 @@ function AiTabContent({ tab }: {
 export function ContentTabs() {
   const {
     contentTabs, activeContentTabId, setActiveContentTab,
-    closeContentTab, closeAllAiTabs, language,
+    closeContentTab, closeAllAiTabs, closeAllDebugTabs, language,
     processContent,
     previewMarkdown,
     activeMainTab, aiBusy,
     appendAiTab,
   } = useProjectStore();
   const { success } = useToast();
-  const { handleExportMd, handleExportZip } = useExportActions();
+  const { handleExportTabMd, handleExportAllTabsZip, handleExportDebugLog } = useExportActions();
   const [copied, setCopied] = useState(false);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => {
@@ -139,7 +156,6 @@ export function ContentTabs() {
     try {
       const { open } = await import("@tauri-apps/plugin-dialog");
       const { readTextFile } = await import("@tauri-apps/plugin-fs");
-      const { isValidMarkdownReport } = await import("../lib/sanitize");
       const selected = await open({
         multiple: true,
         filters: [{ name: "Markdown", extensions: ["md"] }],
@@ -227,7 +243,7 @@ export function ContentTabs() {
           <div className="flex-1 flex items-center justify-center">
             {aiBusy ? (
               <div className="flex flex-col items-center gap-3">
-                <div className="w-8 h-8 border-3 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                <LoadingSpinner color="orange" />
                 <p className="text-sm text-orange-500 font-medium">{language === "vi" ? "Đang gửi yêu cầu AI..." : "Sending AI request..."}</p>
               </div>
             ) : (
@@ -242,14 +258,7 @@ export function ContentTabs() {
     const log = activeDebugTab.log;
     return (
       <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900 relative">
-        {aiBusy && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-50/80 dark:bg-gray-900/80">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-8 h-8 border-3 border-orange-400 border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm text-orange-500 font-medium">{language === "vi" ? "Đang gửi yêu cầu AI..." : "Sending AI request..."}</p>
-            </div>
-          </div>
-        )}
+        {aiBusy && <LoadingOverlay color="orange" language={language} />}
         <div className="flex items-center border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 overflow-x-auto">
           {debugTabs.map((tab) => {
             const isActive = tab.id === activeContentTabId;
@@ -264,7 +273,7 @@ export function ContentTabs() {
             );
           })}
           {debugTabs.length > 1 && (
-            <button onClick={closeAllAiTabs}
+            <button onClick={closeAllDebugTabs}
               className="ml-2 px-2 py-1 text-[10px] text-gray-400 hover:text-red-500 transition-colors whitespace-nowrap">
               {language === "vi" ? "Đóng tất cả" : "Close all"}
             </button>
@@ -302,11 +311,8 @@ export function ContentTabs() {
         </div>
         <div className="p-2.5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center gap-2 flex-shrink-0">
           <div className="flex gap-1.5">
-            <button onClick={handleExportMd} className="px-2.5 py-1.5 text-[11px] font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors">
+            <button onClick={handleExportDebugLog} className="px-2.5 py-1.5 text-[11px] font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors">
               {t("footer.exportMd", language)}
-            </button>
-            <button onClick={handleExportZip} className="px-2.5 py-1.5 text-[11px] font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors">
-              {t("footer.exportZip", language)}
             </button>
           </div>
           <div className="flex-1 flex justify-center">
@@ -323,14 +329,7 @@ export function ContentTabs() {
   }
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900 relative">
-      {aiBusy && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-50/80 dark:bg-gray-900/80">
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-8 h-8 border-3 border-blue-400 border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm text-blue-500 font-medium">{language === "vi" ? "Đang tạo báo cáo..." : "Generating report..."}</p>
-          </div>
-        </div>
-      )}
+      {aiBusy && <LoadingOverlay color="blue" language={language} />}
       <div className="flex items-center border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 overflow-x-auto">
         {contentTabs.filter((ct) => ct.kind !== "debug").map((tab) => {
           const isActive = tab.id === activeContentTabId;
@@ -374,11 +373,11 @@ export function ContentTabs() {
       {activeTab && (
         <div className="p-2.5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center gap-2 flex-shrink-0">
           <div className="flex gap-1.5">
-            <button onClick={handleExportMd} className="px-2.5 py-1.5 text-[11px] font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors">
-              {t("footer.exportMd", language)}
+            <button onClick={handleExportAllTabsZip} className="px-2.5 py-1.5 text-[11px] font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors">
+              {t("footer.exportAllZip", language)}
             </button>
-            <button onClick={handleExportZip} className="px-2.5 py-1.5 text-[11px] font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors">
-              {t("footer.exportZip", language)}
+            <button onClick={handleExportTabMd} className="px-2.5 py-1.5 text-[11px] font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded transition-colors">
+              {t("footer.exportMd", language)}
             </button>
           </div>
           <div className="flex-1 flex justify-center">

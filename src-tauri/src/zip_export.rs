@@ -7,11 +7,15 @@ use zip::CompressionMethod;
 
 use crate::export::ExportError;
 
-pub fn export_single_to_zip(
-    filename: &str,
-    markdown: &str,
+pub fn export_multiple_to_zip(
+    entries: &[(String, String)],
     output_path: &str,
 ) -> Result<String, ExportError> {
+    if entries.is_empty() {
+        return Err(ExportError::IoError(
+            "No entries to write to zip.".to_string(),
+        ));
+    }
     let path = Path::new(output_path);
 
     if let Some(parent) = path.parent() {
@@ -30,10 +34,12 @@ pub fn export_single_to_zip(
         .unix_permissions(0o644);
 
     let write_result = (|| -> Result<(), ExportError> {
-        zip.start_file(filename, options)
-            .map_err(|e| ExportError::IoError(format!("Zip write error: {}", e)))?;
-        zip.write_all(markdown.as_bytes())
-            .map_err(|e| ExportError::IoError(format!("Zip write error: {}", e)))?;
+        for (filename, content) in entries {
+            zip.start_file(filename.as_str(), options)
+                .map_err(|e| ExportError::IoError(format!("Zip write error: {}", e)))?;
+            zip.write_all(content.as_bytes())
+                .map_err(|e| ExportError::IoError(format!("Zip write error: {}", e)))?;
+        }
         zip.finish()
             .map_err(|e| ExportError::IoError(format!("Zip finish error: {}", e)))?;
         Ok(())

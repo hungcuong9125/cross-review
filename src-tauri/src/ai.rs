@@ -558,26 +558,74 @@ fn resolve_prompt(cfg: &AiProviderConfig) -> String {
         }
         _ => prompt_level_2().to_string(), // "2" or empty → level 2
     };
-    if cfg.translate_vietnamese {
-        prepend_vietnamese_instruction(&base)
-    } else {
-        base
+    if !cfg.translate_vietnamese {
+        return base;
     }
+    let prepended = prepend_vietnamese_instruction(&base);
+    prepended
+        .replace(
+            "Write the final report in English unless the user explicitly requests another language.",
+            "Write the final report in Vietnamese.",
+        )
+        .replace(
+            "Write the final handoff document in English unless the user explicitly requests another language.",
+            "Write the final handoff document in Vietnamese.",
+        )
 }
 
-fn build_chat_request(sources: &[&QaReport], system: String) -> ChatRequest {
-    let mut body = String::with_capacity(estimate_chars(sources));
+fn build_chat_request(
+    project: &Project,
+    sources: &[&QaReport],
+    system: String,
+    cfg: &AiProviderConfig,
+) -> ChatRequest {
+    use crate::export::{estimate_components_chars, get_components};
+    use crate::models::ComponentPosition;
+    use std::fmt::Write as _;
+
+    let capacity = estimate_chars(sources)
+        + crate::export::estimate_components_chars(project, ComponentPosition::Opening)
+        + estimate_components_chars(project, ComponentPosition::Closing)
+        + 512;
+    let mut body = String::with_capacity(capacity);
+
+    // 1. Opening components
+    let opening_comps = get_components(project, ComponentPosition::Opening);
+    if !opening_comps.is_empty() {
+        for comp in &opening_comps {
+            body.push_str(comp.content.trim());
+            body.push_str("\n\n");
+        }
+        body.push_str(SECTION_SEP);
+    }
+
+    // 2. Source content
     for (i, qa) in sources.iter().enumerate() {
         if i > 0 {
-            body.push_str("\n\n---\n\n");
+            body.push_str(SECTION_SEP);
         }
-        body.push_str(&format!(
-            "## Source {}\n**Name:** {}\n\n",
-            i + 1,
-            qa.name
-        ));
+        let _ = writeln!(body, "## Source {}\n**Name:** {}\n", i + 1, qa.name);
         body.push_str(qa.content.trim());
     }
+
+    // 3. Critical instructions (non-prependable flags only;
+    // Vietnamese is handled by prepend_vietnamese_instruction).
+    if cfg.remove_chinese {
+        body.push_str(SECTION_SEP);
+        body.push_str("## CRITICAL INSTRUCTIONS\n\n");
+        body.push_str("1. CRITICAL: Do NOT output Chinese characters under any circumstances.\n");
+    }
+
+    // 4. Closing components
+    let closing_comps = get_components(project, ComponentPosition::Closing);
+    if !closing_comps.is_empty() {
+        body.push_str(SECTION_SEP);
+        for comp in &closing_comps {
+            body.push_str(comp.content.trim());
+            body.push_str("\n\n");
+        }
+    }
+
     ChatRequest::default()
         .with_system(system)
         .append_message(ChatMessage::user(format!(
@@ -585,6 +633,8 @@ fn build_chat_request(sources: &[&QaReport], system: String) -> ChatRequest {
             body
         )))
 }
+
+const SECTION_SEP: &str = "\n\n---\n\n";
 
 const REWRITE_TIMEOUT_SECS: u64 = 120;
 const TEST_TIMEOUT_SECS: u64 = 30;
@@ -719,7 +769,12 @@ async fn run_rewrite(
         });
     }
     let system = resolve_prompt(cfg);
-    let total_chars = estimate_chars(&sources) + system.chars().count() + 64;
+    let total_chars = estimate_chars(&sources)
+        + system.chars().count()
+        + crate::export::estimate_components_chars(project, crate::models::ComponentPosition::Opening)
+        + crate::export::estimate_components_chars(project, crate::models::ComponentPosition::Closing)
+        + (if cfg.remove_chinese { 128 } else { 0 })
+        + 64;
     if total_chars > cfg.max_input_chars {
         return Err(AiErrorPayload {
             code: AiErrorCode::InputTooLarge {
@@ -733,7 +788,7 @@ async fn run_rewrite(
             debug_log: None,
         });
     }
-    let request = build_chat_request(&sources, system);
+    let request = build_chat_request(project, &sources, system, cfg);
     let request_summary = capture_request_debug(&request, cfg);
     let client = build_client(cfg)?;
     let chat_options = build_chat_options(cfg);
@@ -918,6 +973,7 @@ pub async fn list_models(cfg: &AiProviderConfig) -> Result<Vec<String>, AiErrorP
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::ComponentPosition;
 
     #[test]
     fn test_debug_redacts_api_key_set() {
@@ -1019,12 +1075,54 @@ mod tests {
             remove_chinese: false,
         };
         let system = resolve_prompt(&cfg);
-        let total = estimate_chars(&source_refs) + system.chars().count() + 64;
+        let project = Project {
+            components: vec![],
+            ..Default::default()
+        };
+        let total = estimate_chars(&source_refs)
+            + system.chars().count()
+            + crate::export::estimate_components_chars(&project, ComponentPosition::Opening)
+            + crate::export::estimate_components_chars(&project, ComponentPosition::Closing)
+            + (if cfg.remove_chinese { 128 } else { 0 })
+            + 64;
         assert!(
             total > 90,
             "estimate should include system prompt, got {}",
             total
         );
+    }
+
+    #[test]
+    fn test_resolve_prompt_vietnamese_replaces_english_line() {
+        for (level, prompt_fn) in [
+            ("1", prompt_level_1 as fn() -> &'static str),
+            ("2", prompt_level_2 as fn() -> &'static str),
+            ("3", prompt_level_3 as fn() -> &'static str),
+        ] {
+            let _ = prompt_fn();
+            let cfg = AiProviderConfig {
+                kind: AiProviderKind::Ollama,
+                base_url: String::new(),
+                api_key: String::new(),
+                model: "x".into(),
+                system_prompt: String::new(),
+                max_input_chars: 100_000,
+                thinking_effort: String::new(),
+                prompt_level: level.to_string(),
+                translate_vietnamese: true,
+                remove_chinese: false,
+            };
+            let resolved = resolve_prompt(&cfg);
+            assert!(
+                !resolved.contains("Write the final report in English")
+                    && !resolved.contains("Write the final handoff document in English"),
+                "level {level} should not retain English output rule; got: {resolved}"
+            );
+            assert!(
+                resolved.contains("CRITICAL: You MUST respond entirely in Vietnamese"),
+                "level {level} should include Vietnamese CRITICAL; got: {resolved}"
+            );
+        }
     }
 
     #[test]
@@ -1236,6 +1334,7 @@ mod integration {
             }),
             document_type: Some("review-weaver-project".to_string()),
             ai_reports: None,
+            debug_logs: None,
         };
 
         let cancel = CancellationToken::new();

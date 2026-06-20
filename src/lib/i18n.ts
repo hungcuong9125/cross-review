@@ -53,6 +53,7 @@ export const translations = {
   // Footer actions
   'footer.exportMd': { vi: 'Xuất tệp .md', en: 'Export .md' },
   'footer.exportZip': { vi: 'Xuất tệp .zip', en: 'Export .zip' },
+  'footer.exportAllZip': { vi: 'Xuất tất cả .Zip', en: 'Export All .Zip' },
   'footer.import': { vi: 'Nhập tệp', en: 'Import' },
 
   // Dialogs
@@ -63,6 +64,7 @@ export const translations = {
   'dialog.openFail': { vi: 'Mở file thất bại', en: 'Open file failed' },
   'dialog.validationFail': { vi: 'Dữ liệu chưa hợp lệ. Vui lòng kiểm tra lại.', en: 'Data is not valid. Please check again.' },
   'dialog.noReport': { vi: 'Không có báo cáo QA nào để export.', en: 'No QA reports to export.' },
+  'dialog.noSource': { vi: 'Chưa chọn nguồn nào để export.', en: 'No source selected for export.' },
   'dialog.confirmRemoveAll': { vi: 'Xóa tất cả báo cáo QA?', en: 'Remove all QA reports?' },
 
   // Sidebar tooltips
@@ -112,6 +114,10 @@ export const translations = {
   'action.generateReport': { vi: 'Tạo báo cáo tổng hợp', en: 'Generate Consolidated Report' },
   'action.generating': { vi: 'Đang tạo...', en: 'Generating...' },
   'action.cancel': { vi: 'Huỷ', en: 'Cancel' },
+
+  // Loading overlays
+  'loading.aiRequest': { vi: 'Đang gửi yêu cầu AI...', en: 'Sending AI request...' },
+  'loading.generatingReport': { vi: 'Đang tạo báo cáo...', en: 'Generating report...' },
 
   // Content tabs
   'tab.closeAi': { vi: 'Đóng tab AI', en: 'Close AI tab' },

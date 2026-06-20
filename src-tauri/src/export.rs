@@ -78,7 +78,7 @@ pub fn generate_preview(
     })
 }
 
-fn get_components(project: &Project, position: ComponentPosition) -> Vec<&crate::models::Component> {
+pub(crate) fn get_components(project: &Project, position: ComponentPosition) -> Vec<&crate::models::Component> {
     let mut comps: Vec<&crate::models::Component> = project
         .components
         .iter()
@@ -86,6 +86,15 @@ fn get_components(project: &Project, position: ComponentPosition) -> Vec<&crate:
         .collect();
     comps.sort_by_key(|c| c.order);
     comps
+}
+
+pub(crate) fn estimate_components_chars(project: &Project, position: ComponentPosition) -> usize {
+    project
+        .components
+        .iter()
+        .filter(|c| c.position == position && !c.content.trim().is_empty() && c.active)
+        .map(|c| c.content.chars().count() + 4)
+        .sum()
 }
 
 fn build_markdown(
@@ -179,6 +188,7 @@ mod tests {
             ai_config: None,
             document_type: Some("review-weaver-project".to_string()),
             ai_reports: None,
+            debug_logs: None,
         }
     }
 
