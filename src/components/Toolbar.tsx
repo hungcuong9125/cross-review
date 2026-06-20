@@ -54,10 +54,10 @@ export function Toolbar() {
       const slugTitle = project.title ? toSlug(project.title) : "";
       const path = await save({
         defaultPath: slugTitle
-          ? `${slugTitle}.review-weaver.json`
-          : "project.review-weaver.json",
+          ? `${slugTitle}.cross-review.json`
+          : "project.cross-review.json",
         filters: [
-          { name: "Review Weaver Project", extensions: ["review-weaver.json"] },
+          { name: "CrossReview Project", extensions: ["cross-review.json"] },
           { name: "JSON", extensions: ["json"] },
         ],
       });
@@ -75,7 +75,7 @@ export function Toolbar() {
       const selected = await open({
         multiple: false,
         filters: [
-          { name: "Review Weaver Project", extensions: ["review-weaver.json"] },
+          { name: "CrossReview Project", extensions: ["cross-review.json"] },
           { name: "JSON", extensions: ["json"] },
         ],
       });

@@ -1582,7 +1582,7 @@ mod integration {
                 output_language: String::new(),
                 strip_non_primary: false,
             }),
-            document_type: Some("review-weaver-project".to_string()),
+            document_type: Some("cross-review-project".to_string()),
             ai_reports: None,
             debug_logs: None,
         };

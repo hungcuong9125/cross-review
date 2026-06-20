@@ -61,12 +61,12 @@ pub fn open_project(path: String) -> Result<Project, String> {
         serde_json::from_str(&content).map_err(|e| format!("Invalid project file: {}", e))?;
 
     let is_valid = match &project.document_type {
-        Some(dt) => dt == "review-weaver-project",
+        Some(dt) => dt == "cross-review-project",
         None => !project.qa_reports.is_empty() || !project.components.is_empty(),
     };
 
     if !is_valid {
-        return Err("Invalid project file — Tệp tin không đúng định dạng dự án của Review Weaver!".to_string());
+        return Err("Invalid project file — Tệp tin không đúng định dạng dự án của CrossReview!".to_string());
     }
 
     Ok(project)
@@ -138,12 +138,12 @@ pub fn import_settings_cmd(path: String) -> Result<AppSettings, String> {
         serde_json::from_str(&content).map_err(|e| format!("Invalid settings file: {}", e))?;
 
     let is_valid = match &settings.document_type {
-        Some(dt) => dt == "review-weaver-settings",
+        Some(dt) => dt == "cross-review-settings",
         None => true,
     };
 
     if !is_valid {
-        return Err("Invalid settings file — Tệp tin không đúng định dạng cấu hình của Review Weaver!".to_string());
+        return Err("Invalid settings file — Tệp tin không đúng định dạng cấu hình của CrossReview!".to_string());
     }
 
     Ok(settings)

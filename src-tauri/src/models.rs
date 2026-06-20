@@ -245,7 +245,7 @@ pub struct ValidationReport {
 impl Default for Project {
     fn default() -> Self {
         Self {
-            document_type: Some("review-weaver-project".to_string()),
+            document_type: Some("cross-review-project".to_string()),
             title: String::new(),
             components: Vec::new(),
             qa_reports: Vec::new(),

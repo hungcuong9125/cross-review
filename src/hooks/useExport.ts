@@ -5,7 +5,7 @@ import { t } from "../lib/i18n";
 import { useProjectStore } from "../state/projectStore";
 import { toSlug } from "../lib/slug";
 
-const SIGNATURE = "\n\n<!-- review-weaver-signature: v1 -->";
+const SIGNATURE = "\n\n<!-- cross-review-signature: v1 -->";
 
 function uniqueFilename(filename: string, used: Set<string>): string {
   let candidate = filename;

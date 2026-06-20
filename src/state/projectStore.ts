@@ -125,7 +125,7 @@ interface ProjectState {
 }
 
 const DEFAULT_PROJECT: Project = {
-  document_type: "review-weaver-project",
+  document_type: "cross-review-project",
   title: "",
   components: [],
   qa_reports: [],

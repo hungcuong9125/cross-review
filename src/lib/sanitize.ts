@@ -1,6 +1,6 @@
 import type { Project } from "./api";
 
-const KEY_SCRUB_FLAG = "review-weaver-api-key-scrubbed";
+const KEY_SCRUB_FLAG = "cross-review-api-key-scrubbed";
 
 export function sanitizeForStorage(project: Project): Project {
   if (!project.ai_config) return project;

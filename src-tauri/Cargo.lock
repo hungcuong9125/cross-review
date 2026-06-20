@@ -559,6 +559,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "cross-review"
+version = "0.9.3"
+dependencies = [
+ "chrono",
+ "genai",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-fs",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-util",
+ "unicode-normalization",
+ "uuid",
+ "zip",
+]
+
+[[package]]
 name = "crossbeam-channel"
 version = "0.5.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2959,26 +2979,6 @@ dependencies = [
  "wasm-bindgen-futures",
  "wasm-streams",
  "web-sys",
-]
-
-[[package]]
-name = "review-weaver"
-version = "0.9.2"
-dependencies = [
- "chrono",
- "genai",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-fs",
- "thiserror 2.0.18",
- "tokio",
- "tokio-util",
- "unicode-normalization",
- "uuid",
- "zip",
 ]
 
 [[package]]

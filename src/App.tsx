@@ -32,10 +32,10 @@ function App() {
       const slugTitle = project.title ? toSlug(project.title) : "";
       const path = await save({
         defaultPath: slugTitle
-          ? `${slugTitle}.review-weaver.json`
-          : "project.review-weaver.json",
+          ? `${slugTitle}.cross-review.json`
+          : "project.cross-review.json",
         filters: [
-          { name: "Review Weaver Project", extensions: ["review-weaver.json"] },
+          { name: "CrossReview Project", extensions: ["cross-review.json"] },
           { name: "JSON", extensions: ["json"] },
         ],
       });
@@ -53,7 +53,7 @@ function App() {
       const selected = await open({
         multiple: false,
         filters: [
-          { name: "Review Weaver Project", extensions: ["review-weaver.json"] },
+          { name: "CrossReview Project", extensions: ["cross-review.json"] },
           { name: "JSON", extensions: ["json"] },
         ],
       });
@@ -110,7 +110,7 @@ function App() {
 
   const draftLoaded = useRef(false);
   useEffect(() => {
-    const saved = localStorage.getItem("review-weaver-draft");
+    const saved = localStorage.getItem("cross-review-draft");
     if (saved) {
       try {
         const draft = JSON.parse(saved);
@@ -129,7 +129,7 @@ function App() {
     const timer = setTimeout(() => {
       try {
         const safe = sanitizeForStorage(project);
-        localStorage.setItem("review-weaver-draft", JSON.stringify(safe));
+        localStorage.setItem("cross-review-draft", JSON.stringify(safe));
         recordScrubIfNeeded(project);
       } catch (err) {
         console.warn("Auto-save failed (localStorage quota exceeded):", err);

@@ -1,16 +1,16 @@
 [package]
-name = "review-weaver"
-version = "0.9.2"
+name = "cross-review"
+version = "0.9.3"
 edition = "2021"
 description = "Cross-review markdown report generator for QA teams"
 license = "MIT"
 
 [lib]
-name = "review_weaver_lib"
+name = "cross_review_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [[bin]]
-name = "review-weaver"
+name = "cross-review"
 path = "src/main.rs"
 
 [dependencies]

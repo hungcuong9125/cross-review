@@ -168,8 +168,8 @@ export function ContentTabs() {
         const baseName = filePath.split(/[/\\]/).pop() || "Imported Report";
         if (!isValidMarkdownReport(baseName, content)) {
           alert(language === "vi"
-            ? `Tệp tin "${baseName}" không đúng định dạng báo cáo của Review Weaver!`
-            : `File "${baseName}" is not a valid Review Weaver report!`);
+            ? `Tệp tin "${baseName}" không đúng định dạng báo cáo của CrossReview!`
+            : `File "${baseName}" is not a valid CrossReview report!`);
           continue;
         }
         const title = baseName.endsWith(".md") ? baseName.slice(0, -3) : baseName;

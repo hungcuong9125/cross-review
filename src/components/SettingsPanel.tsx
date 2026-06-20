@@ -254,7 +254,7 @@ export function SettingsPanel() {
   const handleExportSettings = async () => {
     const state = useProjectStore.getState();
     const settings: AppSettings = {
-      document_type: "review-weaver-settings",
+      document_type: "cross-review-settings",
       ai_config: state.project.ai_config,
       compact_mode: state.compactMode,
       remove_whitespace: state.removeWhitespace,
@@ -267,7 +267,7 @@ export function SettingsPanel() {
     try {
       const { save } = await import("@tauri-apps/plugin-dialog");
       const path = await save({
-        defaultPath: "review-weaver-settings.json",
+        defaultPath: "cross-review-settings.json",
         filters: [{ name: "JSON", extensions: ["json"] }],
       });
       if (path) {
