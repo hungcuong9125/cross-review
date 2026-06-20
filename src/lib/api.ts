@@ -95,20 +95,6 @@ export async function generatePreview(
   return invoke<ExportFile>("generate_preview_cmd", { project, targetQaId });
 }
 
-export async function exportAllMarkdown(
-  project: Project,
-  outputDir: string
-): Promise<string[]> {
-  return invoke<string[]>("export_all_markdown", { project, outputDir });
-}
-
-export async function exportAllZip(
-  project: Project,
-  outputZipPath: string
-): Promise<string> {
-  return invoke<string>("export_all_zip", { project, outputZipPath });
-}
-
 export async function exportSingleMarkdown(
   markdown: string,
   outputPath: string
@@ -123,7 +109,6 @@ export async function exportSingleZip(
 ): Promise<string> {
   return invoke<string>("export_single_zip", { filename, markdown, outputZipPath });
 }
-
 
 export async function saveProject(
   project: Project,

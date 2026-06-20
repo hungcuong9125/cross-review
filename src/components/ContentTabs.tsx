@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useProjectStore } from "../state/projectStore";
 import { t } from "../lib/i18n";
 import { useToast } from "../hooks/useToast";
@@ -32,7 +32,10 @@ function AiTabContent({ tab }: {
 
 
   const rawContent = tab.markdown;
-  const processedContent = processContent(rawContent);
+  const processedContent = useMemo(
+    () => processContent(rawContent),
+    [rawContent, processContent, compactMode, removeWhitespace, mergeLines]
+  );
   const displayCharCount = processedContent.length;
   const initialCharCount = tab.initialCharCount;
   const pct = percentChange(initialCharCount, displayCharCount);
@@ -154,7 +157,7 @@ export function ContentTabs() {
           continue;
         }
         const title = baseName.endsWith(".md") ? baseName.slice(0, -3) : baseName;
-        appendAiTab(content, title, 0, "Imported", "N/A", baseName);
+        appendAiTab(content, title, content.length, "Imported", "N/A", baseName);
         imported++;
       }
       if (imported > 0) {

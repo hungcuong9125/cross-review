@@ -2,13 +2,12 @@ use std::fs;
 use std::path::Path;
 
 use crate::ai;
-use crate::export::{generate_exports, generate_preview};
+use crate::export::generate_preview;
 use crate::models::{
     AiErrorPayload, AiProviderConfig, AiRewriteResult, AppSettings, DebugLog, ExportFile, Project,
     ValidationReport,
 };
 use crate::validation::validate_project;
-use crate::zip_export::export_to_zip;
 use tokio_util::sync::CancellationToken;
 
 #[tauri::command]
@@ -19,31 +18,6 @@ pub fn validate_project_cmd(project: Project) -> Result<ValidationReport, String
 #[tauri::command]
 pub fn generate_preview_cmd(project: Project, target_qa_id: String) -> Result<ExportFile, String> {
     generate_preview(&project, &target_qa_id).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-pub fn export_all_markdown(project: Project, output_dir: String) -> Result<Vec<String>, String> {
-    let exports = generate_exports(&project).map_err(|e| e.to_string())?;
-
-    let dir = Path::new(&output_dir);
-    if !dir.exists() {
-        fs::create_dir_all(dir).map_err(|e| format!("Cannot create directory: {}", e))?;
-    }
-
-    let mut paths = Vec::new();
-    for export in &exports {
-        let file_path = dir.join(&export.filename);
-        fs::write(&file_path, &export.markdown)
-            .map_err(|e| format!("Cannot write file {}: {}", export.filename, e))?;
-        paths.push(file_path.to_string_lossy().to_string());
-    }
-
-    Ok(paths)
-}
-
-#[tauri::command]
-pub fn export_all_zip(project: Project, output_zip_path: String) -> Result<String, String> {
-    export_to_zip(&project, &output_zip_path).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -68,7 +42,6 @@ pub fn export_single_zip(
         .map_err(|e| e.to_string())
 }
 
-
 #[tauri::command]
 pub fn save_project(project: Project, path: String) -> Result<(), String> {
     let json = serde_json::to_string_pretty(&project)
@@ -86,9 +59,7 @@ pub fn open_project(path: String) -> Result<Project, String> {
 
     let is_valid = match &project.document_type {
         Some(dt) => dt == "review-weaver-project",
-        None => {
-            !project.qa_reports.is_empty() || !project.components.is_empty() || !project.title.is_empty()
-        }
+        None => !project.qa_reports.is_empty() || !project.components.is_empty(),
     };
 
     if !is_valid {
@@ -165,10 +136,7 @@ pub fn import_settings_cmd(path: String) -> Result<AppSettings, String> {
 
     let is_valid = match &settings.document_type {
         Some(dt) => dt == "review-weaver-settings",
-        None => {
-            // Support legacy settings files by verifying key structure
-            settings.ai_config.is_some() || settings.compact_mode || settings.remove_whitespace
-        }
+        None => true,
     };
 
     if !is_valid {

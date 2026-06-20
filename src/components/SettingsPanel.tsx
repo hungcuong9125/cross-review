@@ -260,6 +260,8 @@ export function SettingsPanel() {
       remove_whitespace: state.removeWhitespace,
       merge_lines: state.mergeLines,
       preview_format: state.previewFormat,
+      translate_vietnamese: state.project.ai_config?.translate_vietnamese ?? false,
+      remove_chinese: state.project.ai_config?.remove_chinese ?? false,
       debug_enabled: state.debugEnabled,
     };
     try {

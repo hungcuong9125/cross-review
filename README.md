@@ -190,6 +190,21 @@ The compiled Markdown outputs follow this structural convention:
 
 ## Changelog
 
+### v0.8.2 (2026-06-20)
+- **Fixed**: `isValidMarkdownReport` was over-permissive — a bare signature comment or stray `**` passed validation. Replaced with stricter `REVIEW_REPORT_SIGNATURE` regex requiring `## N.` section headers. Split into `isValidSourceDocument` for source document imports (accepts any non-empty text) and `isValidMarkdownReport` for AI report imports (requires Review Weaver report structure).
+- **Fixed**: `BINARY_BYTES` regex included `\xFF` (0xFF, matching valid Latin-1 character `ÿ`) — removed to avoid rejecting legitimate international text. Binary check window increased from 1000 to 4096 chars.
+- **Fixed**: `handleImportReport` passed `initialCharCount: 0` for imported reports — now passes `content.length` so the "Initial Characters" tile and percent-change badge work correctly.
+- **Fixed**: `handleExportSettings` omitted `translate_vietnamese` and `remove_chinese` from the exported settings payload — settings round-trip silently reset both toggles to false.
+- **Fixed**: `open_project` legacy validation accepted any JSON with a non-empty `title` field — tightened to require non-empty `qa_reports` or `components`.
+- **Fixed**: `import_settings_cmd` legacy validation rejected default settings files (all flags off, no AI config) — now accepts any valid JSON matching the `AppSettings` schema.
+- **Fixed**: `PreviewBody` displayed raw (unprocessed) markdown while the "Remaining characters" label and percent-change badge reflected processed content — now renders processed content consistently.
+- **Fixed**: `processContent` re-ran on every render in `PreviewBody` and `AiTabContent` — wrapped in `useMemo` with proper dependency arrays.
+- **Refactored**: `closeContentTab` dual return path flattened into a single `Partial<ProjectState>` object with conditional `ai_reports` mutation.
+- **Removed**: Dead `exportAllMarkdown`/`exportAllZip` Tauri commands, their Rust handlers, TS API wrappers, and the underlying `export_to_zip` function (~80 lines of dead code).
+- **Removed**: Excessive explanatory comments in `projectStore.ts` (fenced code block tracking, empty-line stripping, debug view fallback).
+- **Tests**: Fixed `Project` test fixture construction in `ai.rs` and `export.rs` to include new `document_type` and `ai_reports` fields.
+- **Version**: Bumped to 0.8.2 (package.json, Cargo.toml, tauri.conf.json).
+
 ### v0.8.1 (2026-06-19)
 - **Fixed**: `isValidMarkdownReport` `BINARY_BYTES` regex was matching the Combining Diacritical Marks Unicode block (U+0300–U+036F) instead of ASCII control bytes — Vietnamese/accented text was being rejected as binary, while real binary content (NUL, etc.) slipped past the check. Now uses proper `[\x00-\x08\x0E-\x1F\x7F\xFF]` escape sequence.
 - **Fixed**: `isValidMarkdownReport` `MARKDOWN_STRUCTURE` regex now matches lists at the start of content (added `(^|\n)` anchor) — reports that begin with `- item` were previously rejected.

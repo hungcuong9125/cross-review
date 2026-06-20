@@ -16,8 +16,6 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::validate_project_cmd,
             commands::generate_preview_cmd,
-            commands::export_all_markdown,
-            commands::export_all_zip,
             commands::export_single_markdown,
             commands::export_single_zip,
             commands::save_project,

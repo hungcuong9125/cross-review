@@ -98,7 +98,7 @@ export function Sidebar() {
       if (!selected) return;
       const files = Array.isArray(selected) ? selected : [selected];
       const { readTextFile } = await import("@tauri-apps/plugin-fs");
-      const { isValidMarkdownReport } = await import("../lib/sanitize");
+      const { isValidSourceDocument } = await import("../lib/sanitize");
       const newReports: { id: string; name: string; content: string; active: boolean }[] = [];
       for (const filePath of files) {
         if (filePath.endsWith(".zip")) {
@@ -111,7 +111,7 @@ export function Sidebar() {
           for (const entry of entries) {
             if (entry.filename.endsWith(".md") && !entry.directory && entry.getData) {
               const text = await entry.getData(new TextWriter());
-              if (!isValidMarkdownReport(entry.filename, text)) {
+              if (!isValidSourceDocument(entry.filename, text)) {
                 alert(language === "vi"
                   ? `Tệp tin "${entry.filename}" bên trong file ZIP không đúng định dạng tài liệu nguồn!`
                   : `File "${entry.filename}" inside ZIP is not a valid source document!`);
@@ -125,7 +125,7 @@ export function Sidebar() {
         } else if (filePath.endsWith(".md")) {
           const text = await readTextFile(filePath);
           const baseName = filePath.split(/[/\\]/).pop() || "Imported";
-          if (!isValidMarkdownReport(baseName, text)) {
+          if (!isValidSourceDocument(baseName, text)) {
             alert(language === "vi"
               ? `Tệp tin "${baseName}" không đúng định dạng tài liệu nguồn!`
               : `File "${baseName}" is not a valid source document!`);

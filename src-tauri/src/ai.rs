@@ -1234,6 +1234,8 @@ mod integration {
                 translate_vietnamese: false,
                 remove_chinese: false,
             }),
+            document_type: Some("review-weaver-project".to_string()),
+            ai_reports: None,
         };
 
         let cancel = CancellationToken::new();

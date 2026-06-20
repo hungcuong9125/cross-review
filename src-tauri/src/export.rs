@@ -7,6 +7,7 @@ use crate::validation::validate_project;
 #[derive(Debug, Error)]
 pub enum ExportError {
     #[error("Validation failed: {0}")]
+    #[cfg_attr(not(test), allow(dead_code))]
     ValidationFailed(String),
     #[error("QA with id '{0}' not found")]
     QaNotFound(String),
@@ -16,6 +17,7 @@ pub enum ExportError {
 
 /// Generates one export file per active QA report. Each file includes the
 /// opening components, all OTHER active reports, and the closing components.
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn generate_exports(project: &Project) -> Result<Vec<ExportFile>, ExportError> {
     let validation = validate_project(project);
     if !validation.valid {
@@ -175,6 +177,8 @@ mod tests {
             opening_text: None,
             closing_text: None,
             ai_config: None,
+            document_type: Some("review-weaver-project".to_string()),
+            ai_reports: None,
         }
     }
 

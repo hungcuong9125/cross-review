@@ -619,18 +619,18 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           ? "home"
           : state.activeMainTab;
 
-      if (closingKind !== "ai") {
-        return { contentTabs: tabs, activeContentTabId: activeId, activeMainTab };
-      }
-      return {
-        project: {
-          ...state.project,
-          ai_reports: (state.project.ai_reports || []).filter((r) => r.id !== id),
-        },
+      const next: Partial<ProjectState> = {
         contentTabs: tabs,
         activeContentTabId: activeId,
         activeMainTab,
       };
+      if (closingKind === "ai") {
+        next.project = {
+          ...state.project,
+          ai_reports: (state.project.ai_reports || []).filter((r) => r.id !== id),
+        };
+      }
+      return next;
     });
   },
 
@@ -639,8 +639,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const remaining = state.contentTabs.filter((t) => t.kind === "preview" || t.kind === "debug");
       const activeTab = state.contentTabs.find((t) => t.id === state.activeContentTabId);
       const activeId = activeTab?.kind === "ai" ? "preview" : state.activeContentTabId;
-      // If user was on debug main tab, they were viewing a debug tab.
-      // After close-all-AI, only preview tabs remain → leave them on debug view.
       const activeMainTab =
         state.activeMainTab === "debug" && remaining.some((t) => t.kind === "debug")
           ? "debug"
@@ -688,8 +686,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       let inCodeBlock = false;
       let fenceChar = "";
       let fenceLen = 0;
-      // Track fenced code blocks — don't transform content inside them.
-      // A closing fence must use the same character and have ≥ the opening length.
       lines = lines.map((line) => {
         const trimmed = line.trim();
         const fenceMatch = trimmed.match(/^(`{3,}|~{3,})(\s*\S*)?$/);
@@ -717,7 +713,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         }
         return line;
       });
-      // Strip leading/trailing empty lines so the join doesn't emit orphan ' | ' separators.
       while (lines.length > 0 && lines[0].trim() === "") lines.shift();
       while (lines.length > 0 && lines[lines.length - 1].trim() === "") lines.pop();
 

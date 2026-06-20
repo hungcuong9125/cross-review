@@ -44,13 +44,23 @@ export function clearApiKeyScrubbed(): void {
   }
 }
 
-const BINARY_BYTES = /[\x00-\x08\x0E-\x1F\x7F\xFF]/;
-const MARKDOWN_STRUCTURE = /#+\s|(^|\n)[-*]\s|(^|\n)\d+\.\s|\*\*|\[.*\]\(.*\)/;
+const BINARY_BYTES = /[\x00-\x08\x0E-\x1F\x7F]/;
+const REVIEW_REPORT_SIGNATURE = /##\s+\d+\.\s+\S+/;
+const REVIEW_REPORT_FILENAME = /review-for-|^ai-report-/i;
 
 export function isValidMarkdownReport(filename: string, content: string): boolean {
   if (!filename.toLowerCase().endsWith(".md")) return false;
-  if (BINARY_BYTES.test(content.slice(0, 1000))) return false;
-  if (content.includes("review-weaver-signature")) return true;
-  if (content.includes("## 1.") || filename.toLowerCase().includes("review-for")) return true;
-  return MARKDOWN_STRUCTURE.test(content);
+  if (BINARY_BYTES.test(content.slice(0, 4096))) return false;
+  if (REVIEW_REPORT_FILENAME.test(filename) && REVIEW_REPORT_SIGNATURE.test(content)) {
+    return true;
+  }
+  return false;
+}
+
+export function isValidSourceDocument(filename: string, content: string): boolean {
+  if (!filename.toLowerCase().endsWith(".md") && !filename.toLowerCase().endsWith(".txt")) {
+    return false;
+  }
+  if (BINARY_BYTES.test(content.slice(0, 4096))) return false;
+  return content.trim().length > 0;
 }

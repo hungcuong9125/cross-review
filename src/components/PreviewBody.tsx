@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { useProjectStore } from "../state/projectStore";
@@ -58,9 +58,11 @@ export function PreviewBody() {
   }, [refreshPreview]);
 
   const activeCount = project.qa_reports.filter((q) => q.active !== false).length;
-  const rawContent = preview ? preview.markdown : "";
-  const processedContent = preview ? processContent(preview.markdown) : "";
-  const displayContent = rawContent;
+  const processedContent = useMemo(
+    () => (preview ? processContent(preview.markdown) : ""),
+    [preview, processContent, compactMode, removeWhitespace, mergeLines]
+  );
+  const displayContent = processedContent;
   const filename = preview ? preview.filename : "-";
   useEffect(() => {
     setPreviewMarkdown(processedContent);
