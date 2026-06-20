@@ -66,7 +66,7 @@ pub fn open_project(path: String) -> Result<Project, String> {
     };
 
     if !is_valid {
-        return Err("Tệp tin không đúng định dạng dự án của Review Weaver!".to_string());
+        return Err("Invalid project file — Tệp tin không đúng định dạng dự án của Review Weaver!".to_string());
     }
 
     Ok(project)
@@ -143,7 +143,7 @@ pub fn import_settings_cmd(path: String) -> Result<AppSettings, String> {
     };
 
     if !is_valid {
-        return Err("Tệp tin không đúng định dạng cấu hình của Review Weaver!".to_string());
+        return Err("Invalid settings file — Tệp tin không đúng định dạng cấu hình của Review Weaver!".to_string());
     }
 
     Ok(settings)

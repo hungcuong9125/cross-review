@@ -12,8 +12,8 @@ export interface AiProviderConfig {
   system_prompt: string;
   max_input_chars: number;
   thinking_effort: string;
-  translate_vietnamese: boolean;
-  remove_chinese: boolean;
+  output_language: string;
+  strip_non_primary: boolean;
   prompt_level: string;
 }
 
@@ -168,8 +168,8 @@ export interface AppSettings {
   remove_whitespace: boolean;
   merge_lines: boolean;
   preview_format: string;
-  translate_vietnamese?: boolean;
-  remove_chinese?: boolean;
+  output_language: string;
+  strip_non_primary: boolean;
   debug_enabled: boolean;
 }
 

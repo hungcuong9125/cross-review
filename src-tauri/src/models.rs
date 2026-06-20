@@ -49,9 +49,9 @@ pub struct AiProviderConfig {
     #[serde(default)]
     pub thinking_effort: String,
     #[serde(default)]
-    pub translate_vietnamese: bool,
+    pub output_language: String,
     #[serde(default)]
-    pub remove_chinese: bool,
+    pub strip_non_primary: bool,
     #[serde(default = "default_prompt_level")]
     pub prompt_level: String,
 }
@@ -75,8 +75,8 @@ impl std::fmt::Debug for AiProviderConfig {
             .field("system_prompt", &self.system_prompt)
             .field("max_input_chars", &self.max_input_chars)
             .field("thinking_effort", &self.thinking_effort)
-            .field("translate_vietnamese", &self.translate_vietnamese)
-            .field("remove_chinese", &self.remove_chinese)
+            .field("output_language", &self.output_language)
+            .field("strip_non_primary", &self.strip_non_primary)
             .field("prompt_level", &self.prompt_level)
             .finish()
     }
@@ -286,9 +286,9 @@ pub struct AppSettings {
     #[serde(default = "default_preview_format")]
     pub preview_format: String,
     #[serde(default)]
-    pub translate_vietnamese: bool,
+    pub output_language: String,
     #[serde(default)]
-    pub remove_chinese: bool,
+    pub strip_non_primary: bool,
     #[serde(default)]
     pub debug_enabled: bool,
 }

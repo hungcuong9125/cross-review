@@ -101,7 +101,6 @@ pub fn prompt_level_1() -> &'static str {
      \n\
      ## Output Language\n\
      Write the final report in English unless the user explicitly requests another language.\n\
-     Do not output Chinese characters.\n\
      \n\
      ## Required Output Structure\n\
      Use this exact Markdown structure:\n\
@@ -211,7 +210,6 @@ pub fn prompt_level_2() -> &'static str {
      \n\
      ## Output Language\n\
      Write the final report in English unless the user explicitly requests another language.\n\
-     Do not output Chinese characters.\n\
      \n\
      ## Required Output Structure\n\
      Use this Markdown structure:\n\
@@ -340,7 +338,6 @@ pub fn prompt_level_3() -> &'static str {
      \n\
      ## Output Language\n\
      Write the final handoff document in English unless the user explicitly requests another language.\n\
-     Do not output Chinese characters.\n\
      \n\
      ## Required Output Structure\n\
      Use this exact Markdown structure:\n\
@@ -444,23 +441,179 @@ pub fn scrub_api_key(s: &str, api_key: &str) -> String {
     s.replace(api_key, "<REDACTED>")
 }
 
-pub fn strip_chinese(text: &str) -> String {
-    text.chars()
-        .filter(|c| {
-            let cp = *c as u32;
-            let is_cjk = (0x4E00..=0x9FFF).contains(&cp)
-                || (0x3400..=0x4DBF).contains(&cp)
-                || (0xF900..=0xFAFF).contains(&cp)
-                || (0x3000..=0x303F).contains(&cp);
-            !is_cjk
-        })
-        .collect()
+fn is_latin(cp: u32) -> bool {
+    // Basic Latin + Latin-1 Supplement + Latin Extended-A/B + Vietnamese diacritics
+    (0x0000..=0x007F).contains(&cp)   // Basic Latin
+        || (0x0080..=0x00FF).contains(&cp)  // Latin-1 Supplement
+        || (0x0100..=0x024F).contains(&cp)  // Latin Extended-A/B (includes Vietnamese)
+        || (0x1E00..=0x1EFF).contains(&cp)  // Latin Extended Additional
+        || (0x2C60..=0x2C7F).contains(&cp)  // Latin Extended-C
 }
 
-fn prepend_vietnamese_instruction(prompt: &str) -> String {
+fn is_non_latin_script(cp: u32) -> bool {
+    // CJK Unified Ideographs
+    (0x4E00..=0x9FFF).contains(&cp)
+        || (0x3400..=0x4DBF).contains(&cp)
+        || (0xF900..=0xFAFF).contains(&cp)
+        // CJK punctuation / fullwidth
+        || (0x3000..=0x303F).contains(&cp)
+        || (0xFF00..=0xFFEF).contains(&cp)
+        // Hiragana / Katakana
+        || (0x3040..=0x309F).contains(&cp)
+        || (0x30A0..=0x30FF).contains(&cp)
+        // Hangul
+        || (0xAC00..=0xD7AF).contains(&cp)
+        || (0x1100..=0x11FF).contains(&cp)
+        || (0x3130..=0x318F).contains(&cp)
+        // Cyrillic
+        || (0x0400..=0x04FF).contains(&cp)
+        || (0x0500..=0x052F).contains(&cp)
+        // Greek
+        || (0x0370..=0x03FF).contains(&cp)
+        // Arabic
+        || (0x0600..=0x06FF).contains(&cp)
+        || (0x0750..=0x077F).contains(&cp)
+        // Hebrew
+        || (0x0590..=0x05FF).contains(&cp)
+        // Thai
+        || (0x0E00..=0x0E7F).contains(&cp)
+        // Devanagari
+        || (0x0900..=0x097F).contains(&cp)
+}
+
+fn detect_primary_script(text: &str) -> (bool, Option<Vec<(u32, u32)>>) {
+    let blocks: &[(u32, u32)] = &[
+        (0x4E00, 0x9FFF),   // CJK
+        (0x3400, 0x4DBF),   // CJK Extension A
+        (0x3040, 0x309F),   // Hiragana
+        (0x30A0, 0x30FF),   // Katakana
+        (0xAC00, 0xD7AF),   // Hangul
+        (0x0400, 0x04FF),   // Cyrillic
+        (0x0600, 0x06FF),   // Arabic
+        (0x0590, 0x05FF),   // Hebrew
+        (0x0370, 0x03FF),   // Greek
+        (0x0E00, 0x0E7F),   // Thai
+        (0x0900, 0x097F),   // Devanagari
+    ];
+
+    let mut counts: Vec<usize> = vec![0; blocks.len()];
+    let mut latin_count: usize = 0;
+
+    for c in text.chars() {
+        let cp = c as u32;
+        if is_latin(cp) {
+            latin_count += 1;
+        } else if is_non_latin_script(cp) {
+            for (i, &(lo, hi)) in blocks.iter().enumerate() {
+                if (lo..=hi).contains(&cp) {
+                    counts[i] += 1;
+                    break;
+                }
+            }
+        }
+    }
+
+    let mut max_idx = 0;
+    let mut max_count = 0;
+    let mut non_latin_total: usize = 0;
+    for (i, &c) in counts.iter().enumerate() {
+        non_latin_total += c;
+        if c > max_count {
+            max_count = c;
+            max_idx = i;
+        }
+    }
+
+    if non_latin_total == 0 {
+        // All Latin, no non-Latin scripts present
+        return (true, None);
+    }
+
+    // If Latin dominates over all non-Latin, primary is Latin
+    if latin_count >= non_latin_total {
+        return (true, None);
+    }
+
+    // Primary is a non-Latin script. Collect related blocks in the same script family.
+    let dominant_lo = blocks[max_idx].0;
+    let is_east_asian = matches!(dominant_lo, 0x4E00 | 0x3400 | 0x3040 | 0x30A0 | 0xAC00);
+
+    let mut primary_blocks: Vec<(u32, u32)> = Vec::new();
+    primary_blocks.push(blocks[max_idx]);
+
+    if is_east_asian {
+        // Include related East Asian blocks (CJK + Kana + Hangul)
+        for (i, &(lo, hi)) in blocks.iter().enumerate() {
+            if i != max_idx && matches!(lo, 0x4E00 | 0x3400 | 0x3040 | 0x30A0 | 0xAC00) && counts[i] > 0 {
+                primary_blocks.push((lo, hi));
+            }
+        }
+    }
+
+    (false, Some(primary_blocks))
+}
+
+pub fn strip_non_primary_scripts(text: &str) -> String {
+    let (primary_is_latin, primary_blocks) = detect_primary_script(text);
+
+    if primary_is_latin {
+        text.chars()
+            .filter(|c| {
+                let cp = *c as u32;
+                is_latin(cp) || cp < 0x0370
+            })
+            .collect()
+    } else if let Some(primary_blocks) = primary_blocks {
+        text.chars()
+            .filter(|c| {
+                let cp = *c as u32;
+                if is_latin(cp) {
+                    return true;
+                }
+                if primary_blocks.iter().any(|&(lo, hi)| (lo..=hi).contains(&cp)) {
+                    return true;
+                }
+                if cp < 0x0370 {
+                    return true;
+                }
+                if primary_blocks.iter().any(|&(lo, _)| lo == 0x4E00 || lo == 0x3400) {
+                    if (0x3000..=0x303F).contains(&cp) || (0xFF00..=0xFFEF).contains(&cp) {
+                        return true;
+                    }
+                }
+                false
+            })
+            .collect()
+    } else {
+        // No primary detected (shouldn't happen), return as-is
+        text.to_string()
+    }
+}
+
+pub fn language_name(code: &str) -> &'static str {
+    match code {
+        "vi" => "Vietnamese",
+        "en" => "English",
+        "zh" => "Chinese",
+        "ja" => "Japanese",
+        "ko" => "Korean",
+        "ru" => "Russian",
+        "fr" => "French",
+        "de" => "German",
+        "es" => "Spanish",
+        "pt" => "Portuguese",
+        "it" => "Italian",
+        "th" => "Thai",
+        "ar" => "Arabic",
+        "hi" => "Hindi",
+        _ => "English",
+    }
+}
+
+fn prepend_language_instruction(prompt: &str, lang: &str) -> String {
+    let lang_name = language_name(lang);
     format!(
-        "CRITICAL: You MUST respond entirely in Vietnamese language. Translate all output to Vietnamese. Do NOT use any other language.\n\n{}",
-        prompt
+        "CRITICAL: You MUST respond entirely in {lang_name} language. Translate all output to {lang_name}. Do NOT use any other language.\n\n{prompt}"
     )
 }
 
@@ -558,18 +711,28 @@ fn resolve_prompt(cfg: &AiProviderConfig) -> String {
         }
         _ => prompt_level_2().to_string(), // "2" or empty → level 2
     };
-    if !cfg.translate_vietnamese {
+
+    let lang = cfg.output_language.trim();
+    if lang.is_empty() {
+        return base; // passthrough
+    }
+
+    let lang_name = language_name(lang);
+
+    // For English, don't prepend CRITICAL instruction, just keep the prompt as-is
+    if lang == "en" {
         return base;
     }
-    let prepended = prepend_vietnamese_instruction(&base);
+
+    let prepended = prepend_language_instruction(&base, lang);
     prepended
         .replace(
             "Write the final report in English unless the user explicitly requests another language.",
-            "Write the final report in Vietnamese.",
+            &format!("Write the final report in {lang_name}."),
         )
         .replace(
             "Write the final handoff document in English unless the user explicitly requests another language.",
-            "Write the final handoff document in Vietnamese.",
+            &format!("Write the final handoff document in {lang_name}."),
         )
 }
 
@@ -608,12 +771,11 @@ fn build_chat_request(
         body.push_str(qa.content.trim());
     }
 
-    // 3. Critical instructions (non-prependable flags only;
-    // Vietnamese is handled by prepend_vietnamese_instruction).
-    if cfg.remove_chinese {
+    // 3. Critical instructions
+    if cfg.strip_non_primary {
         body.push_str(SECTION_SEP);
         body.push_str("## CRITICAL INSTRUCTIONS\n\n");
-        body.push_str("1. CRITICAL: Do NOT output Chinese characters under any circumstances.\n");
+        body.push_str("1. CRITICAL: Do NOT output any non-primary script characters (e.g. Chinese, Russian, Korean, Japanese, Arabic, etc.).\n");
     }
 
     // 4. Closing components
@@ -773,7 +935,7 @@ async fn run_rewrite(
         + system.chars().count()
         + crate::export::estimate_components_chars(project, crate::models::ComponentPosition::Opening)
         + crate::export::estimate_components_chars(project, crate::models::ComponentPosition::Closing)
-        + (if cfg.remove_chinese { 128 } else { 0 })
+        + (if cfg.strip_non_primary { 128 } else { 0 })
         + 64;
     if total_chars > cfg.max_input_chars {
         return Err(AiErrorPayload {
@@ -807,8 +969,8 @@ async fn run_rewrite(
     let duration_ms = start.elapsed().as_millis() as u64;
     match result {
         Ok(markdown) => {
-            let markdown = if cfg.remove_chinese {
-                strip_chinese(&markdown)
+            let markdown = if cfg.strip_non_primary {
+                strip_non_primary_scripts(&markdown)
             } else {
                 markdown
             };
@@ -986,8 +1148,8 @@ mod tests {
             max_input_chars: 50_000,
             thinking_effort: String::new(),
             prompt_level: "2".to_string(),
-            translate_vietnamese: false,
-            remove_chinese: false,
+            output_language: String::new(),
+            strip_non_primary: false,
         };
         let debug_str = format!("{:?}", cfg);
         assert!(
@@ -1016,8 +1178,8 @@ mod tests {
             max_input_chars: 50_000,
             thinking_effort: String::new(),
             prompt_level: "2".to_string(),
-            translate_vietnamese: false,
-            remove_chinese: false,
+            output_language: String::new(),
+            strip_non_primary: false,
         };
         let debug_str = format!("{:?}", cfg);
         assert!(
@@ -1071,8 +1233,8 @@ mod tests {
             max_input_chars: 100_000,
             thinking_effort: String::new(),
             prompt_level: "2".to_string(),
-            translate_vietnamese: false,
-            remove_chinese: false,
+            output_language: String::new(),
+            strip_non_primary: false,
         };
         let system = resolve_prompt(&cfg);
         let project = Project {
@@ -1083,7 +1245,7 @@ mod tests {
             + system.chars().count()
             + crate::export::estimate_components_chars(&project, ComponentPosition::Opening)
             + crate::export::estimate_components_chars(&project, ComponentPosition::Closing)
-            + (if cfg.remove_chinese { 128 } else { 0 })
+            + (if cfg.strip_non_primary { 128 } else { 0 })
             + 64;
         assert!(
             total > 90,
@@ -1093,36 +1255,92 @@ mod tests {
     }
 
     #[test]
-    fn test_resolve_prompt_vietnamese_replaces_english_line() {
-        for (level, prompt_fn) in [
-            ("1", prompt_level_1 as fn() -> &'static str),
-            ("2", prompt_level_2 as fn() -> &'static str),
-            ("3", prompt_level_3 as fn() -> &'static str),
-        ] {
-            let _ = prompt_fn();
-            let cfg = AiProviderConfig {
-                kind: AiProviderKind::Ollama,
-                base_url: String::new(),
-                api_key: String::new(),
-                model: "x".into(),
-                system_prompt: String::new(),
-                max_input_chars: 100_000,
-                thinking_effort: String::new(),
-                prompt_level: level.to_string(),
-                translate_vietnamese: true,
-                remove_chinese: false,
-            };
-            let resolved = resolve_prompt(&cfg);
-            assert!(
-                !resolved.contains("Write the final report in English")
-                    && !resolved.contains("Write the final handoff document in English"),
-                "level {level} should not retain English output rule; got: {resolved}"
-            );
-            assert!(
-                resolved.contains("CRITICAL: You MUST respond entirely in Vietnamese"),
-                "level {level} should include Vietnamese CRITICAL; got: {resolved}"
-            );
+    fn test_resolve_prompt_output_language_replaces_english_line() {
+        let langs = [
+            ("vi", "Vietnamese"),
+            ("zh", "Chinese"),
+            ("ja", "Japanese"),
+            ("ko", "Korean"),
+            ("ru", "Russian"),
+            ("fr", "French"),
+            ("de", "German"),
+            ("es", "Spanish"),
+            ("pt", "Portuguese"),
+            ("it", "Italian"),
+            ("th", "Thai"),
+            ("ar", "Arabic"),
+            ("hi", "Hindi"),
+        ];
+        for (code, name) in &langs {
+            for (level, _prompt_fn) in [
+                ("1", prompt_level_1 as fn() -> &'static str),
+                ("2", prompt_level_2 as fn() -> &'static str),
+                ("3", prompt_level_3 as fn() -> &'static str),
+            ] {
+                let cfg = AiProviderConfig {
+                    kind: AiProviderKind::Ollama,
+                    base_url: String::new(),
+                    api_key: String::new(),
+                    model: "x".into(),
+                    system_prompt: String::new(),
+                    max_input_chars: 100_000,
+                    thinking_effort: String::new(),
+                    prompt_level: level.to_string(),
+                    output_language: code.to_string(),
+                    strip_non_primary: false,
+                };
+                let resolved = resolve_prompt(&cfg);
+                assert!(
+                    !resolved.contains("Write the final report in English")
+                        && !resolved.contains("Write the final handoff document in English"),
+                    "level {level} lang {code} should not retain English output rule; got: {resolved}"
+                );
+                assert!(
+                    resolved.contains(&format!("CRITICAL: You MUST respond entirely in {name}")),
+                    "level {level} lang {code} should include CRITICAL for {name}; got: {resolved}"
+                );
+            }
         }
+    }
+
+    #[test]
+    fn test_resolve_prompt_empty_language_passthrough() {
+        let base = prompt_level_2();
+        let cfg = AiProviderConfig {
+            kind: AiProviderKind::Ollama,
+            base_url: String::new(),
+            api_key: String::new(),
+            model: "x".into(),
+            system_prompt: String::new(),
+            max_input_chars: 100_000,
+            thinking_effort: String::new(),
+            prompt_level: "2".to_string(),
+            output_language: String::new(),
+            strip_non_primary: false,
+        };
+        let resolved = resolve_prompt(&cfg);
+        assert_eq!(resolved, base, "Empty output_language should return base prompt unchanged");
+        assert!(!resolved.contains("CRITICAL: You MUST respond entirely in"), "Empty language should not prepend CRITICAL");
+    }
+
+    #[test]
+    fn test_resolve_prompt_en_passthrough() {
+        let base = prompt_level_2();
+        let cfg = AiProviderConfig {
+            kind: AiProviderKind::Ollama,
+            base_url: String::new(),
+            api_key: String::new(),
+            model: "x".into(),
+            system_prompt: String::new(),
+            max_input_chars: 100_000,
+            thinking_effort: String::new(),
+            prompt_level: "2".to_string(),
+            output_language: "en".to_string(),
+            strip_non_primary: false,
+        };
+        let resolved = resolve_prompt(&cfg);
+        assert_eq!(resolved, base, "English language should return base prompt unchanged");
+        assert!(!resolved.contains("CRITICAL: You MUST respond entirely in"), "English should not prepend CRITICAL");
     }
 
     #[test]
@@ -1206,8 +1424,8 @@ mod tests {
             max_input_chars: 1,
             thinking_effort: String::new(),
             prompt_level: "2".to_string(),
-            translate_vietnamese: false,
-            remove_chinese: false,
+            output_language: String::new(),
+            strip_non_primary: false,
         };
         let total = estimate_chars(&source_refs) + resolve_prompt(&cfg).chars().count() + 64;
         assert!(total > cfg.max_input_chars, "estimate should exceed max_input_chars limit");
@@ -1216,40 +1434,72 @@ mod tests {
     }
 
     #[test]
-    fn test_strip_chinese_removes_cjk_characters() {
+    fn test_strip_non_primary_latin_primary_strips_cjk() {
+        // Auto-detect Latin primary + strip CJK
         let input = "Hello 你好世界 World 测试";
-        let result = strip_chinese(input);
+        let result = strip_non_primary_scripts(input);
         assert_eq!(result, "Hello  World ");
     }
 
     #[test]
-    fn test_strip_chinese_preserves_vietnamese() {
+    fn test_strip_non_primary_cyrillic_primary_keeps_cyrillic_strips_cjk() {
+        // Auto-detect Cyrillic primary + keep Cyrillic + strip CJK
+        let input = "Привет мир 你好世界 тест";
+        let result = strip_non_primary_scripts(input);
+        // Latin should be kept, Cyrillic should be kept, CJK stripped
+        assert!(result.contains("Привет мир"));
+        assert!(result.contains("тест"));
+        assert!(!result.contains("你好世界"));
+    }
+
+    #[test]
+    fn test_strip_non_primary_mixed_latin_cjk_primary_keeps_both() {
+        // Auto-detect CJK primary (more CJK than Latin) + keep Latin + CJK
+        let input = "你好世界 测试 这是测试 Hello";
+        let result = strip_non_primary_scripts(input);
+        assert!(result.contains("Hello"), "Latin should be kept");
+        assert!(result.contains("你好世界"), "CJK should be kept (it's primary)");
+        assert!(result.contains("测试"), "CJK should be kept");
+    }
+
+    #[test]
+    fn test_strip_non_primary_always_keeps_latin() {
+        // Always keep Latin regardless of primary script
+        let input = "Привет Hello мир العربية test";
+        let result = strip_non_primary_scripts(input);
+        // Primary is Cyrillic (Приветмир = more chars), so keeps Cyrillic + Latin, strips Arabic
+        assert!(result.contains("Hello"), "Latin should always be kept");
+        assert!(result.contains("test"), "Latin should always be kept");
+        assert!(result.contains("Привет"), "Cyrillic is primary, should be kept");
+        assert!(!result.contains("العربية"), "Arabic should be stripped (not primary)");
+    }
+
+    #[test]
+    fn test_strip_non_primary_preserves_vietnamese() {
         let input = "Báo cáo 你好 findings with accent: áàảãạ";
-        let result = strip_chinese(input);
-        assert_eq!(result, "Báo cáo  findings with accent: áàảãạ");
+        let result = strip_non_primary_scripts(input);
+        assert!(result.contains("Báo cáo"));
+        assert!(result.contains("findings"));
+        assert!(!result.contains("你好"));
     }
 
     #[test]
-    fn test_strip_chinese_removes_cjk_punctuation() {
-        let input = "Hello、world。你好！test【bracket】";
-        let result = strip_chinese(input);
-        assert_eq!(result, "Helloworld！testbracket");
-    }
-
-    #[test]
-    fn test_strip_chinese_no_cjk_passthrough() {
+    fn test_strip_non_primary_passthrough() {
         let input = "Normal English text with no Chinese.";
-        let result = strip_chinese(input);
+        let result = strip_non_primary_scripts(input);
         assert_eq!(result, input);
     }
 
     #[test]
-    fn test_prepend_vietnamese_instruction() {
+    fn test_prepend_language_instruction() {
         let prompt = "You are a QA lead.";
-        let result = prepend_vietnamese_instruction(prompt);
+        let result = prepend_language_instruction(prompt, "vi");
         assert!(result.starts_with("CRITICAL"));
         assert!(result.contains("Vietnamese"));
         assert!(result.contains("You are a QA lead."));
+
+        let result_ja = prepend_language_instruction(prompt, "ja");
+        assert!(result_ja.contains("Japanese"));
     }
 
     #[test]
@@ -1263,8 +1513,8 @@ mod tests {
             max_input_chars: 50_000,
             thinking_effort: String::new(),
             prompt_level: "2".to_string(),
-            translate_vietnamese: false,
-            remove_chinese: false,
+            output_language: String::new(),
+            strip_non_primary: false,
         };
         let result = build_client(&cfg);
         assert!(result.is_ok(), "build_client should succeed with custom base_url");
@@ -1278,8 +1528,8 @@ mod tests {
             max_input_chars: 50_000,
             thinking_effort: String::new(),
             prompt_level: "2".to_string(),
-            translate_vietnamese: false,
-            remove_chinese: false,
+            output_language: String::new(),
+            strip_non_primary: false,
         };
         let result_no_url = build_client(&cfg_no_url);
         assert!(result_no_url.is_err(), "OpenaiCompatible should fail without base_url");
@@ -1329,8 +1579,8 @@ mod integration {
                 max_input_chars: 200_000,
                 thinking_effort: String::new(),
             prompt_level: "2".to_string(),
-                translate_vietnamese: false,
-                remove_chinese: false,
+                output_language: String::new(),
+                strip_non_primary: false,
             }),
             document_type: Some("review-weaver-project".to_string()),
             ai_reports: None,

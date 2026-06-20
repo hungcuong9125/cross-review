@@ -8,6 +8,7 @@ function generateId(): string {
 }
 
 let validationGeneration = 0;
+let validationTimer: ReturnType<typeof setTimeout> | null = null;
 
 const DEFAULT_PREVIEW_TAB = { id: "preview" as const, kind: "preview" as const, title: "Preview" };
 
@@ -101,7 +102,7 @@ interface ProjectState {
   setActiveMainTab: (tab: MainTab) => void;
 
   // Validation
-  refreshValidation: () => Promise<void>;
+  refreshValidation: () => void;
 
   // Settings
   setLanguage: (lang: Language) => void;
@@ -145,6 +146,7 @@ function migrateProject(project: Project): Project {
         position: "opening",
         content: (project as any).opening_text,
         order: maxOrder + 1,
+        active: true,
       });
     }
   }
@@ -160,6 +162,7 @@ function migrateProject(project: Project): Project {
         position: "closing",
         content: (project as any).closing_text,
         order: maxOrder + 1,
+        active: true,
       });
     }
   }
@@ -527,34 +530,37 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     get().refreshValidation();
   },
 
-  refreshValidation: async () => {
-    const gen = ++validationGeneration;
-    try {
-      const report = await validateProject(get().project);
-      if (gen !== validationGeneration) return;
-      set({ validation: report });
-    } catch (err) {
-      if (gen !== validationGeneration) return;
-      console.error("IPC validation failed, using local fallback:", err);
-      const p = get().project;
-      const errors: string[] = [];
-      const warnings: string[] = [];
-      const activeReports = p.qa_reports.filter((q) => q.active !== false);
-      if (activeReports.length < 2) {
-        errors.push("Need at least 2 active sources for cross-review. / Cần ít nhất 2 nguồn hoạt động để review chéo.");
+  refreshValidation: () => {
+    if (validationTimer) clearTimeout(validationTimer);
+    validationTimer = setTimeout(async () => {
+      const gen = ++validationGeneration;
+      try {
+        const report = await validateProject(get().project);
+        if (gen !== validationGeneration) return;
+        set({ validation: report });
+      } catch (err) {
+        if (gen !== validationGeneration) return;
+        console.error("IPC validation failed, using local fallback:", err);
+        const p = get().project;
+        const errors: string[] = [];
+        const warnings: string[] = [];
+        const activeReports = p.qa_reports.filter((q) => q.active !== false);
+        if (activeReports.length < 2) {
+          errors.push("Need at least 2 active sources for cross-review. / Cần ít nhất 2 nguồn hoạt động để review chéo.");
+        }
+        let activeIndex = 0;
+        p.qa_reports.forEach((q) => {
+          if (q.active === false) return;
+          activeIndex++;
+          const label = `Source #${activeIndex}`;
+          if (q.name.trim() === "") errors.push(`${label}: missing name. / thiếu tên.`);
+          if (q.content.trim() === "") errors.push(`${label}: missing content. / thiếu nội dung.`);
+        });
+        set({
+          validation: { valid: errors.length === 0, errors, warnings },
+        });
       }
-      let activeIndex = 0;
-      p.qa_reports.forEach((q) => {
-        if (q.active === false) return;
-        activeIndex++;
-        const label = `Source #${activeIndex}`;
-        if (q.name.trim() === "") errors.push(`${label}: missing name. / thiếu tên.`);
-        if (q.content.trim() === "") errors.push(`${label}: missing content. / thiếu nội dung.`);
-      });
-      set({
-        validation: { valid: errors.length === 0, errors, warnings },
-      });
-    }
+    }, 200);
   },
 
   setLanguage: (lang) => set({ language: lang }),

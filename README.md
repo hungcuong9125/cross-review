@@ -26,7 +26,7 @@ Review Weave solves this by taking everyone's reports and generating customized 
 - **Smart Text Processing**:
   - Automatically removes extra blank lines and trims text (`Normalize Whitespace`).
   - Flattens text into a single continuous line for feeding into LLMs (`Export as Single Line`).
-  - Remove Chinese characters and Translate Vietnamese options for AI output post-processing.
+  - Strip Non-Primary Script characters and Output Language options for AI output post-processing.
 - **Import/Export Settings**: Save and restore all app settings (AI config, UI toggles) as JSON files.
 - **Bilingual UI**: Full English and Vietnamese language support.
 - **Offline & Fast**: Built with Rust and Tauri, meaning it's lightweight, secure, and works entirely offline.
@@ -189,6 +189,24 @@ The compiled Markdown outputs follow this structural convention:
 ```
 
 ## Changelog
+
+### v0.9.2 (2026-06-20)
+- **Breaking**: Renamed `remove_chinese` to `strip_non_primary` -- now strips all non-primary script characters (CJK, Cyrillic, Arabic, Thai, Devanagari, etc.) via auto-detection instead of only Chinese. Latin characters are always preserved.
+- **Breaking**: Renamed `translate_vietnamese` to `output_language` (string) -- supports 14 output languages (vi, en, zh, ja, ko, ru, fr, de, es, pt, it, th, ar, hi) with parameterized CRITICAL instructions. Empty value or "en" means no translation.
+- **Changed**: Settings UI now shows a language dropdown (14 options) instead of a Vietnamese checkbox, and a renamed "Strip Non-Primary Script" checkbox.
+- **Changed**: `strip_chinese()` replaced with `strip_non_primary_scripts()` using Unicode block auto-detection for primary script identification.
+- **Changed**: `prepend_vietnamese_instruction()` replaced with `prepend_language_instruction()` accepting a language code parameter.
+- **Changed**: `resolve_prompt()` now handles all 14 output languages with proper prompt sentence replacement and CRITICAL instruction prepending.
+- **Changed**: `build_chat_request()` critical instruction broadened from "Do NOT output Chinese" to "Do NOT output any non-primary script characters".
+- **Added**: `language_name()` helper mapping language codes to English names.
+- **Added**: Comprehensive test coverage for strip_non_primary_scripts (auto-detect Latin primary, Cyrillic primary, mixed CJK-Latin primary, Latin always kept) and output_language (all 14 langs + empty passthrough + English passthrough).
+- **Updated**: All i18n keys (`settings.removeChinese` → `settings.stripNonPrimary`, `settings.translateVietnamese` → `settings.outputLanguage` + `settings.outputLanguage.chooseLanguage`).
+- **Fixed**: Vietnamese-only error messages in `open_project` and `import_settings_cmd` — now include English fallback for non-Vietnamese users.
+- **Fixed**: `refreshValidation` fires an IPC call on every keystroke without debounce — added 200ms debounce timer to coalesce rapid mutations.
+- **Fixed**: `listModels` effect re-fetches model list when `draftMaxChars` changes (irrelevant dependency) — removed from dependency array.
+- **Fixed**: `migrateProject` creates components without explicit `active` field — now sets `active: true` for consistency with `addComponent`.
+- **Refactored**: Removed overly verbose explanatory comments from `strip_non_primary_scripts` and `detect_primary_script`.
+- **Refactored**: Removed stale `screenshot-v2.png`, replaced with updated screenshot.
 
 ### v0.9.0 (2026-06-20)
 - **Added**: Custom opening/closing components now included in AI consolidation request body (`build_chat_request`) — user-authored component text is placed before sources (opening) and after sources (closing) with section separators.

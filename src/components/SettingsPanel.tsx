@@ -45,8 +45,8 @@ export function SettingsPanel() {
   const [testResult, setTestResult] = useState<string | null>(null);
   const [models, setModels] = useState<string[]>([]);
   const [showKeyBanner, setShowKeyBanner] = useState(isApiKeyScrubbed() && !project.ai_config?.api_key && !!project.ai_config);
-  const [draftTranslateVietnamese, setDraftTranslateVietnamese] = useState(project.ai_config?.translate_vietnamese ?? false);
-  const [draftRemoveChinese, setDraftRemoveChinese] = useState(project.ai_config?.remove_chinese ?? false);
+  const [draftOutputLanguage, setDraftOutputLanguage] = useState(project.ai_config?.output_language ?? "");
+  const [draftStripNonPrimary, setDraftStripNonPrimary] = useState(project.ai_config?.strip_non_primary ?? false);
   const [debugLogs, setDebugLogs] = useState<DebugLog[]>([]);
   const [selectedLog, setSelectedLog] = useState<DebugLog | null>(null);
   useEffect(() => {
@@ -58,8 +58,8 @@ export function SettingsPanel() {
     setDraftThinkingEffort(project.ai_config?.thinking_effort ?? "");
     setDraftPromptLevel(project.ai_config?.prompt_level ?? "2");
     setDraftMaxChars(project.ai_config?.max_input_chars ?? 2_000_000);
-    setDraftTranslateVietnamese(project.ai_config?.translate_vietnamese ?? false);
-    setDraftRemoveChinese(project.ai_config?.remove_chinese ?? false);
+    setDraftOutputLanguage(project.ai_config?.output_language ?? "");
+    setDraftStripNonPrimary(project.ai_config?.strip_non_primary ?? false);
     setShowApiKey(false);
     setShowKeyBanner(isApiKeyScrubbed() && !project.ai_config?.api_key && !!project.ai_config);
   }, [project.ai_config]);
@@ -71,8 +71,8 @@ export function SettingsPanel() {
     || draftMaxChars !== (project.ai_config?.max_input_chars ?? 2_000_000)
     || draftSystemPrompt !== (project.ai_config?.system_prompt ?? "")
     || draftThinkingEffort !== (project.ai_config?.thinking_effort ?? "")
-    || draftTranslateVietnamese !== (project.ai_config?.translate_vietnamese ?? false)
-    || draftRemoveChinese !== (project.ai_config?.remove_chinese ?? false)
+    || draftOutputLanguage !== (project.ai_config?.output_language ?? "")
+    || draftStripNonPrimary !== (project.ai_config?.strip_non_primary ?? false)
     || draftPromptLevel !== (project.ai_config?.prompt_level ?? "2");
 
   const buildDraftConfig = () => ({
@@ -83,8 +83,8 @@ export function SettingsPanel() {
     max_input_chars: draftMaxChars,
     system_prompt: draftSystemPrompt,
     thinking_effort: draftThinkingEffort,
-    translate_vietnamese: draftTranslateVietnamese,
-    remove_chinese: draftRemoveChinese,
+    output_language: draftOutputLanguage,
+    strip_non_primary: draftStripNonPrimary,
     prompt_level: draftPromptLevel,
   });
 
@@ -148,8 +148,8 @@ export function SettingsPanel() {
         max_input_chars: draftMaxChars,
         system_prompt: "",
         thinking_effort: "",
-        translate_vietnamese: false,
-        remove_chinese: false,
+        output_language: "",
+        strip_non_primary: false,
         prompt_level: "2",
       }).then((result) => {
         if (cancelled) return;
@@ -157,7 +157,7 @@ export function SettingsPanel() {
       }).catch((e) => { console.error("Failed to fetch models:", e); });
     }, 150);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [draftKind, draftBaseUrl, draftApiKey, draftMaxChars]);
+  }, [draftKind, draftBaseUrl, draftApiKey]);
 
   const handleGenerate = async () => {
     if (aiBusy) return;
@@ -260,8 +260,8 @@ export function SettingsPanel() {
       remove_whitespace: state.removeWhitespace,
       merge_lines: state.mergeLines,
       preview_format: state.previewFormat,
-      translate_vietnamese: state.project.ai_config?.translate_vietnamese ?? false,
-      remove_chinese: state.project.ai_config?.remove_chinese ?? false,
+      output_language: state.project.ai_config?.output_language ?? "",
+      strip_non_primary: state.project.ai_config?.strip_non_primary ?? false,
       debug_enabled: state.debugEnabled,
     };
     try {
@@ -303,8 +303,8 @@ export function SettingsPanel() {
           setDraftModel(settings.ai_config.model);
           setDraftSystemPrompt(settings.ai_config.system_prompt);
           setDraftThinkingEffort(settings.ai_config.thinking_effort);
-          setDraftTranslateVietnamese(settings.ai_config.translate_vietnamese);
-          setDraftRemoveChinese(settings.ai_config.remove_chinese);
+          setDraftOutputLanguage(settings.ai_config.output_language);
+          setDraftStripNonPrimary(settings.ai_config.strip_non_primary);
           setDraftMaxChars(settings.ai_config.max_input_chars);
           setDraftPromptLevel(settings.ai_config.prompt_level);
         }
@@ -375,13 +375,30 @@ export function SettingsPanel() {
                 <span className="text-xs text-gray-600 dark:text-gray-400">{language === "vi" ? "Bật debug" : "Enable debug"}</span>
               </label>
               <label className="flex items-center gap-1.5 cursor-pointer">
-                <input type="checkbox" checked={draftRemoveChinese} onChange={() => setDraftRemoveChinese(!draftRemoveChinese)} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
-                <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.removeChinese", language)}</span>
+                <input type="checkbox" checked={draftStripNonPrimary} onChange={() => setDraftStripNonPrimary(!draftStripNonPrimary)} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
+                <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.stripNonPrimary", language)}</span>
               </label>
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input type="checkbox" checked={draftTranslateVietnamese} onChange={() => setDraftTranslateVietnamese(!draftTranslateVietnamese)} className="w-3 h-3 rounded border-gray-300 text-blue-500" />
-                <span className="text-xs text-gray-600 dark:text-gray-400">{t("settings.translateVietnamese", language)}</span>
-              </label>
+              <div>
+                <span className="text-[10px] text-gray-500 dark:text-gray-400 block mt-2">{t("settings.outputLanguage", language)}</span>
+                <select value={draftOutputLanguage} onChange={(e) => setDraftOutputLanguage(e.target.value)}
+                  className="w-full h-6 text-xs px-2 bg-gray-100 dark:bg-gray-600">
+                  <option value="">{t("settings.outputLanguage.chooseLanguage", language)}</option>
+                  <option value="vi">{language === "vi" ? "Tiếng Việt" : "Vietnamese"}</option>
+                  <option value="en">English</option>
+                  <option value="zh">{language === "vi" ? "中文 (Trung Quốc)" : "中文 (Chinese)"}</option>
+                  <option value="ja">{language === "vi" ? "日本語 (Nhật)" : "日本語 (Japanese)"}</option>
+                  <option value="ko">{language === "vi" ? "한국어 (Hàn)" : "한국어 (Korean)"}</option>
+                  <option value="ru">{language === "vi" ? "Русский (Nga)" : "Русский (Russian)"}</option>
+                  <option value="fr">{language === "vi" ? "Français (Pháp)" : "Français (French)"}</option>
+                  <option value="de">{language === "vi" ? "Deutsch (Đức)" : "Deutsch (German)"}</option>
+                  <option value="es">{language === "vi" ? "Español (TBN)" : "Español (Spanish)"}</option>
+                  <option value="pt">{language === "vi" ? "Português (BĐN)" : "Português (Portuguese)"}</option>
+                  <option value="it">{language === "vi" ? "Italiano (Ý)" : "Italiano (Italian)"}</option>
+                  <option value="th">{language === "vi" ? "ไทย (Thái)" : "ไทย (Thai)"}</option>
+                  <option value="ar">{language === "vi" ? "العربية (Ả Rập)" : "العربية (Arabic)"}</option>
+                  <option value="hi">{language === "vi" ? "हिन्दी (Hindi)" : "हिन्दी (Hindi)"}</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>

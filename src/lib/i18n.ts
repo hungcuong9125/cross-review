@@ -93,8 +93,9 @@ export const translations = {
   'settings.previewFormat.html': { vi: 'HTML', en: 'HTML' },
   'settings.previewFormat.markdown': { vi: 'Markdown', en: 'Markdown' },
   'settings.compactMode': { vi: 'Chế độ gọn', en: 'Compact mode' },
-  'settings.translateVietnamese': { vi: 'Dịch tiếng Việt', en: 'Translate Vietnamese' },
-  'settings.removeChinese': { vi: 'Xoá từ tiếng Trung', en: 'Remove Chinese' },
+  'settings.outputLanguage': { vi: 'Ngôn ngữ xuất', en: 'Output Language' },
+  'settings.outputLanguage.chooseLanguage': { vi: '--- Chọn ngôn ngữ ---', en: '--- Choose language ---' },
+  'settings.stripNonPrimary': { vi: 'Xoá ký tự ngoài ngôn ngữ chính', en: 'Strip Non-Primary Script' },
 
   // Settings — AI provider
   'settings.aiProvider': { vi: 'AI Provider', en: 'AI provider' },
