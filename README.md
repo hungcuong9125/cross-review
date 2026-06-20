@@ -1,6 +1,6 @@
 # Cross Review
 
-![Cross Review Interface](./81905.png)
+![Cross Review Interface](./screenshot.png)
 
 **Cross Review** is a lightweight desktop application designed to help QA teams and AI models easily cross-review each other's work. It supports AI-powered report consolidation using multiple LLM providers.
 
@@ -191,35 +191,22 @@ The compiled Markdown outputs follow this structural convention:
 
 ## Changelog
 
-### v0.9.3 (2026-06-20) — Current
+### v0.9.4 (2026-06-21) — Current
+
+- **Added**: Settings Quick Guide panel in SettingsPanel — bilingual English/Vietnamese descriptions for each toggle (cross-review, compact mode, normalize whitespace, export as single line, enable debug, strip non-primary, output language).
+- **Changed**: Updated screenshot from `81905.png` to `screenshot.png`.
+- **Fixed**: Vietnamese translation for "Strip Non-Primary Script" — changed from "Xoá ký tự ngoài ngôn ngữ chính" to "Loại bỏ ký tự ngoại lai" for better clarity.
+- **Refactored**: Improved SettingsPanel layout — replaced `<hr>` separator with padding classes for consistent spacing; reformatted debug modal conditional rendering block.
+- **Removed**: Old screenshot `81905.png`.
+- **Version**: Bumped to 0.9.4 (package.json, Cargo.toml, tauri.conf.json).
+
+### v0.9.3 (2026-06-20)
 
 - **Rebrand**: Renamed entire project from "Review Weave" to "Cross Review" — package name changed from `review-weaver` to `cross-review`, binary/lib renamed to `cross_review_lib`, app identifier updated to `com.cross-review.app`, and all UI/product references updated accordingly.
-- **Changed**: Updated screenshot from `19225.png` to `81905.png`.
 - **Changed**: Updated all troubleshooting commands, cleaning paths, and CSP references to use the new `cross-review` binary name and `com.cross-review.app` identifier.
 - **Refactored**: Extracted full changelog history from `README.md` into dedicated `CHANGELOG.md` file — README now keeps only the last 2 entries with a link to the full history.
 - **Docs**: Updated all code references in `index.html`, tooltips, error messages, and system prompts to reflect the new name.
 
-### v0.9.2 (2026-06-20)
-
-- **Breaking**: Renamed `remove_chinese` to `strip_non_primary` -- now strips all non-primary script characters (CJK, Cyrillic, Arabic, Thai, Devanagari, etc.) via auto-detection instead of only Chinese. Latin characters are always preserved.
-- **Breaking**: Renamed `translate_vietnamese` to `output_language` (string) -- supports 14 output languages (vi, en, zh, ja, ko, ru, fr, de, es, pt, it, th, ar, hi) with parameterized CRITICAL instructions. Empty value or "en" means no translation.
-- **Changed**: Settings UI now shows a language dropdown (14 options) instead of a Vietnamese checkbox, and a renamed "Strip Non-Primary Script" checkbox.
-- **Changed**: `strip_chinese()` replaced with `strip_non_primary_scripts()` using Unicode block auto-detection for primary script identification.
-- **Changed**: `prepend_vietnamese_instruction()` replaced with `prepend_language_instruction()` accepting a language code parameter.
-- **Changed**: `resolve_prompt()` now handles all 14 output languages with proper prompt sentence replacement and CRITICAL instruction prepending.
-- **Changed**: `build_chat_request()` critical instruction broadened from "Do NOT output Chinese" to "Do NOT output any non-primary script characters".
-- **Added**: `language_name()` helper mapping language codes to English names.
-- **Added**: Comprehensive test coverage for strip_non_primary_scripts (auto-detect Latin primary, Cyrillic primary, mixed CJK-Latin primary, Latin always kept) and output_language (all 14 langs + empty passthrough + English passthrough).
-- **Updated**: All i18n keys (`settings.removeChinese` → `settings.stripNonPrimary`, `settings.translateVietnamese` → `settings.outputLanguage` + `settings.outputLanguage.chooseLanguage`).
-- **Fixed**: Vietnamese-only error messages in `open_project` and `import_settings_cmd` — now include English fallback for non-Vietnamese users.
-- **Fixed**: `refreshValidation` fires an IPC call on every keystroke without debounce — added 200ms debounce timer to coalesce rapid mutations.
-- **Fixed**: `listModels` effect re-fetches model list when `draftMaxChars` changes (irrelevant dependency) — removed from dependency array.
-- **Fixed**: `migrateProject` creates components without explicit `active` field — now sets `active: true` for consistency with `addComponent`.
-- **Refactored**: Removed overly verbose explanatory comments from `strip_non_primary_scripts` and `detect_primary_script`.
-- **Refactored**: Removed stale `screenshot-v2.png`, replaced with updated screenshot.
-
-### v0.9.0 (2026-06-20)
-- **Added**: Custom opening/closing components now included in AI consolidation request body (`build_chat_request`) — user-authored component text is placed before sources (opening) and after sources (closing) with section separators.
 > For the complete version history, see [CHANGELOG.md](./CHANGELOG.md).
 
 ## Roadmap

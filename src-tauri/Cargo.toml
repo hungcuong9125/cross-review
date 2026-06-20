@@ -1,6 +1,6 @@
 [package]
 name = "cross-review"
-version = "0.9.3"
+version = "0.9.4"
 edition = "2021"
 description = "Cross-review markdown report generator for QA teams"
 license = "MIT"

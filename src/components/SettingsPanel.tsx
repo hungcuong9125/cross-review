@@ -401,10 +401,78 @@ export function SettingsPanel() {
               </div>
             </div>
           </div>
+
+          <div className="mt-4 p-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-dashed border-gray-200 dark:border-gray-700 text-[10px] text-gray-500 dark:text-gray-400 space-y-1">
+            <div className="font-bold text-gray-700 dark:text-gray-300 mb-1 uppercase tracking-wider">
+              {language === "vi" ? "Chú thích cài đặt" : "Settings Quick Guide"}
+            </div>
+            {language === "vi" ? (
+              <ul className="space-y-1">
+                <li className="flex items-start gap-1">
+                  <span className="text-amber-500 flex-shrink-0">★</span>
+                  <span><strong className="text-gray-600 dark:text-gray-300">Review chéo:</strong> Loại trừ báo cáo của chính người nhận khỏi tệp tổng hợp được gửi.</span>
+                </li>
+                <li className="flex items-start gap-1">
+                  <span className="text-amber-500 flex-shrink-0">★</span>
+                  <span><strong className="text-gray-600 dark:text-gray-300">Chế độ gọn:</strong> Thu gọn các dòng trống liền kề thành 1 dòng đơn.</span>
+                </li>
+                <li className="flex items-start gap-1">
+                  <span className="text-amber-500 flex-shrink-0">★</span>
+                  <span><strong className="text-gray-600 dark:text-gray-300">Chuẩn hóa khoảng trắng:</strong> Giới hạn tối đa chỉ có 1 dòng trống phân tách.</span>
+                </li>
+                <li className="flex items-start gap-1">
+                  <span className="text-amber-500 flex-shrink-0">★</span>
+                  <span><strong className="text-gray-600 dark:text-gray-300">Xuất thành một dòng:</strong> Gom toàn bộ văn bản thành 1 dòng duy nhất (nối bằng <code className="bg-gray-200 dark:bg-gray-800 px-0.5 rounded font-mono">|</code>).</span>
+                </li>
+                <li className="flex items-start gap-1">
+                  <span className="text-amber-500 flex-shrink-0">★</span>
+                  <span><strong className="text-gray-600 dark:text-gray-300">Bật debug:</strong> Lưu nhật ký chi tiết các yêu cầu/phản hồi AI để kiểm tra lỗi.</span>
+                </li>
+                <li className="flex items-start gap-1">
+                  <span className="text-amber-500 flex-shrink-0">★</span>
+                  <span><strong className="text-gray-600 dark:text-gray-300">Loại bỏ ký tự ngoại lai:</strong> Loại bỏ các ký tự ngoài hệ thống chữ chính (Cyrillic, CJK, Thái...).</span>
+                </li>
+                <li className="flex items-start gap-1">
+                  <span className="text-amber-500 flex-shrink-0">★</span>
+                  <span><strong className="text-gray-600 dark:text-gray-300">Ngôn ngữ xuất:</strong> Dịch hoặc viết báo cáo bằng ngôn ngữ được chọn.</span>
+                </li>
+              </ul>
+            ) : (
+              <ul className="space-y-1">
+                <li className="flex items-start gap-1">
+                  <span className="text-amber-500 flex-shrink-0">★</span>
+                  <span><strong className="text-gray-600 dark:text-gray-300">Cross review:</strong> Excludes the recipient's own report from their compiled output file.</span>
+                </li>
+                <li className="flex items-start gap-1">
+                  <span className="text-amber-500 flex-shrink-0">★</span>
+                  <span><strong className="text-gray-600 dark:text-gray-300">Compact mode:</strong> Collapses multiple block/paragraph spaces into a single line break.</span>
+                </li>
+                <li className="flex items-start gap-1">
+                  <span className="text-amber-500 flex-shrink-0">★</span>
+                  <span><strong className="text-gray-600 dark:text-gray-300">Normalize whitespace:</strong> Limits consecutive blank lines to one.</span>
+                </li>
+                <li className="flex items-start gap-1">
+                  <span className="text-amber-500 flex-shrink-0">★</span>
+                  <span><strong className="text-gray-600 dark:text-gray-300">Export as single line:</strong> Flattens all text into a single line, joined by <code className="bg-gray-200 dark:bg-gray-800 px-0.5 rounded font-mono">|</code>.</span>
+                </li>
+                <li className="flex items-start gap-1">
+                  <span className="text-amber-500 flex-shrink-0">★</span>
+                  <span><strong className="text-gray-600 dark:text-gray-300">Enable debug:</strong> Saves full API request/response payloads to diagnose issues.</span>
+                </li>
+                <li className="flex items-start gap-1">
+                  <span className="text-amber-500 flex-shrink-0">★</span>
+                  <span><strong className="text-gray-600 dark:text-gray-300">Strip Non-Primary:</strong> Removes script characters outside the main writing system.</span>
+                </li>
+                <li className="flex items-start gap-1">
+                  <span className="text-amber-500 flex-shrink-0">★</span>
+                  <span><strong className="text-gray-600 dark:text-gray-300">Output Language:</strong> Instructs the AI to write the report in the selected language.</span>
+                </li>
+              </ul>
+            )}
+          </div>
         </div>
 
-        <hr className="border-gray-200 dark:border-gray-700" />
-        <div>
+        <div className="pt-2">
           <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
             {t("settings.aiProvider", language)}
           </h3>
@@ -527,7 +595,7 @@ export function SettingsPanel() {
           </div>
         </div>
         {debugEnabled && debugLogs.length > 0 && (
-          <div>
+          <div className="pt-4">
             <div className="flex items-center justify-between mb-1">
               <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                 {language === "vi" ? "Nhật ký debug" : "Debug Logs"}
@@ -550,44 +618,46 @@ export function SettingsPanel() {
           </div>
         )}
       </div>
-      {selectedLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setSelectedLog(null)}>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-[90vw] max-w-2xl max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200">
-                {language === "vi" ? "Chi tiết debug" : "Debug Detail"}
-              </h3>
-              <button onClick={() => setSelectedLog(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-lg">×</button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-3 space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-2">
-                <div><span className="text-gray-500">Provider:</span> <span className="font-mono">{selectedLog.provider}</span></div>
-                <div><span className="text-gray-500">Model:</span> <span className="font-mono">{selectedLog.model}</span></div>
-                <div><span className="text-gray-500">Thinking:</span> <span className="font-mono">{selectedLog.thinking_effort || "none"}</span></div>
-                <div><span className="text-gray-500">Duration:</span> <span className="font-mono">{selectedLog.duration_ms}ms</span></div>
-                <div className="col-span-2">
-                  <span className="text-gray-500">Status:</span>{" "}
-                  <span className={selectedLog.success ? "text-green-600 font-semibold" : "text-red-500 font-semibold"}>
-                    {selectedLog.success ? "OK" : "FAILED"}
-                  </span>
+      {
+        selectedLog && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setSelectedLog(null)}>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-[90vw] max-w-2xl max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200">
+                  {language === "vi" ? "Chi tiết debug" : "Debug Detail"}
+                </h3>
+                <button onClick={() => setSelectedLog(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-lg">×</button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-3 space-y-3 text-xs">
+                <div className="grid grid-cols-2 gap-2">
+                  <div><span className="text-gray-500">Provider:</span> <span className="font-mono">{selectedLog.provider}</span></div>
+                  <div><span className="text-gray-500">Model:</span> <span className="font-mono">{selectedLog.model}</span></div>
+                  <div><span className="text-gray-500">Thinking:</span> <span className="font-mono">{selectedLog.thinking_effort || "none"}</span></div>
+                  <div><span className="text-gray-500">Duration:</span> <span className="font-mono">{selectedLog.duration_ms}ms</span></div>
+                  <div className="col-span-2">
+                    <span className="text-gray-500">Status:</span>{" "}
+                    <span className={selectedLog.success ? "text-green-600 font-semibold" : "text-red-500 font-semibold"}>
+                      {selectedLog.success ? "OK" : "FAILED"}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <p className="text-gray-500 font-semibold mb-1">Request:</p>
-                <pre className="bg-gray-50 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto whitespace-pre-wrap break-words">
-                  {selectedLog.request_messages}
-                </pre>
-              </div>
-              <div>
-                <p className="text-gray-500 font-semibold mb-1">{selectedLog.success ? "Response:" : "Error:"}</p>
-                <pre className="bg-gray-50 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto whitespace-pre-wrap break-words">
-                  {selectedLog.response_text}
-                </pre>
+                <div>
+                  <p className="text-gray-500 font-semibold mb-1">Request:</p>
+                  <pre className="bg-gray-50 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto whitespace-pre-wrap break-words">
+                    {selectedLog.request_messages}
+                  </pre>
+                </div>
+                <div>
+                  <p className="text-gray-500 font-semibold mb-1">{selectedLog.success ? "Response:" : "Error:"}</p>
+                  <pre className="bg-gray-50 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto whitespace-pre-wrap break-words">
+                    {selectedLog.response_text}
+                  </pre>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
       <div className="p-2.5 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 space-y-1">
         <button
           onClick={handleGenerate}
@@ -602,6 +672,6 @@ export function SettingsPanel() {
           </button>
         )}
       </div>
-    </div>
+    </div >
   );
 }

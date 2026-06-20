@@ -2,10 +2,18 @@
 
 All notable changes to CrossReview are documented in this file.
 
+### v0.9.4 (2026-06-21)
+
+- **Added**: Settings Quick Guide panel in SettingsPanel — bilingual English/Vietnamese descriptions for each toggle (cross-review, compact mode, normalize whitespace, export as single line, enable debug, strip non-primary, output language).
+- **Changed**: Updated screenshot from `81905.png` to `screenshot.png`.
+- **Fixed**: Vietnamese translation for "Strip Non-Primary Script" — changed from "Xoá ký tự ngoài ngôn ngữ chính" to "Loại bỏ ký tự ngoại lai" for better clarity.
+- **Refactored**: Improved SettingsPanel layout — replaced `<hr>` separator with padding classes for consistent spacing; reformatted debug modal conditional rendering block.
+- **Removed**: Old screenshot `81905.png`.
+- **Version**: Bumped to 0.9.4 (package.json, Cargo.toml, tauri.conf.json).
+
 ### v0.9.3 (2026-06-20)
 
 - **Rebrand**: Renamed entire project from "Review Weave" to "Cross Review" — package name changed from `review-weaver` to `cross-review`, binary/lib renamed to `cross_review_lib`, app identifier updated to `com.cross-review.app`, and all UI/product references updated accordingly.
-- **Changed**: Updated screenshot from `19225.png` to `81905.png`.
 - **Changed**: Updated all troubleshooting commands, cleaning paths, and CSP references to use the new `cross-review` binary name and `com.cross-review.app` identifier.
 - **Refactored**: Moved changelog from README.md to dedicated CHANGELOG.md — README now keeps only the last 2 entries.
 - **Docs**: Updated all code references in `index.html`, tooltips, error messages, and system prompts to reflect the new name.
