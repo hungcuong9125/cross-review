@@ -46,6 +46,27 @@ When using AI to generate consolidated reports, you can choose from 4 prompt mod
 
 Level 1–3 prompts are optimized for specific use cases and cannot be edited. Level 4 lets you fully customize the AI behavior.
 
+## Supported AI Providers
+
+Cross Review integrates with 8 LLM providers out of the box. Each provider has its own default endpoint and model list, which is automatically fetched when selected in the settings panel.
+
+| Provider | Default Endpoint | Available Models |
+|----------|-----------------|------------------|
+| **Ollama** (default) | `http://localhost:11434/v1/` | User-dependent — any model pulled locally via `ollama pull <name>` |
+| **OpenAI** | `https://api.openai.com/v1/` | `gpt-5.5`, `gpt-5.4`, `gpt-5.3` |
+| **Anthropic** | `https://api.anthropic.com/v1/` | `claude-sonnet-4-6`, `claude-sonnet-4-5`, `claude-opus-4-8`, `claude-opus-4-7`, `claude-opus-4-6`, `claude-haiku-4-5` |
+| **Gemini** | `https://generativelanguage.googleapis.com/v1/` | `gemini-3.5-flash`, `gemini-3.1-pro-preview` |
+| **DeepSeek** | `https://api.deepseek.com/v1/` | `deepseek-v4-flash`, `deepseek-v4-pro` |
+| **Xiaomi MiMo** | `https://api.xiaomimimo.com/v1/` | `mimo-v2.5`, `mimo-v2.5-pro` |
+| **OpenCode Go** | `https://opencode.ai/zen/go/v1` | `deepseek-v4-flash`, `deepseek-v4-pro`, `glm-5`, `glm-5.1`, `glm-5.2`, `kimi-k2.5`, `kimi-k2.6`, `kimi-k2.7-code`, `mimo-v2.5`, `mimo-v2.5-pro`, `minimax-m2.7`, `minimax-m3`, `qwen3.5-plus`, `qwen3.6-plus`, `qwen3.7-max`, `qwen3.7-plus` |
+| **OpenAI Compatible** | User-defined (required) | Free-text input — any model name |
+
+**Notes:**
+- All providers support configurable **base URL**, **API key**, and **model** overrides.
+- **Thinking Mode** (Reasoning Effort) is supported for OpenAI, Anthropic, and Gemini; silently ignored by other providers.
+- **OpenAI Compatible** requires a custom base URL and accepts any model name via free-text input.
+- The default provider is **Ollama** (no API key required for local inference).
+
 ## Technology Stack
 
 - **Backend**: Rust (Tauri 2 commands, validation engine, markdown exporter, file packaging)
