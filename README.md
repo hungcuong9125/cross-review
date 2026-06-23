@@ -216,7 +216,21 @@ The compiled Markdown outputs follow this structural convention:
 
 ## Changelog
 
-### v0.9.5 (2026-06-21) — Current
+### v1.0.0 (2026-06-23) — Current
+
+- **Added**: Unified "Components" tab replacing separate "Opening" and "Closing" tabs — both sections now appear in a single panel with section headers, component counts, empty states, and dedicated add buttons.
+- **Added**: Auto-scroll effect that smoothly scrolls to a component card when selected via `activeItem`.
+- **Added**: New i18n translation keys for Components tab (`tab.components`, `editor.componentsCount`, `editor.noOpening`, `editor.addOpeningComponent`, `editor.noClosing`, `editor.addClosingComponent`).
+- **Added**: New i18n translation keys for import/loading messages (`tab.importReport`, `tab.importSuccess`, `tab.importFail`, `tab.importFileInvalid`, `tab.debugEmpty`, `tab.copyDebug`).
+- **Refactored**: Replaced all hardcoded `language === "vi" ? ... : ...` ternary expressions in ContentTabs with centralized `t()` calls for import, loading, and debug UI strings.
+- **Refactored**: Extracted `renderComponentCard` function in EditorPanel for reusable component card rendering across opening/closing sections.
+- **Refactored**: Consolidated `addComponent` and `selectComponent` store logic to always navigate to the "Components" tab.
+- **Fixed**: Dark mode color consistency — corrected miscellaneous Tailwind class references (`dark:text-gray-150` → `dark:text-gray-100`, `dark:border-gray-750` → `dark:border-gray-700`, etc.).
+- **Fixed**: `.gitignore` — removed duplicate `upstreams/*` entry.
+- **Changed**: Updated `preview.reports` Vietnamese label from "Nguồn thông tin" to "Thông tin".
+- **Version**: Bumped to 1.0.0 (package.json, Cargo.toml, tauri.conf.json).
+
+### v0.9.5 (2026-06-21)
 
 - **Added**: Per-source exclusion in AI rewrite — frontend passes `selectedQaId` to Rust backend, enabling targeted source exclusion from the consolidated report.
 - **Added**: Default base URLs for each provider — provider dropdown auto-fills the correct default URL on selection switch.
@@ -235,22 +249,6 @@ The compiled Markdown outputs follow this structural convention:
 - **Refactored**: Settings Quick Guide from hardcoded bilingual JSX to data-driven i18n-powered component via `GUIDE_ITEMS` array.
 - **Docs**: Added Anthropic `/v1/messages` routing instructions for proxy gateways (e.g., `openmodel.ai`).
 - **Version**: Bumped to 0.9.5 (package.json, Cargo.toml, tauri.conf.json).
-
-### v0.9.4 (2026-06-21)
-
-- **Added**: Settings Quick Guide panel in SettingsPanel — bilingual English/Vietnamese descriptions for each toggle (cross-review, compact mode, normalize whitespace, export as single line, enable debug, strip non-primary, output language).
-- **Changed**: Updated screenshot from `81905.png` to `screenshot.png`.
-- **Fixed**: Vietnamese translation for "Strip Non-Primary Script" — changed from "Xoá ký tự ngoài ngôn ngữ chính" to "Loại bỏ ký tự ngoại lai" for better clarity.
-- **Refactored**: Improved SettingsPanel layout — replaced `<hr>` separator with padding classes for consistent spacing; reformatted debug modal conditional rendering block.
-- **Removed**: Old screenshot `81905.png`.
-- **Version**: Bumped to 0.9.4 (package.json, Cargo.toml, tauri.conf.json).
-
-### v0.9.3 (2026-06-20)
-
-- **Rebrand**: Renamed entire project from "Review Weave" to "Cross Review" — package name changed from `review-weaver` to `cross-review`, binary/lib renamed to `cross_review_lib`, app identifier updated to `com.cross-review.app`, and all UI/product references updated accordingly.
-- **Changed**: Updated all troubleshooting commands, cleaning paths, and CSP references to use the new `cross-review` binary name and `com.cross-review.app` identifier.
-- **Refactored**: Extracted full changelog history from `README.md` into dedicated `CHANGELOG.md` file — README now keeps only the last 2 entries with a link to the full history.
-- **Docs**: Updated all code references in `index.html`, tooltips, error messages, and system prompts to reflect the new name.
 
 > For the complete version history, see [CHANGELOG.md](./CHANGELOG.md).
 

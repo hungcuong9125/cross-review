@@ -12,7 +12,7 @@ let validationTimer: ReturnType<typeof setTimeout> | null = null;
 
 const DEFAULT_PREVIEW_TAB = { id: "preview" as const, kind: "preview" as const, title: "Preview" };
 
-export type MainTab = "home" | "reports" | "opening" | "closing" | "debug";
+export type MainTab = "home" | "reports" | "components" | "debug";
 
 export type ContentTab =
   | { id: "preview"; kind: "preview"; title: string }
@@ -363,7 +363,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         ...state.project,
         components: [...state.project.components, newComponent],
       },
-      activeMainTab: position,
+      activeMainTab: "components",
       activeItem: { type: "component" as const, componentId: id },
     }));
     get().refreshValidation();
@@ -462,9 +462,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   }),
 
   selectComponent: (id) => {
-    const comp = get().project.components.find(c => c.id === id);
     set({
-      activeMainTab: comp?.position ?? "opening",
+      activeMainTab: "components",
       activeItem: { type: "component", componentId: id },
     });
   },
@@ -702,7 +701,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const activeTab = state.contentTabs.find((t) => t.id === state.activeContentTabId);
       const activeId = activeTab?.kind === "debug" ? "preview" : state.activeContentTabId;
       const activeMainTab =
-        state.activeMainTab === "debug" && !hasDebugTab
+        state.activeMainTab === "debug"
           ? "home"
           : state.activeMainTab;
       return {

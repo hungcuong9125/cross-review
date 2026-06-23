@@ -17,14 +17,9 @@ const TabIcons = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
     </svg>
   ),
-  opening: (
+  components: (
     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-    </svg>
-  ),
-  closing: (
-    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
     </svg>
   ),
   debug: (
@@ -95,9 +90,8 @@ export function Toolbar() {
   const mainTabs: { key: MainTab; label: string; icon: React.ReactNode; badge?: boolean; count?: number }[] = [
     { key: "home", label: t("tab.home", language), icon: TabIcons.home, badge: showAiBadge },
     { key: "reports", label: t("sidebar.reports", language), icon: TabIcons.reports },
-    { key: "opening", label: t("editor.opening", language), icon: TabIcons.opening },
-    { key: "closing", label: t("editor.closing", language), icon: TabIcons.closing },
-    { key: "debug", label: language === "vi" ? "Debug" : "Debug", icon: TabIcons.debug, count: debugTabCount },
+    { key: "components", label: t("tab.components", language), icon: TabIcons.components },
+    { key: "debug", label: "Debug", icon: TabIcons.debug, count: debugTabCount },
   ];
 
   return (

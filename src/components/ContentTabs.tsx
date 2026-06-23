@@ -167,9 +167,7 @@ export function ContentTabs() {
         const content = await readTextFile(filePath);
         const baseName = filePath.split(/[/\\]/).pop() || "Imported Report";
         if (!isValidMarkdownReport(baseName, content)) {
-          alert(language === "vi"
-            ? `Tệp tin "${baseName}" không đúng định dạng báo cáo của CrossReview!`
-            : `File "${baseName}" is not a valid CrossReview report!`);
+          alert(t("tab.importFileInvalid", language).replace("{baseName}", () => baseName));
           continue;
         }
         const title = baseName.endsWith(".md") ? baseName.slice(0, -3) : baseName;
@@ -177,11 +175,11 @@ export function ContentTabs() {
         imported++;
       }
       if (imported > 0) {
-        success(language === "vi" ? "Đã import báo cáo thành công!" : "Imported reports successfully!");
+        success(t("tab.importSuccess", language));
       }
     } catch (err) {
       console.error("Import error:", err);
-      alert(language === "vi" ? `Import thất bại: ${err}` : `Import failed: ${err}`);
+      alert(`${t("tab.importFail", language)}: ${err}`);
     }
   };
 
@@ -244,11 +242,11 @@ export function ContentTabs() {
             {aiBusy ? (
               <div className="flex flex-col items-center gap-3">
                 <LoadingSpinner color="orange" />
-                <p className="text-sm text-orange-500 font-medium">{language === "vi" ? "Đang gửi yêu cầu AI..." : "Sending AI request..."}</p>
+                <p className="text-sm text-orange-500 font-medium">{t("loading.aiRequest", language)}</p>
               </div>
             ) : (
               <p className="text-sm text-gray-400 dark:text-gray-500">
-                {language === "vi" ? "Bật Debug và chạy Generate để xem log" : "Enable Debug and run Generate to see logs"}
+                {t("tab.debugEmpty", language)}
               </p>
             )}
           </div>
@@ -321,7 +319,7 @@ export function ContentTabs() {
           </div>
           <div className="flex-1 flex justify-center">
             <button onClick={handleCopy} className={`py-2 px-8 text-sm font-bold rounded-lg transition-colors shadow-sm ${copied ? "bg-green-500 text-white" : "bg-blue-500 hover:bg-blue-600 text-white"}`}>
-              {copied ? t("toast.copied", language) : (language === "vi" ? "Sao chép debug" : "Copy Debug")}
+              {copied ? t("toast.copied", language) : t("tab.copyDebug", language)}
             </button>
           </div>
           <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500 flex-shrink-0">
@@ -352,7 +350,7 @@ export function ContentTabs() {
         <span className="text-gray-300 dark:text-gray-600 text-xs mx-1">|</span>
         <button onClick={handleImportReport}
           className="px-2 py-1 text-[10px] text-gray-400 dark:text-gray-500 hover:text-blue-500 transition-colors whitespace-nowrap">
-          {language === "vi" ? "Import báo cáo" : "Import report"}
+          {t("tab.importReport", language)}
         </button>
 
         {contentTabs.filter((ct) => ct.kind !== "debug").length > 1 && (

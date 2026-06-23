@@ -20,16 +20,20 @@ export const translations = {
   'editor.componentName': { vi: 'Tên thành phần', en: 'Component name' },
   'editor.componentContent': { vi: 'Nội dung thành phần...', en: 'Component content...' },
   'editor.deleteComponent': { vi: 'Xóa thành phần', en: 'Delete Component' },
-  'editor.noComponents': { vi: 'Chưa có thành phần nào', en: 'No components yet' },
   'editor.addComponentHere': { vi: 'Thêm thành phần', en: 'Add component' },
   'editor.moveUp': { vi: 'Di chuyển lên', en: 'Move up' },
   'editor.moveDown': { vi: 'Di chuyển xuống', en: 'Move down' },
+  'editor.componentsCount': { vi: 'thành phần', en: 'components' },
+  'editor.noOpening': { vi: 'Chưa có thành phần mở đầu nào', en: 'No opening components yet' },
+  'editor.addOpeningComponent': { vi: 'Thêm thành phần mở đầu', en: 'Add opening component' },
+  'editor.noClosing': { vi: 'Chưa có thành phần kết thúc nào', en: 'No closing components yet' },
+  'editor.addClosingComponent': { vi: 'Thêm thành phần kết thúc', en: 'Add closing component' },
 
   // Preview
   'preview.target': { vi: 'Xem bản gửi', en: 'Preview' },
   'preview.needMore': { vi: 'Cần ít nhất 2 nguồn để xem trước.', en: 'Need at least 2 sources to preview.' },
   'preview.copy': { vi: 'Copy Markdown', en: 'Copy Markdown' },
-  'preview.reports': { vi: 'Nguồn thông tin', en: 'Information sources' },
+  'preview.reports': { vi: 'Thông tin', en: 'Information' },
   'preview.excludedCount': { vi: 'Nguồn bị loại trừ', en: 'Excluded sources' },
   'preview.characters': { vi: 'Ký tự còn lại', en: 'Remaining characters' },
   'preview.file': { vi: 'Tên file xuất', en: 'Export filename' },
@@ -96,6 +100,7 @@ export const translations = {
 
   // Home tab
   'tab.home': { vi: 'Trang chủ', en: 'Home' },
+  'tab.components': { vi: 'Thành phần', en: 'Components' },
 
   // Settings — Preview
   'settings.previewFormat': { vi: 'Định dạng xem trước', en: 'Preview format' },
@@ -133,6 +138,12 @@ export const translations = {
   'tab.closeAi': { vi: 'Đóng tab AI', en: 'Close AI tab' },
   'tab.closeAllAi': { vi: 'Đóng tất cả tab', en: 'Close all tabs' },
   'tab.preview': { vi: 'Xem trước', en: 'Preview' },
+  'tab.importReport': { vi: 'Import báo cáo', en: 'Import report' },
+  'tab.importSuccess': { vi: 'Đã import báo cáo thành công!', en: 'Imported reports successfully!' },
+  'tab.importFail': { vi: 'Import thất bại', en: 'Import failed' },
+  'tab.importFileInvalid': { vi: 'Tệp tin "{baseName}" không đúng định dạng báo cáo của CrossReview!', en: 'File "{baseName}" is not a valid CrossReview report!' },
+  'tab.debugEmpty': { vi: 'Bật Debug và chạy Generate để xem log', en: 'Enable Debug and run Generate to see logs' },
+  'tab.copyDebug': { vi: 'Sao chép debug', en: 'Copy Debug' },
 
   // Toasts
   'toast.aiNotConfigured': { vi: 'Hãy cấu hình AI trong Settings trước.', en: 'Configure an AI provider in Settings first.' },
