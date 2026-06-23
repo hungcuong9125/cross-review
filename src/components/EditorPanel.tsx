@@ -54,7 +54,7 @@ export function EditorPanel() {
         rafId = requestAnimationFrame(tryScroll);
       }
     }
-    // First try immediately; the element may already be in the DOM
+    // Try immediately; the element may already be in the DOM
     rafId = requestAnimationFrame(tryScroll);
     return () => cancelAnimationFrame(rafId);
   }, [activeItem?.type === "component" ? activeItem.componentId : null]);

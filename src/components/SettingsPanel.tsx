@@ -5,6 +5,7 @@ import { t, type TranslationKey } from "../lib/i18n";
 import { useToast } from "../hooks/useToast";
 import { isApiKeyScrubbed, clearApiKeyScrubbed } from "../lib/sanitize";
 import { toSlug } from "../lib/slug";
+import { pad, formatDateShort, formatTimeShort } from "../lib/utils";
 
 const PROVIDER_KINDS: { value: AiProviderKind; label: string }[] = [
   { value: "ollama", label: "Ollama" },
@@ -187,7 +188,7 @@ export function SettingsPanel() {
       }).catch((e) => { console.error("Failed to fetch models:", e); });
     }, 150);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [draftKind, draftBaseUrl, draftApiKey]);
+  }, [draftKind, draftBaseUrl]);
 
   const handleGenerate = async () => {
     if (aiBusy) return;
@@ -212,11 +213,8 @@ export function SettingsPanel() {
         setActiveMainTab("debug");
       }
       const now = new Date();
-      const pad = (n: number) => String(n).padStart(2, "0");
-      const dateStr = language === "vi"
-        ? `${pad(now.getDate())}/${pad(now.getMonth() + 1)}`
-        : `${pad(now.getMonth() + 1)}/${pad(now.getDate())}`;
-      const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+      const dateStr = formatDateShort(now, language);
+      const timeStr = formatTimeShort(now);
       const title = `AI ${dateStr} ${timeStr}`;
 
       const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
@@ -452,28 +450,12 @@ export function SettingsPanel() {
               {GUIDE_ITEMS.map((item) => {
                 const label = t(item.labelKey, language);
                 const desc = t(item.descKey, language);
-
-                // Wrap pipe characters in <code> tags for visual clarity in merge-lines description
-                const parts = desc.split("|");
-                const renderedDesc = parts.length > 1 ? (
-                  <span>
-                    {parts.map((part, i) => (
-                      <span key={i}>
-                        {i > 0 && <code className="bg-gray-200 dark:bg-gray-800 px-0.5 rounded font-mono">|</code>}
-                        {part}
-                      </span>
-                    ))}
-                  </span>
-                ) : (
-                  <span>{desc}</span>
-                );
-
                 return (
                   <li key={item.labelKey} className="flex items-start gap-1">
                     <span className="text-amber-500 flex-shrink-0">★</span>
                     <span>
                       <strong className="text-gray-600 dark:text-gray-300">{label}:</strong>{" "}
-                      {renderedDesc}
+                      {desc}
                     </span>
                   </li>
                 );

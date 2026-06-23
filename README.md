@@ -216,7 +216,15 @@ The compiled Markdown outputs follow this structural convention:
 
 ## Changelog
 
-### v1.0.0 (2026-06-23) — Current
+### v1.0.1 (2026-06-23) — Current
+
+- **Refactored**: Extracted shared date/time formatting utilities (`pad`, `formatDateShort`, `formatTimeShort`) to `src/lib/utils.ts`, eliminating duplicate formatting logic between SettingsPanel and projectStore.
+- **Refactored**: Simplified `desc.split("|")` pipe-highlighting JSX construction in GuideItems to a plain string render — removed ~13 lines of inline JSX.
+- **Refactored**: Used direct string argument instead of function callback in `String.replace()` for import error alert placeholder.
+- **Changed**: Narrowed `aiListModels` debounce effect dependencies — model list no longer refetched on API key input changes (only on provider kind and base URL changes).
+- **Version**: Bumped to 1.0.1 (package.json, Cargo.toml, tauri.conf.json).
+
+### v1.0.0 (2026-06-23)
 
 - **Added**: Unified "Components" tab replacing separate "Opening" and "Closing" tabs — both sections now appear in a single panel with section headers, component counts, empty states, and dedicated add buttons.
 - **Added**: Auto-scroll effect that smoothly scrolls to a component card when selected via `activeItem`.
@@ -225,30 +233,7 @@ The compiled Markdown outputs follow this structural convention:
 - **Refactored**: Replaced all hardcoded `language === "vi" ? ... : ...` ternary expressions in ContentTabs with centralized `t()` calls for import, loading, and debug UI strings.
 - **Refactored**: Extracted `renderComponentCard` function in EditorPanel for reusable component card rendering across opening/closing sections.
 - **Refactored**: Consolidated `addComponent` and `selectComponent` store logic to always navigate to the "Components" tab.
-- **Fixed**: Dark mode color consistency — corrected miscellaneous Tailwind class references (`dark:text-gray-150` → `dark:text-gray-100`, `dark:border-gray-750` → `dark:border-gray-700`, etc.).
-- **Fixed**: `.gitignore` — removed duplicate `upstreams/*` entry.
-- **Changed**: Updated `preview.reports` Vietnamese label from "Nguồn thông tin" to "Thông tin".
 - **Version**: Bumped to 1.0.0 (package.json, Cargo.toml, tauri.conf.json).
-
-### v0.9.5 (2026-06-21)
-
-- **Added**: Per-source exclusion in AI rewrite — frontend passes `selectedQaId` to Rust backend, enabling targeted source exclusion from the consolidated report.
-- **Added**: Default base URLs for each provider — provider dropdown auto-fills the correct default URL on selection switch.
-- **Added**: `exclude_self` setting now included in settings export/import round-trip.
-- **Added**: `PROVIDERS_NEEDING_API_KEY` set — API-key-missing warning banner only shows for providers that actually require one (no false positive for Ollama).
-- **Fixed**: `opencodego` base URL missing trailing slash (`/v1` → `/v1/`), which could produce malformed concatenated API URLs.
-- **Fixed**: Error type guard in `handleGenerate` — proper fallback with `toastError(String(err))` for non-`AiErrorPayload` exceptions.
-- **Fixed**: Model selection no longer unnecessarily cleared when switching between compatible providers; only cleared when switching to/from `openaicompatible`.
-- **Fixed**: Settings Quick Guide pipe rendering — `desc.split("|")` now handles any number of pipe characters instead of silently dropping content after the second pipe.
-- **Fixed**: Consolidated multiple redundant `useProjectStore.getState()` calls into a single store snapshot in `handleGenerate`.
-- **Changed**: AI report title now uses language-aware date format (`vi`: dd/MM, `en`: MM/dd) instead of hardcoded en-GB locale.
-- **Changed**: Debug tab title now shows date/time + `provider/model` for clearer tab identification.
-- **Changed**: Debug tab close-all button now visible with 1+ tabs (was 2+), uses i18n title string.
-- **Changed**: Settings checkboxes reorganized — "Exclude current source" moved to processing column, "Enable debug" uses i18n translation key.
-- **Changed**: Base URL input placeholder now dynamic per provider kind.
-- **Refactored**: Settings Quick Guide from hardcoded bilingual JSX to data-driven i18n-powered component via `GUIDE_ITEMS` array.
-- **Docs**: Added Anthropic `/v1/messages` routing instructions for proxy gateways (e.g., `openmodel.ai`).
-- **Version**: Bumped to 0.9.5 (package.json, Cargo.toml, tauri.conf.json).
 
 > For the complete version history, see [CHANGELOG.md](./CHANGELOG.md).
 

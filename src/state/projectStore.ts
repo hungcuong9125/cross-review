@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { Project, QaReport, Component, ValidationReport, DebugLog, AiReportSaved } from "../lib/api";
 import { validateProject } from "../lib/api";
 import { t, type Language } from "../lib/i18n";
+import { pad, formatDateShort, formatTimeShort } from "../lib/utils";
 
 function generateId(): string {
   return crypto.randomUUID?.() ?? Math.random().toString(36).substring(2, 11);
@@ -607,11 +608,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   appendDebugTab: (log) => {
     const id = `debug-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const now = new Date();
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const dateStr = get().language === "vi"
-      ? `${pad(now.getDate())}/${pad(now.getMonth() + 1)}`
-      : `${pad(now.getMonth() + 1)}/${pad(now.getDate())}`;
-    const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    const dateStr = formatDateShort(now, get().language);
+    const timeStr = formatTimeShort(now);
     const title = `Debug ${dateStr} ${timeStr} ${log.provider}/${log.model}`;
     set((state) => ({
       project: {
@@ -735,7 +733,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     if (state.removeWhitespace) {
       processed = processed.replace(/\n{3,}/g, "\n\n");
     }
-    // mergeLines needs paragraph breaks (\n\n) intact to produce the ' | ' separator
+    // Preserve paragraph breaks (\n\n) for the ' | ' separator
     if (state.compactMode && !state.mergeLines) {
       processed = processed.replace(/\n{2,}/g, "\n");
     }

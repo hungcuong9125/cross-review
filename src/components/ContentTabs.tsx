@@ -167,7 +167,7 @@ export function ContentTabs() {
         const content = await readTextFile(filePath);
         const baseName = filePath.split(/[/\\]/).pop() || "Imported Report";
         if (!isValidMarkdownReport(baseName, content)) {
-          alert(t("tab.importFileInvalid", language).replace("{baseName}", () => baseName));
+          alert(t("tab.importFileInvalid", language).replace("{baseName}", baseName));
           continue;
         }
         const title = baseName.endsWith(".md") ? baseName.slice(0, -3) : baseName;
