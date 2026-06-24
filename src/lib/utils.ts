@@ -18,3 +18,17 @@ export function formatDateShort(date: Date, locale: "vi" | "en"): string {
 export function formatTimeShort(date: Date): string {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
+
+/**
+ * Parse a DebugLog timestamp — Rust stores Unix epoch seconds (e.g. "1750732800"),
+ * which JS `new Date()` cannot parse. Handles both numeric and ISO-8601 strings.
+ */
+export function parseDebugTimestamp(timestamp: string | undefined | null): Date {
+  if (timestamp == null) return new Date();
+  const n = Number(timestamp);
+  if (!isNaN(n) && n > 0) {
+    return new Date(n > 1e12 ? n : n * 1000);
+  }
+  const d = new Date(timestamp);
+  return isNaN(d.getTime()) ? new Date() : d;
+}

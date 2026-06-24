@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { Project, QaReport, Component, ValidationReport, DebugLog, AiReportSaved } from "../lib/api";
 import { validateProject } from "../lib/api";
 import { t, type Language } from "../lib/i18n";
-import { formatDateShort, formatTimeShort } from "../lib/utils";
+import { formatDateShort, formatTimeShort, parseDebugTimestamp } from "../lib/utils";
 
 function generateId(): string {
   return crypto.randomUUID?.() ?? Math.random().toString(36).substring(2, 11);
@@ -207,7 +207,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }));
 
     const loadedDebugTabs: ContentTab[] = (migrated.debug_logs || []).map((log, i) => {
-      const ts = new Date(log.timestamp);
+      const ts = parseDebugTimestamp(log.timestamp);
       const dateStr = formatDateShort(ts, get().language);
       const timeStr = formatTimeShort(ts);
       return {
@@ -476,8 +476,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   setActiveMainTab: (tab) => set((state) => {
     if (tab === state.activeMainTab) return {};
-    if (tab !== "debug" && state.activeMainTab === "debug") {
-      return { activeMainTab: tab, activeContentTabId: "preview" };
+    if (state.activeMainTab === "debug") {
+      const activeTab = state.contentTabs.find((ct) => ct.id === state.activeContentTabId);
+      const resettingFromDebugTab = activeTab?.kind === "debug";
+      return {
+        activeMainTab: tab,
+        activeContentTabId: resettingFromDebugTab ? "preview" : state.activeContentTabId,
+      };
     }
     return { activeMainTab: tab };
   }),

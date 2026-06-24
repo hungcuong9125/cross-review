@@ -2,6 +2,18 @@
 
 All notable changes to CrossReview are documented in this file.
 
+### v1.0.4 (2026-06-24)
+
+- **Fixed**: `debugEnabled` setting is now fully restored on app launch — previously saved to `localStorage` but never read back on restart.
+- **Fixed**: `previewFormat` validation during settings restore now only accepts `"html"` or `"markdown"` (was any string, allowing invalid values to slip through).
+- **Fixed**: Model list now refreshes when API key changes for providers that require one — `draftApiKey` added to model-fetch effect dependencies in SettingsPanel.
+- **Fixed**: Debug tab titles now correctly display dates for Rust epoch-second timestamps (e.g. `"1750732800"`) — added `parseDebugTimestamp()` helper in `src/lib/utils.ts` that distinguishes seconds from milliseconds and falls back to `new Date()` for invalid input.
+- **Fixed**: Switching tabs no longer resets `activeContentTabId` when leaving Debug if the user was viewing a non-debug tab (e.g. a preview tab); only resets when actually viewing a debug-kind content tab.
+- **Refactored**: Settings restore now applies all changes in a single `useProjectStore.setState()` call instead of 6 separate calls, reducing re-renders at startup.
+- **Improved**: `console.warn` for invalid saved settings JSON in `localStorage`, replacing the previously silent `catch {}`.
+- **Improved**: `setTimeout` handle in settings-restore `useEffect` is now saved and cleaned up via the effect's return function, preventing leaked timers under React 19 StrictMode.
+- **Version**: Bumped to 1.0.4 (package.json, Cargo.toml, tauri.conf.json).
+
 ### v1.0.3 (2026-06-24)
 
 - **Fixed**: Settings (dark mode, language, compact mode, remove whitespace, merge lines, debug enabled, preview format) now persist across app restarts via `localStorage` auto-save with 500ms debounce — previously all settings reset to defaults on every launch.

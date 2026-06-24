@@ -18,13 +18,13 @@ import { t } from "./lib/i18n";
 function App() {
   const {
     project, setProject, newProject,
-    darkMode, toggleDarkMode,
-    language, setLanguage,
-    compactMode, toggleCompactMode,
-    removeWhitespace, toggleRemoveWhitespace,
-    mergeLines, toggleMergeLines,
+    darkMode,
+    language,
+    compactMode,
+    removeWhitespace,
+    mergeLines,
     debugEnabled,
-    previewFormat, setPreviewFormat,
+    previewFormat,
     activeMainTab,
   } = useProjectStore();
   const { handleExportTabMd } = useExportActions();
@@ -153,18 +153,28 @@ function App() {
     const saved = localStorage.getItem("cross-review-settings");
     if (saved) {
       try {
-        const settings = JSON.parse(saved);
-        if (typeof settings.darkMode === "boolean" && settings.darkMode !== darkMode) toggleDarkMode();
-        if (typeof settings.language === "string") setLanguage(settings.language);
-        if (typeof settings.compactMode === "boolean" && settings.compactMode !== compactMode) toggleCompactMode();
-        if (typeof settings.removeWhitespace === "boolean" && settings.removeWhitespace !== removeWhitespace) toggleRemoveWhitespace();
-        if (typeof settings.mergeLines === "boolean" && settings.mergeLines !== mergeLines) toggleMergeLines();
-        if (typeof settings.previewFormat === "string") setPreviewFormat(settings.previewFormat);
-      } catch {
-        // Ignore invalid saved settings
+        const s = JSON.parse(saved);
+        useProjectStore.setState((prev) => {
+          const next: Record<string, unknown> = {};
+          if (typeof s.darkMode === "boolean" && s.darkMode !== prev.darkMode) {
+            next.darkMode = s.darkMode;
+            document.documentElement.classList.toggle("dark", s.darkMode);
+          }
+          if (typeof s.language === "string") next.language = s.language;
+          if (typeof s.compactMode === "boolean") next.compactMode = s.compactMode;
+          if (typeof s.removeWhitespace === "boolean") next.removeWhitespace = s.removeWhitespace;
+          if (typeof s.mergeLines === "boolean") next.mergeLines = s.mergeLines;
+          if (typeof s.debugEnabled === "boolean") next.debugEnabled = s.debugEnabled;
+          if (s.previewFormat === "html" || s.previewFormat === "markdown") next.previewFormat = s.previewFormat;
+          return next;
+        });
+      } catch (err) {
+        console.warn("Invalid saved settings:", err);
       }
     }
-    settingsLoaded.current = true;
+    // Defer past React's commit cycle to skip the redundant startup write
+    const timer = setTimeout(() => { settingsLoaded.current = true; }, 0);
+    return () => clearTimeout(timer);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-save settings on change (debounced)

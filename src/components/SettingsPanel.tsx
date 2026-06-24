@@ -188,7 +188,7 @@ export function SettingsPanel() {
       }).catch((e) => { console.error("Failed to fetch models:", e); });
     }, 150);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [draftKind, draftBaseUrl]);
+  }, [draftKind, draftBaseUrl, draftApiKey]);
 
   const handleGenerate = async () => {
     if (aiBusy) return;
