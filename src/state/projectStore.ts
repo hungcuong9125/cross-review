@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { Project, QaReport, Component, ValidationReport, DebugLog, AiReportSaved } from "../lib/api";
 import { validateProject } from "../lib/api";
 import { t, type Language } from "../lib/i18n";
-import { pad, formatDateShort, formatTimeShort } from "../lib/utils";
+import { formatDateShort, formatTimeShort } from "../lib/utils";
 
 function generateId(): string {
   return crypto.randomUUID?.() ?? Math.random().toString(36).substring(2, 11);
@@ -209,7 +209,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const loadedDebugTabs: ContentTab[] = (migrated.debug_logs || []).map((log, i) => ({
       id: `debug-loaded-${i}-${Date.now()}`,
       kind: "debug" as const,
-      title: `Debug ${log.provider}/${log.model}`,
+      title: `Debug ${log.provider}`,
       log,
     }));
 
@@ -610,7 +610,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const now = new Date();
     const dateStr = formatDateShort(now, get().language);
     const timeStr = formatTimeShort(now);
-    const title = `Debug ${dateStr} ${timeStr} ${log.provider}/${log.model}`;
+    const title = `Debug ${dateStr} ${timeStr} ${log.provider}`;
     set((state) => ({
       project: {
         ...state.project,

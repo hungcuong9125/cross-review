@@ -798,7 +798,7 @@ fn build_chat_request(
 
 const SECTION_SEP: &str = "\n\n---\n\n";
 
-const REWRITE_TIMEOUT_SECS: u64 = 120;
+const REWRITE_TIMEOUT_SECS: u64 = 600;
 const TEST_TIMEOUT_SECS: u64 = 30;
 
 fn build_chat_options(cfg: &AiProviderConfig) -> Option<ChatOptions> {

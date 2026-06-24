@@ -216,24 +216,19 @@ The compiled Markdown outputs follow this structural convention:
 
 ## Changelog
 
-### v1.0.1 (2026-06-23) — Current
+### v1.0.2 (2026-06-24) — Current
+
+- **Fixed**: Removed the AI model name from the Debug tab titles in the UI, keeping only the provider name (and timestamp for new logs) for cleaner identification.
+- **Changed**: Increased the AI request (rewrite/generation) timeout from 120 seconds to 600 seconds (10 minutes) to prevent premature timeout failures for slow reasoning models (e.g. minimax-m3 with thinking enabled).
+- **Version**: Bumped to 1.0.2 (package.json, Cargo.toml, tauri.conf.json).
+
+### v1.0.1 (2026-06-23)
 
 - **Refactored**: Extracted shared date/time formatting utilities (`pad`, `formatDateShort`, `formatTimeShort`) to `src/lib/utils.ts`, eliminating duplicate formatting logic between SettingsPanel and projectStore.
 - **Refactored**: Simplified `desc.split("|")` pipe-highlighting JSX construction in GuideItems to a plain string render — removed ~13 lines of inline JSX.
 - **Refactored**: Used direct string argument instead of function callback in `String.replace()` for import error alert placeholder.
 - **Changed**: Narrowed `aiListModels` debounce effect dependencies — model list no longer refetched on API key input changes (only on provider kind and base URL changes).
 - **Version**: Bumped to 1.0.1 (package.json, Cargo.toml, tauri.conf.json).
-
-### v1.0.0 (2026-06-23)
-
-- **Added**: Unified "Components" tab replacing separate "Opening" and "Closing" tabs — both sections now appear in a single panel with section headers, component counts, empty states, and dedicated add buttons.
-- **Added**: Auto-scroll effect that smoothly scrolls to a component card when selected via `activeItem`.
-- **Added**: New i18n translation keys for Components tab (`tab.components`, `editor.componentsCount`, `editor.noOpening`, `editor.addOpeningComponent`, `editor.noClosing`, `editor.addClosingComponent`).
-- **Added**: New i18n translation keys for import/loading messages (`tab.importReport`, `tab.importSuccess`, `tab.importFail`, `tab.importFileInvalid`, `tab.debugEmpty`, `tab.copyDebug`).
-- **Refactored**: Replaced all hardcoded `language === "vi" ? ... : ...` ternary expressions in ContentTabs with centralized `t()` calls for import, loading, and debug UI strings.
-- **Refactored**: Extracted `renderComponentCard` function in EditorPanel for reusable component card rendering across opening/closing sections.
-- **Refactored**: Consolidated `addComponent` and `selectComponent` store logic to always navigate to the "Components" tab.
-- **Version**: Bumped to 1.0.0 (package.json, Cargo.toml, tauri.conf.json).
 
 > For the complete version history, see [CHANGELOG.md](./CHANGELOG.md).
 

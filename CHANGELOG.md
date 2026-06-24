@@ -2,6 +2,12 @@
 
 All notable changes to CrossReview are documented in this file.
 
+### v1.0.2 (2026-06-24)
+
+- **Fixed**: Removed the AI model name from the Debug tab titles in the UI, keeping only the provider name (and timestamp for new logs) for cleaner identification.
+- **Changed**: Increased the AI request (rewrite/generation) timeout from 120 seconds to 600 seconds (10 minutes) to prevent premature timeout failures for slow reasoning models (e.g. minimax-m3 with thinking enabled).
+- **Version**: Bumped to 1.0.2 (package.json, Cargo.toml, tauri.conf.json).
+
 ### v1.0.1 (2026-06-23)
 
 - **Refactored**: Extracted shared date/time formatting utilities (`pad`, `formatDateShort`, `formatTimeShort`) to `src/lib/utils.ts`, eliminating duplicate formatting logic between SettingsPanel and projectStore.
