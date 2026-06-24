@@ -216,7 +216,14 @@ The compiled Markdown outputs follow this structural convention:
 
 ## Changelog
 
-### v1.0.2 (2026-06-24) — Current
+### v1.0.3 (2026-06-24) — Current
+
+- **Fixed**: Settings (dark mode, language, compact mode, remove whitespace, merge lines, debug enabled, preview format) now persist across app restarts via `localStorage` auto-save.
+- **Fixed**: Debug tab titles now show only date and time (`Debug MM/DD HH:MM`) without the provider/model name.
+- **Fixed**: Switching from Debug tab to Home tab after an AI error no longer leaves debug content stuck in the content area.
+- **Version**: Bumped to 1.0.3 (package.json, Cargo.toml, tauri.conf.json).
+
+### v1.0.2 (2026-06-24)
 
 - **Fixed**: Removed the AI model name from the Debug tab titles in the UI, keeping only the provider name (and timestamp for new logs) for cleaner identification.
 - **Changed**: Increased the AI request (rewrite/generation) timeout from 120 seconds to 600 seconds (10 minutes) to prevent premature timeout failures for slow reasoning models (e.g. minimax-m3 with thinking enabled).

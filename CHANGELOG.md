@@ -2,6 +2,13 @@
 
 All notable changes to CrossReview are documented in this file.
 
+### v1.0.3 (2026-06-24)
+
+- **Fixed**: Settings (dark mode, language, compact mode, remove whitespace, merge lines, debug enabled, preview format) now persist across app restarts via `localStorage` auto-save with 500ms debounce — previously all settings reset to defaults on every launch.
+- **Fixed**: Debug tab titles now show only date and time (`Debug MM/DD HH:MM`) without the provider/model name, both for newly created and loaded tabs.
+- **Fixed**: Switching from the Debug tab to the Home tab after an AI error no longer leaves the debug content stuck in the content area — `activeContentTabId` is now properly reset to `"preview"` when navigating away from debug.
+- **Version**: Bumped to 1.0.3 (package.json, Cargo.toml, tauri.conf.json).
+
 ### v1.0.2 (2026-06-24)
 
 - **Fixed**: Removed the AI model name from the Debug tab titles in the UI, keeping only the provider name (and timestamp for new logs) for cleaner identification.

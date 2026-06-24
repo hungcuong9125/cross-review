@@ -16,8 +16,17 @@ import { toSlug } from "./lib/slug";
 import { t } from "./lib/i18n";
 
 function App() {
-  const { project, setProject, newProject, darkMode, language, activeMainTab } =
-    useProjectStore();
+  const {
+    project, setProject, newProject,
+    darkMode, toggleDarkMode,
+    language, setLanguage,
+    compactMode, toggleCompactMode,
+    removeWhitespace, toggleRemoveWhitespace,
+    mergeLines, toggleMergeLines,
+    debugEnabled,
+    previewFormat, setPreviewFormat,
+    activeMainTab,
+  } = useProjectStore();
   const { handleExportTabMd } = useExportActions();
 
   const [rightSidebarWidth, setRightSidebarWidth] = useState(400);
@@ -137,6 +146,48 @@ function App() {
     }, 500);
     return () => clearTimeout(timer);
   }, [project]);
+
+  // Load persisted settings on startup
+  const settingsLoaded = useRef(false);
+  useEffect(() => {
+    const saved = localStorage.getItem("cross-review-settings");
+    if (saved) {
+      try {
+        const settings = JSON.parse(saved);
+        if (typeof settings.darkMode === "boolean" && settings.darkMode !== darkMode) toggleDarkMode();
+        if (typeof settings.language === "string") setLanguage(settings.language);
+        if (typeof settings.compactMode === "boolean" && settings.compactMode !== compactMode) toggleCompactMode();
+        if (typeof settings.removeWhitespace === "boolean" && settings.removeWhitespace !== removeWhitespace) toggleRemoveWhitespace();
+        if (typeof settings.mergeLines === "boolean" && settings.mergeLines !== mergeLines) toggleMergeLines();
+        if (typeof settings.previewFormat === "string") setPreviewFormat(settings.previewFormat);
+      } catch {
+        // Ignore invalid saved settings
+      }
+    }
+    settingsLoaded.current = true;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-save settings on change (debounced)
+  useEffect(() => {
+    if (!settingsLoaded.current) return;
+    const timer = setTimeout(() => {
+      try {
+        const settings = {
+          darkMode,
+          language,
+          compactMode,
+          removeWhitespace,
+          mergeLines,
+          debugEnabled,
+          previewFormat,
+        };
+        localStorage.setItem("cross-review-settings", JSON.stringify(settings));
+      } catch (err) {
+        console.warn("Settings auto-save failed (localStorage quota exceeded):", err);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [darkMode, language, compactMode, removeWhitespace, mergeLines, debugEnabled, previewFormat]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

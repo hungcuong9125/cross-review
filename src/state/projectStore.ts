@@ -206,12 +206,17 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       filename: r.filename,
     }));
 
-    const loadedDebugTabs: ContentTab[] = (migrated.debug_logs || []).map((log, i) => ({
-      id: `debug-loaded-${i}-${Date.now()}`,
-      kind: "debug" as const,
-      title: `Debug ${log.provider}`,
-      log,
-    }));
+    const loadedDebugTabs: ContentTab[] = (migrated.debug_logs || []).map((log, i) => {
+      const ts = new Date(log.timestamp);
+      const dateStr = formatDateShort(ts, get().language);
+      const timeStr = formatTimeShort(ts);
+      return {
+        id: `debug-loaded-${i}-${Date.now()}`,
+        kind: "debug" as const,
+        title: `Debug ${dateStr} ${timeStr}`,
+        log,
+      };
+    });
 
     set({
       project: migrated,
@@ -469,7 +474,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     });
   },
 
-  setActiveMainTab: (tab) => set({ activeMainTab: tab }),
+  setActiveMainTab: (tab) => set((state) => {
+    if (tab === state.activeMainTab) return {};
+    if (tab !== "debug" && state.activeMainTab === "debug") {
+      return { activeMainTab: tab, activeContentTabId: "preview" };
+    }
+    return { activeMainTab: tab };
+  }),
 
   toggleQaActive: (id) => {
     set((state) => ({
@@ -610,7 +621,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const now = new Date();
     const dateStr = formatDateShort(now, get().language);
     const timeStr = formatTimeShort(now);
-    const title = `Debug ${dateStr} ${timeStr} ${log.provider}`;
+    const title = `Debug ${dateStr} ${timeStr}`;
     set((state) => ({
       project: {
         ...state.project,
