@@ -40,12 +40,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: latest
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -66,7 +66,7 @@ jobs:
             librsvg2-dev patchelf libssl-dev
 
       - name: Install frontend dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Build & Publish Tauri App
         uses: tauri-apps/tauri-action@v0
@@ -80,5 +80,5 @@ jobs:
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: false
           prerelease: false
-          args: --target ${{ matrix.target }}
+          args: ${{ matrix.platform != 'linux' && format('--target {0}', matrix.target) || '' }}
 
