@@ -54,7 +54,6 @@ export function EditorPanel() {
         rafId = requestAnimationFrame(tryScroll);
       }
     }
-    // Try immediately; the element may already be in the DOM
     rafId = requestAnimationFrame(tryScroll);
     return () => cancelAnimationFrame(rafId);
   }, [activeItem?.type === "component" ? activeItem.componentId : null]);
@@ -80,7 +79,6 @@ export function EditorPanel() {
             placeholder={`${t("editor.componentName", language)} *`}
           />
 
-          {/* Reorder buttons */}
           <div className="flex gap-0.5 ml-2">
             <button
               onClick={() => moveComponentUp(comp.id)}
@@ -142,7 +140,6 @@ export function EditorPanel() {
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
       <div className="flex-1 overflow-y-auto">
-        {/* QA Reports tab */}
         {activeMainTab === "reports" && (
           <div className="h-full flex flex-col">
             {!selectedQa ? (
@@ -161,7 +158,6 @@ export function EditorPanel() {
               </div>
             ) : (
               <div className="flex-1 flex flex-col p-5 gap-5 overflow-y-auto">
-                {/* Source Card */}
                 <div
                   className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm flex-1 flex flex-col min-h-[400px] transition-all duration-200"
                 >
@@ -210,10 +206,8 @@ export function EditorPanel() {
           </div>
         )}
 
-        {/* Unified Components tab */}
         {activeMainTab === "components" && (
           <div className="p-5 space-y-8 overflow-y-auto h-full bg-gray-50 dark:bg-gray-900">
-            {/* Opening Section */}
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-2">
                 <h3 className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -250,7 +244,6 @@ export function EditorPanel() {
               )}
             </div>
 
-            {/* Closing Section */}
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-2">
                 <h3 className="text-xs font-bold text-orange-500 dark:text-orange-400 uppercase tracking-wider flex items-center gap-1.5">

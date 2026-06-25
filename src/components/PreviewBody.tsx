@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { useProjectStore } from "../state/projectStore";
@@ -23,6 +23,8 @@ export function PreviewBody() {
 
   const [preview, setPreview] = useState<ExportFile | null>(null);
   const [loading, setLoading] = useState(false);
+  const previewGenRef = useRef(0);
+
   useEffect(() => {
     const activeQas = project.qa_reports.filter((q) => q.active !== false);
     if (activeQas.length > 0) {
@@ -35,27 +37,40 @@ export function PreviewBody() {
       }
     }
   }, [project.qa_reports, selectedQaId, selectQaOnly]);
+
   const refreshPreview = useCallback(async () => {
-    const activeQas = project.qa_reports.filter((q) => q.active !== false);
-    if (!selectedQaId || activeQas.length < 2) {
+    const store = useProjectStore.getState();
+    const p = store.project;
+    const qaId = store.selectedQaId;
+    const activeQas = p.qa_reports.filter((q) => q.active !== false);
+    if (!qaId || activeQas.length < 2) {
       setPreview(null);
       return;
     }
+    const gen = ++previewGenRef.current;
     setLoading(true);
     try {
-      const result = await generatePreview(project, selectedQaId);
+      const result = await generatePreview(p, qaId);
+      if (gen !== previewGenRef.current) return;
       setPreview(result);
     } catch (err) {
+      if (gen !== previewGenRef.current) return;
       console.error("Preview error:", err);
       setPreview(null);
     } finally {
-      setLoading(false);
+      if (gen === previewGenRef.current) setLoading(false);
     }
-  }, [project.qa_reports, project.components, project.exclude_self, selectedQaId]);
+  }, []);
 
   useEffect(() => {
     refreshPreview();
-  }, [refreshPreview]);
+  }, [
+    refreshPreview,
+    project.qa_reports,
+    project.components,
+    project.exclude_self,
+    selectedQaId,
+  ]);
 
   const activeCount = project.qa_reports.filter((q) => q.active !== false).length;
   const processedContent = useMemo(

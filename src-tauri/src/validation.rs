@@ -1,6 +1,5 @@
 use crate::models::{ComponentPosition, Project, ValidationReport};
 
-/// Validates a project. Errors block export; warnings are informational.
 pub fn validate_project(project: &Project) -> ValidationReport {
     let mut errors = Vec::new();
     let mut warnings = Vec::new();

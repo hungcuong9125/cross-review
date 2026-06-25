@@ -351,7 +351,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     get().refreshValidation();
   },
 
-  // Component actions
   addComponent: (position) => {
     const id = generateId();
     const existing = get().project.components.filter(c => c.position === position);
@@ -749,7 +748,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     if (state.removeWhitespace) {
       processed = processed.replace(/\n{3,}/g, "\n\n");
     }
-    // Preserve paragraph breaks (\n\n) for the ' | ' separator
     if (state.compactMode && !state.mergeLines) {
       processed = processed.replace(/\n{2,}/g, "\n");
     }

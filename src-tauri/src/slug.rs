@@ -1,5 +1,3 @@
-/// Converts a name to a URL-safe slug suitable for filenames.
-/// Vietnamese characters are preserved as-is (UTF-8 filenames).
 pub fn to_slug(name: &str) -> String {
     let slug = name
         .trim()
@@ -7,7 +5,7 @@ pub fn to_slug(name: &str) -> String {
         .replace([' ', '_'], "-")
         .chars()
         .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '.')
-        .take(200) // Cap slug length to stay within filesystem limits
+        .take(200)
         .collect::<String>();
 
     let mut result = String::new();
@@ -27,16 +25,11 @@ pub fn to_slug(name: &str) -> String {
     result.trim_matches('-').to_string()
 }
 
-/// Returns a local timestamp string `YYYYMMDD-HHmmss`.
-/// Uses the system's local timezone.
 fn local_timestamp() -> String {
     let now = chrono::Local::now();
     now.format("%Y%m%d-%H%M%S").to_string()
 }
 
-/// Generates a unique filename for a QA target.
-/// Format: `review-for-{slug}-{timestamp}.md`
-/// If the slug already exists in the used list, appends `-2`, `-3`, etc.
 pub fn generate_filename(target_name: &str, used_filenames: &[String]) -> String {
     let slug = to_slug(target_name);
     let base = if slug.is_empty() {
@@ -51,7 +44,6 @@ pub fn generate_filename(target_name: &str, used_filenames: &[String]) -> String
         return candidate;
     }
 
-    // Same-second collision: append numeric suffix
     for i in 2..=1000 {
         let candidate = format!("review-for-{}-{}-{}.md", base, ts, i);
         if !used_filenames.contains(&candidate) {
@@ -59,7 +51,6 @@ pub fn generate_filename(target_name: &str, used_filenames: &[String]) -> String
         }
     }
 
-    // Fallback (should never happen in practice)
     format!("review-for-{}-{}.md", base, uuid::Uuid::new_v4())
 }
 

@@ -216,7 +216,17 @@ The compiled Markdown outputs follow this structural convention:
 
 ## Changelog
 
-### v1.0.4 (2026-06-24) — Current
+### v1.0.5 (2026-06-25) — Current
+
+- **Security**: API key is now scrubbed in debug request capture (`capture_request_debug` in `ai.rs`) — previously exposed the raw API key in debug output.
+- **Fixed**: Preview generation race condition — added generation counter (`previewGenRef`) in `PreviewBody.tsx` to discard stale responses when project state changes rapidly.
+- **Fixed**: `isValidMarkdownReport` in `sanitize.ts` no longer requires filename to match `review-for-` or `ai-report-` prefix — any `.md` file with a valid review report heading signature is now accepted.
+- **Changed**: Input buffer increased from `+ 64` to `+ 256` in `run_rewrite` to accommodate larger prompts for verbose reasoning models.
+- **Changed**: Capacity estimation in `build_chat_request` now includes system prompt character count for more accurate pre-allocation.
+- **Refactored**: Removed redundant doc comments and inline comments across all Rust backend and TypeScript/React frontend files for cleaner, more maintainable code.
+- **Version**: Bumped to 1.0.5 (package.json, Cargo.toml, tauri.conf.json).
+
+### v1.0.4 (2026-06-24)
 
 - **Fixed**: `debugEnabled` setting is now fully restored on app launch — previously saved to `localStorage` but never read back on restart.
 - **Fixed**: `previewFormat` validation during settings restore now only accepts `"html"` or `"markdown"` (was any string, allowing invalid values).

@@ -220,7 +220,6 @@ export function ContentTabs() {
       try {
         document.execCommand("copy");
       } catch {
-        // ignore copy failures
       }
       document.body.removeChild(textarea);
     }
@@ -364,7 +363,6 @@ export function ContentTabs() {
         )}
       </div>
 
-      {/* Tab content */}
       <div className="flex-1 overflow-hidden">
         {activeTab?.kind === "preview" ? (
           <PreviewBody />

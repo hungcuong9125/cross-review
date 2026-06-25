@@ -7,7 +7,7 @@ use crate::validation::validate_project;
 #[derive(Debug, Error)]
 pub enum ExportError {
     #[error("Validation failed: {0}")]
-    #[cfg_attr(not(test), allow(dead_code))]
+    #[allow(dead_code)]
     ValidationFailed(String),
     #[error("QA with id '{0}' not found")]
     QaNotFound(String),
@@ -15,9 +15,7 @@ pub enum ExportError {
     IoError(String),
 }
 
-/// Generates one export file per active QA report. Each file includes the
-/// opening components, all OTHER active reports, and the closing components.
-#[cfg_attr(not(test), allow(dead_code))]
+#[allow(dead_code)]
 pub fn generate_exports(project: &Project) -> Result<Vec<ExportFile>, ExportError> {
     let validation = validate_project(project);
     if !validation.valid {
@@ -108,11 +106,9 @@ fn build_markdown(
         parts.push(comp.content.trim().to_string());
     }
 
-    // Other QA reports with separators and sequential numbering
     for (i, qa) in other_reports.iter().enumerate() {
         let mut section = String::new();
 
-        // Add separator before each report (not before the first if no opening)
         if i > 0 || !opening_comps.is_empty() {
             section.push_str("\n---\n\n");
         }
@@ -205,13 +201,11 @@ mod tests {
 
         for (i, export) in exports.iter().enumerate() {
             let target_num = i + 1;
-            // Must not contain own report
             assert!(
                 !export.markdown.contains(&format!("Report {}", target_num)),
                 "Export for QA {} should not contain its own report",
                 target_num
             );
-            // Must contain other 4 reports
             for j in 1..=5 {
                 if j != target_num {
                     assert!(
@@ -222,7 +216,6 @@ mod tests {
                     );
                 }
             }
-            // Must have opening and closing
             assert!(export.markdown.starts_with("Opening text"));
             assert!(export.markdown.contains("Closing text"));
         }
@@ -240,11 +233,9 @@ mod tests {
 
         assert_eq!(exports.len(), 2);
 
-        // File for QA 1 should only contain QA 2's report
         assert!(exports[0].markdown.contains("Report B"));
         assert!(!exports[0].markdown.contains("Report A"));
 
-        // File for QA 2 should only contain QA 1's report
         assert!(exports[1].markdown.contains("Report A"));
         assert!(!exports[1].markdown.contains("Report B"));
     }
@@ -274,17 +265,14 @@ mod tests {
 
         assert_eq!(exports.len(), 3);
 
-        // All filenames must be unique
         let filenames: Vec<&str> = exports.iter().map(|e| e.filename.as_str()).collect();
         let mut unique_filenames = filenames.clone();
         unique_filenames.sort();
         unique_filenames.dedup();
         assert_eq!(filenames.len(), unique_filenames.len());
 
-        // First should be review-for-team-growth-{timestamp}.md
         assert!(exports[0].filename.starts_with("review-for-team-growth-"), "got: {}", exports[0].filename);
         assert!(exports[0].filename.ends_with(".md"));
-        // Second and third should have numeric dedup suffixes
         assert!(exports[1].filename.starts_with("review-for-team-growth-"), "got: {}", exports[1].filename);
         assert!(exports[1].filename.ends_with(".md"));
         assert!(exports[2].filename.starts_with("review-for-team-growth-"), "got: {}", exports[2].filename);
@@ -330,7 +318,6 @@ Final paragraph with [link](https://example.com)."#;
         let project = make_project(qas);
         let exports = generate_exports(&project).unwrap();
 
-        // QA 2's file should contain the full long content from QA 1
         let qa2_export = &exports[1];
         assert!(qa2_export.markdown.contains("# Main Heading"));
         assert!(qa2_export.markdown.contains("| Col1 | Col2 | Col3 |"));
@@ -361,7 +348,6 @@ Final paragraph with [link](https://example.com)."#;
 
         assert_eq!(exports.len(), 2);
 
-        // Check Vietnamese content is preserved
         let export1 = &exports[0];
         assert!(export1.markdown.contains("Đội QA số 2"));
         assert!(export1.markdown.contains("Kiểm tra Unicode Nguyễn Văn A"));
@@ -375,7 +361,6 @@ Final paragraph with [link](https://example.com)."#;
         assert!(export2.filename.starts_with("review-for-"));
     }
 
-    // Test: Number of exported files equals number of QA
     #[test]
     fn test_export_count_matches_qa_count() {
         for n in 2..=10 {
@@ -388,7 +373,6 @@ Final paragraph with [link](https://example.com)."#;
         }
     }
 
-    // Test: No file contains its own QA's report
     #[test]
     fn test_no_self_report() {
         let qas: Vec<QaReport> = (1..=5)
@@ -414,7 +398,6 @@ Final paragraph with [link](https://example.com)."#;
         }
     }
 
-    // Test: Preview matches export for same target
     #[test]
     fn test_preview_matches_export() {
         let qas = vec![
@@ -427,11 +410,9 @@ Final paragraph with [link](https://example.com)."#;
         let exports = generate_exports(&project).unwrap();
         let preview = generate_preview(&project, "2").unwrap();
 
-        // Preview for QA 2 should have same content as export for QA 2
         assert_eq!(exports[1].markdown, preview.markdown);
     }
 
-    // Test: Sequential numbering in output
     #[test]
     fn test_sequential_numbering() {
         let qas = vec![
@@ -442,12 +423,10 @@ Final paragraph with [link](https://example.com)."#;
         let project = make_project(qas);
         let exports = generate_exports(&project).unwrap();
 
-        // Export for QA 1 should have reports from QA 2 and QA 3, numbered 1 and 2
         let export1 = &exports[0];
         assert!(export1.markdown.contains("## 1. QA 2"));
         assert!(export1.markdown.contains("## 2. QA 3"));
 
-        // Export for QA 2 should have reports from QA 1 and QA 3, numbered 1 and 2
         let export2 = &exports[1];
         assert!(export2.markdown.contains("## 1. QA 1"));
         assert!(export2.markdown.contains("## 2. QA 3"));
@@ -499,12 +478,10 @@ Final paragraph with [link](https://example.com)."#;
         let exports = generate_exports(&project).unwrap();
         let md = &exports[0].markdown;
 
-        // Opening components should be in order: Intro (0), Context (1)
         let intro_pos = md.find("Intro section").unwrap();
         let context_pos = md.find("Context section").unwrap();
         assert!(intro_pos < context_pos, "Intro should come before Context");
 
-        // Closing components should be in order: Summary (0), Footer (1)
         let summary_pos = md.find("Summary section").unwrap();
         let footer_pos = md.find("Footer section").unwrap();
         assert!(summary_pos < footer_pos, "Summary should come before Footer");

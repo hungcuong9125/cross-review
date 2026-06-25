@@ -24,7 +24,6 @@ export function recordScrubIfNeeded(original: Project): void {
       localStorage.removeItem(KEY_SCRUB_FLAG);
     }
   } catch {
-    // localStorage may throw in private mode
   }
 }
 
@@ -40,20 +39,16 @@ export function clearApiKeyScrubbed(): void {
   try {
     localStorage.removeItem(KEY_SCRUB_FLAG);
   } catch {
-    // ignore
   }
 }
 
 const BINARY_BYTES = /[\x00-\x08\x0E-\x1F\x7F]/;
 const REVIEW_REPORT_SIGNATURE = /##\s+\d+\.\s+\S+/;
-const REVIEW_REPORT_FILENAME = /review-for-|^ai-report-/i;
 
 export function isValidMarkdownReport(filename: string, content: string): boolean {
   if (!filename.toLowerCase().endsWith(".md")) return false;
   if (BINARY_BYTES.test(content.slice(0, 4096))) return false;
-  if (REVIEW_REPORT_FILENAME.test(filename) && REVIEW_REPORT_SIGNATURE.test(content)) {
-    return true;
-  }
+  if (REVIEW_REPORT_SIGNATURE.test(content)) return true;
   return false;
 }
 

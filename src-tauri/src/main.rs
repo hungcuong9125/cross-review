@@ -1,6 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-// Modules are re-declared here for the binary crate; lib.rs also declares them for the library crate.
 mod ai;
 mod commands;
 mod export;

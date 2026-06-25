@@ -44,6 +44,7 @@ pub fn cancel_in_flight() -> bool {
     }
     false
 }
+
 pub fn prompt_level_1() -> &'static str {
     "You are a professional technical report editor.\n\
      Your task is to rewrite and summarize multiple source reports while preserving the separation between them.\n\
@@ -152,7 +153,6 @@ pub fn prompt_level_1() -> &'static str {
      The final answer must be valid Markdown."
 }
 
-/// Default prompt: synthesizes all sources into a single deduplicated report.
 pub fn prompt_level_2() -> &'static str {
     "You are a senior technical report editor and synthesis analyst.\n\
      Your task is to merge multiple source reports into one unified final report.\n\
@@ -285,7 +285,6 @@ pub fn prompt_level_2() -> &'static str {
      The final answer must be valid Markdown."
 }
 
-/// QA-review handoff: structured document for the next reviewer.
 pub fn prompt_level_3() -> &'static str {
     "You are a QA handoff report writer for technical code review.\n\
      Your task is to transform multiple source reports into a structured handoff document for another QA, reviewer, or code investigation team.\n\
@@ -442,58 +441,47 @@ pub fn scrub_api_key(s: &str, api_key: &str) -> String {
 }
 
 fn is_latin(cp: u32) -> bool {
-    // Basic Latin + Latin-1 Supplement + Latin Extended-A/B + Vietnamese diacritics
-    (0x0000..=0x007F).contains(&cp)   // Basic Latin
-        || (0x0080..=0x00FF).contains(&cp)  // Latin-1 Supplement
-        || (0x0100..=0x024F).contains(&cp)  // Latin Extended-A/B (includes Vietnamese)
-        || (0x1E00..=0x1EFF).contains(&cp)  // Latin Extended Additional
-        || (0x2C60..=0x2C7F).contains(&cp)  // Latin Extended-C
+    (0x0000..=0x007F).contains(&cp)
+        || (0x0080..=0x00FF).contains(&cp)
+        || (0x0100..=0x024F).contains(&cp)
+        || (0x1E00..=0x1EFF).contains(&cp)
+        || (0x2C60..=0x2C7F).contains(&cp)
 }
 
 fn is_non_latin_script(cp: u32) -> bool {
-    // CJK Unified Ideographs
     (0x4E00..=0x9FFF).contains(&cp)
         || (0x3400..=0x4DBF).contains(&cp)
         || (0xF900..=0xFAFF).contains(&cp)
-        // CJK punctuation / fullwidth
         || (0x3000..=0x303F).contains(&cp)
         || (0xFF00..=0xFFEF).contains(&cp)
-        // Hiragana / Katakana
         || (0x3040..=0x309F).contains(&cp)
         || (0x30A0..=0x30FF).contains(&cp)
-        // Hangul
         || (0xAC00..=0xD7AF).contains(&cp)
         || (0x1100..=0x11FF).contains(&cp)
         || (0x3130..=0x318F).contains(&cp)
-        // Cyrillic
         || (0x0400..=0x04FF).contains(&cp)
         || (0x0500..=0x052F).contains(&cp)
-        // Greek
         || (0x0370..=0x03FF).contains(&cp)
-        // Arabic
         || (0x0600..=0x06FF).contains(&cp)
         || (0x0750..=0x077F).contains(&cp)
-        // Hebrew
         || (0x0590..=0x05FF).contains(&cp)
-        // Thai
         || (0x0E00..=0x0E7F).contains(&cp)
-        // Devanagari
         || (0x0900..=0x097F).contains(&cp)
 }
 
 fn detect_primary_script(text: &str) -> (bool, Option<Vec<(u32, u32)>>) {
     let blocks: &[(u32, u32)] = &[
-        (0x4E00, 0x9FFF),   // CJK
-        (0x3400, 0x4DBF),   // CJK Extension A
-        (0x3040, 0x309F),   // Hiragana
-        (0x30A0, 0x30FF),   // Katakana
-        (0xAC00, 0xD7AF),   // Hangul
-        (0x0400, 0x04FF),   // Cyrillic
-        (0x0600, 0x06FF),   // Arabic
-        (0x0590, 0x05FF),   // Hebrew
-        (0x0370, 0x03FF),   // Greek
-        (0x0E00, 0x0E7F),   // Thai
-        (0x0900, 0x097F),   // Devanagari
+        (0x4E00, 0x9FFF),
+        (0x3400, 0x4DBF),
+        (0x3040, 0x309F),
+        (0x30A0, 0x30FF),
+        (0xAC00, 0xD7AF),
+        (0x0400, 0x04FF),
+        (0x0600, 0x06FF),
+        (0x0590, 0x05FF),
+        (0x0370, 0x03FF),
+        (0x0E00, 0x0E7F),
+        (0x0900, 0x097F),
     ];
 
     let mut counts: Vec<usize> = vec![0; blocks.len()];
@@ -525,16 +513,13 @@ fn detect_primary_script(text: &str) -> (bool, Option<Vec<(u32, u32)>>) {
     }
 
     if non_latin_total == 0 {
-        // All Latin, no non-Latin scripts present
         return (true, None);
     }
 
-    // If Latin dominates over all non-Latin, primary is Latin
     if latin_count >= non_latin_total {
         return (true, None);
     }
 
-    // Primary is a non-Latin script. Collect related blocks in the same script family.
     let dominant_lo = blocks[max_idx].0;
     let is_east_asian = matches!(dominant_lo, 0x4E00 | 0x3400 | 0x3040 | 0x30A0 | 0xAC00);
 
@@ -542,7 +527,6 @@ fn detect_primary_script(text: &str) -> (bool, Option<Vec<(u32, u32)>>) {
     primary_blocks.push(blocks[max_idx]);
 
     if is_east_asian {
-        // Include related East Asian blocks (CJK + Kana + Hangul)
         for (i, &(lo, hi)) in blocks.iter().enumerate() {
             if i != max_idx && matches!(lo, 0x4E00 | 0x3400 | 0x3040 | 0x30A0 | 0xAC00) && counts[i] > 0 {
                 primary_blocks.push((lo, hi));
@@ -585,7 +569,6 @@ pub fn strip_non_primary_scripts(text: &str) -> String {
             })
             .collect()
     } else {
-        // No primary detected (shouldn't happen), return as-is
         text.to_string()
     }
 }
@@ -709,17 +692,16 @@ fn resolve_prompt(cfg: &AiProviderConfig) -> String {
                 cfg.system_prompt.clone()
             }
         }
-        _ => prompt_level_2().to_string(), // "2" or empty → level 2
+        _ => prompt_level_2().to_string(),
     };
 
     let lang = cfg.output_language.trim();
     if lang.is_empty() {
-        return base; // passthrough
+        return base;
     }
 
     let lang_name = language_name(lang);
 
-    // For English, don't prepend CRITICAL instruction, just keep the prompt as-is
     if lang == "en" {
         return base;
     }
@@ -746,13 +728,13 @@ fn build_chat_request(
     use crate::models::ComponentPosition;
     use std::fmt::Write as _;
 
-    let capacity = estimate_chars(sources)
+    let capacity = system.chars().count()
+        + estimate_chars(sources)
         + crate::export::estimate_components_chars(project, ComponentPosition::Opening)
         + estimate_components_chars(project, ComponentPosition::Closing)
         + 512;
     let mut body = String::with_capacity(capacity);
 
-    // 1. Opening components
     let opening_comps = get_components(project, ComponentPosition::Opening);
     if !opening_comps.is_empty() {
         for comp in &opening_comps {
@@ -762,7 +744,6 @@ fn build_chat_request(
         body.push_str(SECTION_SEP);
     }
 
-    // 2. Source content
     for (i, qa) in sources.iter().enumerate() {
         if i > 0 {
             body.push_str(SECTION_SEP);
@@ -771,14 +752,12 @@ fn build_chat_request(
         body.push_str(qa.content.trim());
     }
 
-    // 3. Critical instructions
     if cfg.strip_non_primary {
         body.push_str(SECTION_SEP);
         body.push_str("## CRITICAL INSTRUCTIONS\n\n");
         body.push_str("1. CRITICAL: Do NOT output any non-primary script characters (e.g. Chinese, Russian, Korean, Japanese, Arabic, etc.).\n");
     }
 
-    // 4. Closing components
     let closing_comps = get_components(project, ComponentPosition::Closing);
     if !closing_comps.is_empty() {
         body.push_str(SECTION_SEP);
@@ -807,7 +786,7 @@ fn build_chat_options(cfg: &AiProviderConfig) -> Option<ChatOptions> {
         "medium" => Some(ReasoningEffort::Medium),
         "high" => Some(ReasoningEffort::High),
         "max" => Some(ReasoningEffort::Max),
-        _ => None, // "none" or empty → no reasoning effort
+        _ => None,
     };
     effort.map(|e| ChatOptions::default().with_reasoning_effort(e))
 }
@@ -879,7 +858,7 @@ fn capture_request_debug(request: &ChatRequest, cfg: &AiProviderConfig) -> Strin
                     ChatRole::System => "system",
                     ChatRole::Tool => "tool",
                 },
-                "content": m.content.first_text().unwrap_or(""),
+                "content": scrub_api_key(m.content.first_text().unwrap_or(""), &cfg.api_key),
             })
         }).collect::<Vec<_>>(),
         "model": cfg.model,
@@ -938,7 +917,7 @@ async fn run_rewrite(
         + crate::export::estimate_components_chars(project, crate::models::ComponentPosition::Opening)
         + crate::export::estimate_components_chars(project, crate::models::ComponentPosition::Closing)
         + (if cfg.strip_non_primary { 128 } else { 0 })
-        + 64;
+        + 256;
     if total_chars > cfg.max_input_chars {
         return Err(AiErrorPayload {
             code: AiErrorCode::InputTooLarge {
@@ -1437,7 +1416,6 @@ mod tests {
 
     #[test]
     fn test_strip_non_primary_latin_primary_strips_cjk() {
-        // Auto-detect Latin primary + strip CJK
         let input = "Hello 你好世界 World 测试";
         let result = strip_non_primary_scripts(input);
         assert_eq!(result, "Hello  World ");
@@ -1445,10 +1423,8 @@ mod tests {
 
     #[test]
     fn test_strip_non_primary_cyrillic_primary_keeps_cyrillic_strips_cjk() {
-        // Auto-detect Cyrillic primary + keep Cyrillic + strip CJK
         let input = "Привет мир 你好世界 тест";
         let result = strip_non_primary_scripts(input);
-        // Latin should be kept, Cyrillic should be kept, CJK stripped
         assert!(result.contains("Привет мир"));
         assert!(result.contains("тест"));
         assert!(!result.contains("你好世界"));
@@ -1456,7 +1432,6 @@ mod tests {
 
     #[test]
     fn test_strip_non_primary_mixed_latin_cjk_primary_keeps_both() {
-        // Auto-detect CJK primary (more CJK than Latin) + keep Latin + CJK
         let input = "你好世界 测试 这是测试 Hello";
         let result = strip_non_primary_scripts(input);
         assert!(result.contains("Hello"), "Latin should be kept");
@@ -1466,10 +1441,8 @@ mod tests {
 
     #[test]
     fn test_strip_non_primary_always_keeps_latin() {
-        // Always keep Latin regardless of primary script
         let input = "Привет Hello мир العربية test";
         let result = strip_non_primary_scripts(input);
-        // Primary is Cyrillic (Приветмир = more chars), so keeps Cyrillic + Latin, strips Arabic
         assert!(result.contains("Hello"), "Latin should always be kept");
         assert!(result.contains("test"), "Latin should always be kept");
         assert!(result.contains("Привет"), "Cyrillic is primary, should be kept");
@@ -1551,7 +1524,6 @@ mod integration {
             return;
         }
 
-        // Build a minimal 2-source project
         let project = Project {
             title: "E2E test".into(),
             components: vec![],

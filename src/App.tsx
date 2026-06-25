@@ -76,7 +76,6 @@ function App() {
     }
   };
 
-  // Keep handler refs in sync with the latest closures.
   handleSaveRef.current = handleSave;
   handleOpenRef.current = handleOpen;
   handleExportMdRef.current = handleExportTabMd;
@@ -127,7 +126,7 @@ function App() {
           setProject(draft);
         }
       } catch {
-        // Ignore invalid saved state
+        // ignore invalid saved state
       }
     }
     draftLoaded.current = true;
@@ -147,7 +146,6 @@ function App() {
     return () => clearTimeout(timer);
   }, [project]);
 
-  // Load persisted settings on startup
   const settingsLoaded = useRef(false);
   useEffect(() => {
     const saved = localStorage.getItem("cross-review-settings");
@@ -166,6 +164,12 @@ function App() {
           if (typeof s.mergeLines === "boolean") next.mergeLines = s.mergeLines;
           if (typeof s.debugEnabled === "boolean") next.debugEnabled = s.debugEnabled;
           if (s.previewFormat === "html" || s.previewFormat === "markdown") next.previewFormat = s.previewFormat;
+          if (s.aiConfig && typeof s.aiConfig.kind === "string") {
+            next.project = { ...prev.project, ai_config: s.aiConfig };
+            if (s.aiConfig.api_key) {
+              try { localStorage.removeItem("cross-review-api-key-scrubbed"); } catch {}
+            }
+          }
           return next;
         });
       } catch (err) {
@@ -177,7 +181,6 @@ function App() {
     return () => clearTimeout(timer);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-save settings on change (debounced)
   useEffect(() => {
     if (!settingsLoaded.current) return;
     const timer = setTimeout(() => {
@@ -190,6 +193,7 @@ function App() {
           mergeLines,
           debugEnabled,
           previewFormat,
+          aiConfig: project.ai_config ?? null,
         };
         localStorage.setItem("cross-review-settings", JSON.stringify(settings));
       } catch (err) {
@@ -197,7 +201,7 @@ function App() {
       }
     }, 500);
     return () => clearTimeout(timer);
-  }, [darkMode, language, compactMode, removeWhitespace, mergeLines, debugEnabled, previewFormat]);
+  }, [darkMode, language, compactMode, removeWhitespace, mergeLines, debugEnabled, previewFormat, project.ai_config]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

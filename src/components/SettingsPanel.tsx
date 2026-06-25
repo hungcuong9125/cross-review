@@ -248,7 +248,6 @@ export function SettingsPanel() {
           toastError(t("toast.aiTimeout", language));
           break;
         case "cancelled":
-          // silent
           break;
         case "not_configured":
           info(t("toast.aiNotConfigured", language));
@@ -283,7 +282,6 @@ export function SettingsPanel() {
     try {
       await aiCancelRequest();
     } catch {
-      // ignore
     } finally {
       setAiBusy(false);
     }
